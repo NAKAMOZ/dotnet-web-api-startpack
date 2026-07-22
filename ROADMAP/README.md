@@ -10,7 +10,7 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
 | **Decision record** | ✅ 20 ADRs + the authentication and authorization architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
 | **Open decisions** | ⏳ 9 items (P6–P11, P14, P16, P18); **P1–P5, P12, P13, P15, P17 resolved 2026-07-22** |
-| **Implementation** | 🔄 **Phase A + B written, Phase C in progress** — 32 tests green. Authorization model is real code; token services are interfaces only; the 13-entity model and its EF mapping exist (§6, §7). Next: the initial migration and seed data (§8). No controllers yet |
+| **Implementation** | 🔄 **Phase A–C done, Phase D started** — 37 tests green. Data layer stands up against a real PostgreSQL (§6–§8) and every endpoint has typed contracts (§9). Token services are still interfaces only. Next: validation (§10), then controllers (§11). |
 
 ## How to use this board
 
@@ -43,13 +43,13 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 |---|---|---|
 | 6 | [Domain and Entity Modeling](06-domain-and-entity-modeling.md) | 🔄 19 entity/enum files landed, builds clean, entity table + ER diagram synced; awaiting owner sign-off on the three recorded deviations |
 | 7 | [Entity Framework Core Configuration](07-entity-framework-core-configuration.md) | ✅ `AppDbContext` + 13 configurations + interceptor; generated SQL reviewed against the design; 10 model-shape tests green |
-| 8 | [Database Migrations and Seed Data](08-database-migrations-and-seed-data.md) | ⬜ |
+| 8 | [Database Migrations and Seed Data](08-database-migrations-and-seed-data.md) | 🔄 `InitialCreate` applied to a real database, `auth` schema + roles + dev seeder verified; dev-account **passwords** wait on §12's `Argon2PasswordHasher` |
 
 ### Phase D — API Plumbing
 
 | # | Workstream | Status |
 |---|---|---|
-| 9 | [DTO Organization](09-dto-organization.md) | ⬜ |
+| 9 | [DTO Organization](09-dto-organization.md) | ✅ 47 records across 12 feature namespaces; 5 reflection guard tests green |
 | 10 | [Validation](10-validation.md) | ⬜ |
 | 11 | [Controller Architecture](11-controller-architecture.md) | ⬜ |
 | 12 | [Service and Handler Architecture](12-service-and-handler-architecture.md) | ⬜ |

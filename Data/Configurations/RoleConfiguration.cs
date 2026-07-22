@@ -1,3 +1,4 @@
+using Api.Data.Seeding;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -21,5 +22,10 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.HasIndex(role => role.Name).IsUnique();
 
         builder.Property(role => role.Description).HasMaxLength(256);
+
+        // Static reference data, versioned inside the migration (§8). A database built from
+        // migrations alone is complete — no separate "now run the role seeder" step that a
+        // deployment can skip and leave every authorization check failing.
+        builder.HasData(RoleSeed.All);
     }
 }

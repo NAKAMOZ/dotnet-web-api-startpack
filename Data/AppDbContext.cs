@@ -46,8 +46,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<SigningKey> SigningKeys => Set<SigningKey>();
 
+    /// <summary>
+    /// PostgreSQL schema every table in this model lives in.
+    /// </summary>
+    /// <remarks>
+    /// Not <c>public</c>. The API may share a database with other things, and a dedicated
+    /// schema keeps its thirteen tables identifiable as one unit — which is also what makes
+    /// a scoped grant possible: the runtime role needs rights on <c>auth</c> and nothing
+    /// else, so a mistake in another schema cannot reach the credential store.
+    /// </remarks>
+    public const string Schema = "auth";
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDefaultSchema(Schema);
+
         // citext backs User.Email. Declaring the extension here means the initial migration
         // (§8) emits CREATE EXTENSION, so a fresh database — including the Testcontainers
         // instance the integration tests spin up — matches production without a manual step.

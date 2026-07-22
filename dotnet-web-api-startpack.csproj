@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <!-- TargetFramework, Nullable, ImplicitUsings and the warning/audit settings come from
        Directory.Build.props (ADR-0013). -->
   <PropertyGroup>
     <RootNamespace>Api</RootNamespace>
+    <UserSecretsId>0411e305-9bb7-467e-9b0c-758a39efc601</UserSecretsId>
   </PropertyGroup>
 
   <!--

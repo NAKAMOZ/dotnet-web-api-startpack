@@ -1,4 +1,5 @@
 using Api.Data;
+using Api.Data.Seeding;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -47,12 +48,22 @@ public static partial class ServiceCollectionExtensions
                     maxRetryCount: 3,
                     maxRetryDelay: TimeSpan.FromSeconds(5),
                     errorCodesToAdd: null);
+
+                // The history table lives with the tables it describes. Left in `public` it
+                // would sit apart from the schema it versions, and a database hosting two
+                // applications would have them competing for one history table.
+                npgsql.MigrationsHistoryTable("__EFMigrationsHistory", AppDbContext.Schema);
             });
 
             options.AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>());
         });
 
-        // TODO §8: migration and seeding hooks.
+        // Registered unconditionally, gated at both call sites: UseDatabaseSetupAsync only
+        // invokes it in Development, and the seeder itself re-checks the environment. A
+        // registration-time environment check would leave the second guard resolving
+        // nothing, which is a worse failure than one that refuses out loud.
+        services.AddScoped<IDataSeeder, DevDataSeeder>();
+
         return services;
     }
 }

@@ -12,6 +12,8 @@ builder.Services
 
 var app = builder.Build();
 
+await app.UseDatabaseSetupAsync();
+
 app.UseApiPipeline();
 
 app.Run();

@@ -18,6 +18,16 @@ Services depend on `AppDbContext` directly. Revisit only if a second persistence
 
 ---
 
+## 1a. Schema
+
+Every table lives in the **`auth` schema**, not `public` — including `__EFMigrationsHistory`. `AppDbContext.Schema` is the constant; `HasDefaultSchema` applies it to the whole model.
+
+The API may share a database with other things. A dedicated schema keeps its thirteen tables identifiable as one unit, and makes a scoped grant expressible: the runtime role needs rights on `auth` and nothing else, so a mistake elsewhere in the database cannot reach the credential store.
+
+**The connection string is never committed.** Development reads `ConnectionStrings:Postgres` from user-secrets, every other environment from the `ConnectionStrings__Postgres` environment variable (§25). Startup fails with a named error when neither is present.
+
+---
+
 ## 2. Mapping conventions
 
 | Concern | Convention | Where |
@@ -160,7 +170,7 @@ dotnet ef migrations script               # review the SQL before committing
 
 Scaffolded migrations are exempted from the code-style rules in `.editorconfig` (`[Data/Migrations/*.cs]`, `generated_code = true`). Without that, every generated migration fails the build on file-scoped-namespace and unused-using errors, and the hand-edits fixing it are lost on regeneration.
 
-The add/apply/rollback runbook — including the "never edit an applied migration" rule — is §8's `Documentation/Operations/Migrations.md`.
+The add/apply/rollback runbook — including the "never edit an applied migration" rule, the bundle-based production path, and the seed-data split — is [`../Operations/Migrations.md`](../Operations/Migrations.md).
 
 ---
 

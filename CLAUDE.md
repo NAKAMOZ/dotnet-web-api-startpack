@@ -12,7 +12,15 @@ What exists in code: the composition root, extension stubs, three options classe
 
 `Documentation/Architecture/DataAccess.md` is the data-layer source of truth: mapping conventions, per-index rationale, cascade map, and the two patterns that break silently — a collection value-converter without a `ValueComparer` (in-place mutations produce no UPDATE), and a transaction opened outside `CreateExecutionStrategy()` under `EnableRetryOnFailure` (throws at runtime). §12's refresh rotation is the second shape.
 
-**Migrations tooling is a pinned local tool**: run `dotnet tool restore` once per clone, then `dotnet ef …`. Scaffolded migrations under `Data/Migrations/` are exempt from the code-style rules via `.editorconfig` (`generated_code = true`) — without it every generated migration fails the build.
+**Migrations tooling is a pinned local tool**: run `dotnet tool restore` once per clone, then `dotnet ef …`. Scaffolded migrations under `Data/Migrations/` are exempt from the code-style rules via `.editorconfig` (`generated_code = true`) — without it every generated migration fails the build. The runbook is `Documentation/Operations/Migrations.md`.
+
+**All tables live in the `auth` schema**, not `public` — `AppDbContext.Schema`, applied via `HasDefaultSchema`, including `__EFMigrationsHistory`. SQL written by hand must qualify: `auth."Users"`.
+
+**No connection string is committed.** Development reads `ConnectionStrings:Postgres` from **user-secrets**; every other environment reads the `ConnectionStrings__Postgres` environment variable. Startup throws a named error when neither is set — do not "fix" that by adding a default to `appsettings.json`. The local database is the `dotnet-postgres` container (PostgreSQL 18.4, database `appdb`).
+
+**Development migrates and seeds at startup** (`UseDatabaseSetupAsync`), and only there. Production applies EF migration bundles as a deploy step; the API process must never auto-migrate outside Development.
+
+**DTOs are `record`s with `required init` properties, one per file, under `DTOs/<Feature>/`** (§9, 47 files). Entities are never serialized and never referenced from a DTO — `DtoContractTests` fails the build on both, and on any property named like a stored secret. Show-once secrets appear in exactly one response each: the API key in `CreateApiKeyResponse`, the TOTP secret in `TotpEnrollmentResponse`, recovery codes in `RecoveryCodesResponse`. Do not add a second endpoint that returns any of them.
 
 `Documentation/Architecture/Authentication.md` is the token-lifecycle source of truth: claims, cookie matrix, rotation, reuse detection, step-up, revocation paths. `Authorization.md` covers the permission model. Read both before touching anything auth-related.
 
