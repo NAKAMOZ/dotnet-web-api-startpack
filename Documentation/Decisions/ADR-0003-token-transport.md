@@ -40,7 +40,9 @@ The refresh cookie uses the `__Secure-` prefix rather than `__Host-` because `__
 
 **Bearer only.** Simple and CSRF-immune, but the browser must store the token somewhere JavaScript can reach — `localStorage` or memory — which converts any XSS into full token theft. Rejected: `httpOnly` is the single most effective mitigation available against that class of attack.
 
-**Inferring transport from the request** (cookie present ⇒ cookie mode) instead of the `X-Auth-Transport` header. Rejected for v1: implicit mode selection makes the security posture of a request depend on ambient state, and an attacker who can plant a cookie can influence which code path runs. An explicit header keeps the decision in one visible place. *(Noted as an open question in §4 — revisit if the header proves burdensome in practice.)*
+**Inferring transport from the request** (cookie present ⇒ cookie mode) instead of the `X-Auth-Transport` header. Rejected: implicit mode selection makes the security posture of a request depend on ambient state, and an attacker who can plant a cookie can influence which code path runs. An explicit header keeps the decision in one visible place. *(This was carried as an open question into §4 and **confirmed by the owner on 2026-07-22** — the header stays. No longer open.)*
+
+**Separate endpoints per transport** (`/auth/login` returns a body, `/auth/login/cookie` sets cookies). Considered when the transport question was confirmed. The clearest possible separation, but it grows the endpoint inventory, duplicates every auth entry point, and means two sets of endpoint documentation in §19 for one operation. Rejected.
 
 **Issuing tokens in both cookie and body simultaneously.** Rejected: it doubles the exfiltration surface for no benefit and makes it ambiguous which credential a client is actually relying on.
 

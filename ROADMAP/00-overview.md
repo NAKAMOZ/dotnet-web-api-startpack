@@ -39,7 +39,7 @@
 
 ## Pending Decisions (owner approval required)
 
-**P1–P5 and P15 are resolved** (approved 2026-07-22). They are retained below for traceability; the decisions themselves now live in `Documentation/Decisions/`. **P6–P14 and P16–P18 remain open.**
+**P1–P5, P12, P13, P15 and P17 are resolved** (approved 2026-07-22). They are retained below for traceability; the decisions themselves now live in `Documentation/Decisions/`. **P6–P11, P14, P16 and P18 remain open.**
 
 | # | Decision | Recommendation | Blocking workstream(s) |
 |---|---|---|---|
@@ -54,12 +54,12 @@
 | P9 | Background jobs | Plain `BackgroundService` for expired session/token cleanup; **no** Hangfire/Quartz in v1 | 12 |
 | P10 | Observability backend | OpenTelemetry traces + metrics; export target open (OTLP-compatible) | 28 |
 | P11 | Message broker | **None in v1.** No async cross-service communication exists; adding a broker would be speculative complexity | — |
-| P12 | Initial social providers | Google + GitHub | 4, 12 |
-| P13 | Social login flow style | SPA-driven PKCE code exchange vs API-driven redirect; recommend supporting API-driven redirect first | 4 |
+| ~~P12~~ | Initial social providers | ✅ **Approved: Google + GitHub** — `ADR-0019` | ~~4, 12~~ resolved |
+| ~~P13~~ | Social login flow style | ✅ **Approved: API-driven redirect**; SPA-PKCE deferred to §29 — `ADR-0019` | ~~4~~ resolved |
 | P14 | Deployment target | Open — entire §27 is pending | 27 |
 | ~~P15~~ | Load-testing tool | ✅ **Approved: k6** — scripts live outside the solution — `ADR-0017` | ~~23~~ resolved |
 | P16 | Scalar exposure in production | Dev + staging only; disabled in prod | 18 |
-| P17 | Signing-key private-key storage at rest | DB rows encrypted via ASP.NET Core Data Protection; revisit with vault (P7) | 4, 27 |
+| ~~P17~~ | Signing-key private-key storage at rest | ✅ **Approved: ASP.NET Core Data Protection**; interim, superseded when a vault is chosen (P7/P14) — `ADR-0020` | ~~4, 27~~ resolved |
 | P18 | Audit log retention period | 90 days, then archive/delete via cleanup job | 15 |
 
 **Explicitly out of v1 scope** (owner did not select; documented as future work in §29): organizations / multi-tenancy, machine-to-machine client-credentials flow. The full in-scope/out-of-scope statement now lives in `Documentation/Scope.md` (§1).

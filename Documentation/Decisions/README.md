@@ -36,11 +36,19 @@ One decision per file, one page each, four mandated sections: **Context**, **Dec
 | [0016](ADR-0016-caching-strategy.md) | In-memory `HybridCache` as the v1 caching layer | Accepted | Resolves **P5** |
 | [0017](ADR-0017-load-testing-tool.md) | k6 as the load-testing tool | Accepted | Resolves **P15** |
 | [0018](ADR-0018-flat-repository-layout.md) | Flat repository layout — API project at the root | Accepted | Supersedes the layout half of **0014** |
+| [0019](ADR-0019-social-login.md) | Social login — Google + GitHub, API-driven redirect | Accepted | Resolves **P12**, **P13** |
+| [0020](ADR-0020-signing-key-storage.md) | Signing keys protected by Data Protection | Accepted | Resolves **P17**; completes **0004** |
 
 The remaining v1 feature scope — the approved-decisions row *v1 feature scope* — is a scope statement rather than an architectural decision and lives in [`../Scope.md`](../Scope.md).
 
 ## Decisions still open
 
-Pending decisions **P6–P14, P16–P18** carry recommendations in `ROADMAP/00-overview.md` but are not approved. Each is answered on the blocking schedule of the workstream that needs it, and each gets an ADR here when it is. Do not treat a recommendation as a decision.
+Pending decisions **P6–P11, P14, P16, P18** carry recommendations in `ROADMAP/00-overview.md` but are not approved. Each is answered on the blocking schedule of the workstream that needs it, and each gets an ADR here when it is. Do not treat a recommendation as a decision.
 
-Resolved so far: **P1–P5** and **P15**.
+Resolved so far: **P1–P5**, **P12**, **P13**, **P15**, **P17**.
+
+## Architecture documents
+
+Longer-form design that a one-page ADR cannot carry:
+
+- [`../Architecture/Authentication.md`](../Architecture/Authentication.md) — the complete token lifecycle: sequence diagrams, `Session` and `RefreshToken` state machines, cookie matrix, claims table, revocation paths (§4).

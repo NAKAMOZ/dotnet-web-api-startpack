@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-A Better Auth–inspired authentication & authorization REST API on .NET 10. **Phase A is complete** (§1–§3): decisions recorded, packages pinned, solution skeleton built. The template sample code is gone.
+A Better Auth–inspired authentication & authorization REST API on .NET 10. **Phase A complete** (§1–§3) and **§4 written**: decisions recorded, packages pinned, skeleton built, token architecture designed.
 
-There is **no feature code yet** — no entities, no controllers, no services. The next workstreams are §4 (authentication architecture) and §5 (authorization), both design work. Do not write feature code ahead of the workstream that owns it.
+What exists in code: the composition root, extension stubs, three options classes in `Configuration/`, and five token-service **interfaces** in `Services/Tokens/`. There are **no implementations, no entities, no controllers** — those are §6 (entities) and §12 (service bodies). Do not write feature code ahead of the workstream that owns it.
+
+`Documentation/Architecture/Authentication.md` is the token-lifecycle source of truth: claims, cookie matrix, rotation, reuse detection, revocation paths. Read it before touching anything auth-related.
 
 `Documentation/Decisions/` is the source of truth for architectural decisions; the roadmap is the source of truth for workstream scope and sequencing. Where the two disagree, the ADR wins — `ROADMAP/` is a planning artifact that §29 archives at v1 close.
 
@@ -59,7 +61,7 @@ These will fail your build, by design:
 ## Decision record (`Documentation/`)
 
 - `Documentation/Decisions/README.md` — ADR index and numbering rules.
-- `ADR-0001`–`ADR-0018` — one decision per file. New decisions get a new ADR; superseding one sets the old file's status to `Superseded by ADR-XXXX` rather than editing or deleting it.
+- `ADR-0001`–`ADR-0020` — one decision per file. New decisions get a new ADR; superseding one sets the old file's status to `Superseded by ADR-XXXX` rather than editing or deleting it.
 - `Documentation/Scope.md` — v1 in-scope capabilities and the deferred list with reasons.
 
 ## The roadmap (`ROADMAP/`)
@@ -71,7 +73,7 @@ These will fail your build, by design:
 Rules encoded in the roadmap that override any default instinct:
 
 - **Approved decisions are final** (table in `00-overview.md`): attribute-routed MVC **controllers only — no minimal API endpoints**; `Program.cs` strictly a composition root; RFC 9457 Problem Details for all errors; PostgreSQL + EF Core; FluentValidation; manual mapping extensions (no AutoMapper); Serilog; Argon2id password hashing; ES256 JWTs (15-min TTL) + opaque rotating refresh tokens; xUnit + Testcontainers; Scalar for API docs.
-- **Pending decisions P6–P14 and P16–P18** carry recommendations but require owner approval. Do not start a workstream whose dependencies or blocking pending decisions are unresolved (e.g., P12/P13/P17 block §4; P14 blocks §27). **P1–P5 and P15 are resolved** (2026-07-22): 7-day absolute session cap, URL-segment `/api/v1/…` versioning, all four proposed directories approved, flat root layout (revised by ADR-0018) with root namespace `Api`, in-memory `HybridCache`, k6 for load testing.
+- **Pending decisions P6–P14 and P16–P18** carry recommendations but require owner approval. Do not start a workstream whose dependencies or blocking pending decisions are unresolved (e.g., P14 blocks §27; P8 blocks email delivery in §12). **P1–P5, P12, P13, P15 and P17 are resolved** (2026-07-22): 7-day absolute session cap, URL-segment `/api/v1/…` versioning, all four proposed directories approved, flat root layout (revised by ADR-0018) with root namespace `Api`, in-memory `HybridCache`, k6 for load testing, Google + GitHub social login via API-driven redirect, signing keys protected by Data Protection.
 - **Status discipline**: mark a workstream ✅ in `README.md` only when its Definition of Done is met; 🔄 for partial progress; fine-grained checkboxes live inside each workstream file.
 - **Same-PR rule**: each feature slice lands its controller, DTOs, validators, services, tests, and per-endpoint Markdown doc (`Documentation/`) in one PR to prevent doc drift.
 

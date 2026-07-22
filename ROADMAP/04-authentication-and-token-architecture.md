@@ -27,14 +27,14 @@ Design document + interface definitions. Implementation lands in §12; entities 
 
 ## Technology Decisions Requiring Approval
 
-P12, P13, P17. (**P1 resolved**: 7-day absolute cap — `ADR-0002`.)
+✅ **None outstanding.** All resolved 2026-07-22: P1 (7-day cap, `ADR-0002`), P12 + P13 (Google + GitHub, API-driven redirect — `ADR-0019`), P17 (Data Protection — `ADR-0020`).
 
 ## Tasks
 
-- [ ] Write `Documentation/Architecture/Authentication.md`: sequence diagrams (login, refresh+rotation, reuse detection, MFA challenge, social callback, passkey ceremonies), state machines for `Session` and `RefreshToken`, cookie matrix, claims table.
-- [ ] Define interfaces (files in `Services/Tokens/`, bodies in §12): `IAccessTokenIssuer`, `IRefreshTokenService`, `ISessionService`, `ISigningKeyManager`, `IMfaTicketService`.
-- [ ] Define `Configuration/JwtOptions.cs`, `Configuration/SessionOptions.cs`, `Configuration/CookieOptions.cs` (typed options, validated on start — §25).
-- [ ] Specify clock-skew tolerance (recommend 30 s) and document it in `JwtOptions`.
+- [x] Write `Documentation/Architecture/Authentication.md`: sequence diagrams (login, refresh+rotation, reuse detection, MFA challenge, social callback, passkey ceremonies), state machines for `Session` and `RefreshToken`, cookie matrix, claims table.
+- [x] Define interfaces (files in `Services/Tokens/`, bodies in §12): `IAccessTokenIssuer`, `IRefreshTokenService`, `ISessionService`, `ISigningKeyManager`, `IMfaTicketService`.
+- [x] Define `Configuration/JwtOptions.cs`, `Configuration/SessionOptions.cs`, `Configuration/CookieOptions.cs` (typed options, validated on start — §25).
+- [x] Specify clock-skew tolerance (recommend 30 s) and document it in `JwtOptions`.
 
 ## Expected Deliverables
 
@@ -67,8 +67,27 @@ Architecture doc kept current as the single source of truth; endpoint docs (§19
 
 Architecture doc reviewed and approved by owner; interfaces compile; every §22 attack scenario has a mapped defense.
 
+- [x] **Interfaces compile** — `dotnet build`, 0 warnings, 0 errors.
+- [x] Attack-to-defence mapping written — `Documentation/Architecture/Authentication.md` §15 lists eight properties §22 must map its negative tests to.
+- [ ] **Architecture doc reviewed and approved by the owner** — the outstanding item. §4 stays 🔄 until this is signed off.
+
+### Deviations from this workstream's original text
+
+1. **`Configuration/CookieOptions.cs` is named `AuthCookieOptions.cs`.** `Microsoft.AspNetCore.Http.CookieOptions` already exists and is in scope through implicit usings, so the roadmap's name would collide on every file that touches both.
+
+2. **`ISigningKeyManager` exposes `SignAsync`, not a key accessor.** The roadmap did not specify the shape. Handing out an unprotected key would spread private material across components; keeping signing inside the manager means the eventual migration from Data Protection to a vault (P7) is a change in exactly one place — which is the containment `ADR-0020` relies on.
+
+3. **`amr` gained `google` and `github` values** beyond the roadmap's `pwd`/`otp`/`webauthn`/`recovery`, now that P12 names concrete providers. A session authenticated by social login is otherwise indistinguishable from a password login in the token.
+
+### Also landed (not in the original list)
+
+- `SessionRevocationReason` and `RefreshOutcome` enums. Both lifetime bounds and both revocation paths need distinguishable outcomes — `ADR-0002` requires that the API tell "you were idle" apart from "your session aged out", and that distinction has to exist in the service contract, not just the HTTP layer.
+- `ADR-0019` (P12 + P13) and `ADR-0020` (P17) written; `ADR-0003`'s open transport question closed; `ADR-0004`'s P17 placeholder resolved.
+
 ## Questions for the Project Owner
 
-1. ~~Confirm P1 cap~~ ✅ **7 days, approved 2026-07-22.** P17 key storage still open.
-2. Google + GitHub as launch providers (P12)? Redirect-first social flow (P13)?
-3. Is the `X-Auth-Transport` header approach acceptable, or should transport be inferred (cookie present ⇒ cookie mode)?
+1. ~~Confirm P1 cap and P17 key storage.~~ ✅ **7-day cap** (`ADR-0002`); **Data Protection** for key material (`ADR-0020`).
+2. ~~Google + GitHub as launch providers (P12)? Redirect-first social flow (P13)?~~ ✅ **Both yes** — `ADR-0019`.
+3. ~~Is the `X-Auth-Transport` header approach acceptable?~~ ✅ **Yes, the header stays.** ADR-0003's open note is closed.
+
+None outstanding.

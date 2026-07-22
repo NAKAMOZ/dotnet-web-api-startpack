@@ -30,7 +30,7 @@ A **key ring** persisted as `SigningKey` rows, each with a `KeyId` (`kid`), the 
 
 Every JWT header carries its `kid`. `GET /.well-known/jwks.json` publishes the public keys of all `Active` and `Retiring` keys, so verifiers resolve the right key by `kid` without coordination.
 
-Private keys at rest are protected per **P17** (ASP.NET Core Data Protection over the DB rows) — that decision remains pending and gets its own ADR when approved.
+Private keys at rest are protected per **P17** — ✅ **resolved 2026-07-22**: ASP.NET Core Data Protection over the DB rows, recorded in [ADR-0020](ADR-0020-signing-key-storage.md).
 
 ## Alternatives considered
 

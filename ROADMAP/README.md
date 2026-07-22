@@ -8,9 +8,9 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 |---|---|
 | **Planning** | ✅ Complete — all 29 workstreams specified |
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
-| **Decision record** | ✅ 17 ADRs written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
-| **Open decisions** | ⏳ 12 items (P6–P14, P16–P18); **P1–P5 and P15 resolved 2026-07-22** |
-| **Implementation** | 🔄 **Phase A complete** — skeleton builds, both test projects green, template sample deleted. No feature code yet; §4/§5 are design workstreams |
+| **Decision record** | ✅ 20 ADRs + the authentication architecture document written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
+| **Open decisions** | ⏳ 9 items (P6–P11, P14, P16, P18); **P1–P5, P12, P13, P15, P17 resolved 2026-07-22** |
+| **Implementation** | 🔄 **Phase A complete, §4 written** — skeleton builds, tests green, token interfaces + options compile. No feature bodies yet; §12 implements them |
 
 ## How to use this board
 
@@ -34,7 +34,7 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 
 | # | Workstream | Status |
 |---|---|---|
-| 4 | [Authentication and Token Architecture](04-authentication-and-token-architecture.md) | ⏳ P12, P13, P17 (P1 resolved: 7-day cap) |
+| 4 | [Authentication and Token Architecture](04-authentication-and-token-architecture.md) | 🔄 architecture doc + interfaces landed, builds clean; awaiting owner review of the doc |
 | 5 | [Authorization and Permissions](05-authorization-and-permissions.md) | ⬜ |
 
 ### Phase C — Data
@@ -99,8 +99,8 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 ## What happens next
 
 1. ~~**Answer the blocking decisions.**~~ ✅ **Done 2026-07-22.** P1 (7-day absolute cap), P2 (URL-segment versioning), P3 (all four directories), P4 (layout — later revised to flat by ADR-0018) were all approved as recommended and recorded in [`Documentation/Decisions/`](../Documentation/Decisions/README.md). Phases A–B are unblocked. Remaining open items are P5–P18, each answered on its own workstream's schedule.
-2. ~~**Execute Phase A** (§1–§3).~~ ✅ **Done 2026-07-22.** §1: 17 ADRs + `Documentation/Scope.md` (owner review of the scope doc still outstanding). §2: versions pinned centrally, build clean under warnings-as-errors, transitive security pin for `Microsoft.OpenApi`. §3: `.slnx` solution, flat root layout (ADR-0018), 16-line composition root, both test projects green, template sample deleted. **Next up: §4** — the authentication architecture document. It needs P12, P13 and P17 answered first.
-3. **Execute Phase B** (§4–§5): write the authentication architecture document (token lifecycle, rotation, reuse detection, key ring, dual transport, CSRF) and the authorization model; owner reviews before any data work starts.
+2. ~~**Execute Phase A** (§1–§3).~~ ✅ **Done 2026-07-22.** §1: 17 ADRs + `Documentation/Scope.md` (owner review of the scope doc still outstanding). §2: versions pinned centrally, build clean under warnings-as-errors, transitive security pin for `Microsoft.OpenApi`. §3: `.slnx` solution, flat root layout (ADR-0018), 16-line composition root, both test projects green, template sample deleted. §4 is written: `Documentation/Architecture/Authentication.md`, five token interfaces, three options classes; P12/P13/P17 resolved. **Next up: §5** — the authorization and permission model.
+3. **Execute Phase B** (§4–§5): §4 ✅ written (token lifecycle, rotation, reuse detection, key ring, dual transport, CSRF) — awaiting owner review. **§5 next**: the authorization model. Owner reviews both before any data work starts.
 4. **Execute Phase C** (§6–§8): entities → EF configurations → initial migration + seeding. First runnable, migrated database.
 5. **Build features as vertical slices** through Phases D–G: for each feature (auth core → sessions → verification/reset → users → MFA → social → passkeys → API keys → admin), the controller, DTOs, validators, services, tests, and its endpoint Markdown doc land **in the same PR** — that same-PR rule is what keeps `Documentation/` and the OpenAPI document from drifting.
 6. **Operational close-out** (Phase H): compose environment early (§24 can start alongside Phase C), CI as soon as the first tests exist (§26), deployment after P14 is decided (§27), monitoring wiring (§28).
