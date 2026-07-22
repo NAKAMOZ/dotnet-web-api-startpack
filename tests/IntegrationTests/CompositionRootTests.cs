@@ -37,10 +37,17 @@ public class CompositionRootTests : IClassFixture<WebApplicationFactory<Program>
 
         var client = factory.CreateClient();
 
-        // No controllers exist yet, so any route 404s. Reaching a 404 at all means the
-        // host booted, DI resolved, and the pipeline ran — which is what is under test.
         var response = await client.GetAsync("/", TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        // 401, not 404 — and that is the assertion worth making as of §12.
+        //
+        // The deny-by-default fallback applies to requests matching NO endpoint as well as
+        // to endpoints carrying no authorization metadata. An unknown path therefore answers
+        // "authenticate first" rather than "no such path", so an anonymous caller learns
+        // nothing about which paths exist.
+        //
+        // Reaching any status at all still proves what this test was written for: the host
+        // booted, every Add* extension resolved, and the pipeline ran.
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

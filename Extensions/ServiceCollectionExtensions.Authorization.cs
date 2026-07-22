@@ -30,20 +30,24 @@ public static partial class ServiceCollectionExtensions
 
         services.AddAuthorization(options =>
         {
-            // ┌── TODO §12 — ONE LINE, DO NOT SHIP v1 WITHOUT IT ──────────────────────┐
-            // │  options.FallbackPolicy = AuthorizationPolicies.DenyByDefault;         │
+            // ┌── ACTIVE as of §12 ────────────────────────────────────────────────────┐
+            // │  Deny-by-default: any endpoint carrying no authorization metadata now   │
+            // │  requires an authenticated user. A forgotten [Authorize] fails closed.  │
             // └────────────────────────────────────────────────────────────────────────┘
             //
-            // Deny-by-default is §5's core guarantee, and it is deliberately NOT active
-            // yet. Calling AddAuthorization makes minimal hosting insert the authorization
-            // middleware automatically, and that middleware applies the fallback policy to
-            // every request — including ones matching no endpoint. With no authentication
-            // scheme registered there is nothing to challenge with, so setting it today
-            // turns every request, 404s included, into a 500.
+            // §5 wrote and tested this policy but could not switch it on: the authorization
+            // middleware applies the fallback to every request, and with no authentication
+            // scheme registered there was nothing to challenge with, so every request —
+            // 404s included — became a 500. §12's schemes are what made it activatable.
             //
-            // The policy itself is defined in AuthorizationPolicies.DenyByDefault and is
-            // unit-tested. Only its activation waits for §12 to register a scheme. §5's
-            // Definition of Done tracks this as its one open item.
+            // Two consequences worth knowing, because both look like bugs otherwise:
+            //   * A request matching NO endpoint is also subject to the fallback, so an
+            //     unknown path answers 401 rather than 404. That is the intended reading —
+            //     an anonymous caller learns nothing about which paths exist.
+            //   * Anything that must stay anonymous needs to say so explicitly, including
+            //     non-controller endpoints: the OpenAPI document is mapped with
+            //     .AllowAnonymous() in the pipeline for this reason.
+            options.FallbackPolicy = AuthorizationPolicies.DenyByDefault;
 
             options.AddPolicy(
                 RequireRecentAuthAttribute.PolicyName,

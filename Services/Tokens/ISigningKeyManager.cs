@@ -18,6 +18,17 @@ public interface ISigningKeyManager
     Task<SignatureResult> SignAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken);
 
     /// <summary>
+    /// The <c>kid</c> of the current <c>Active</c> key, generating a key ring if none exists.
+    /// </summary>
+    /// <remarks>
+    /// Added in §12. A JWS signs <c>header.payload</c>, and the header contains the
+    /// <c>kid</c> — so the signer's identity has to be known <em>before</em> there is
+    /// anything to sign. Without this the issuer would have to sign a throwaway payload
+    /// first just to read the key id back off the result.
+    /// </remarks>
+    Task<string> GetActiveKeyIdAsync(CancellationToken cancellationToken);
+
+    /// <summary>
     /// Public keys to publish: <c>Active</c> and <c>Retiring</c>. Retired keys are omitted.
     /// </summary>
     Task<IReadOnlyList<PublicSigningKey>> GetPublishableKeysAsync(CancellationToken cancellationToken);
@@ -38,4 +49,18 @@ public interface ISigningKeyManager
     /// (§27), not automatically in v1.
     /// </summary>
     Task<int> RetireElapsedKeysAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Resolves a <c>kid</c> to a public key that may validate, or <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// Added in §12 — the JWT bearer resolver needs it. <b>Exact match against
+    /// <c>Active</c> and <c>Retiring</c> only, with no fallback.</b> An implementation that
+    /// answers an unresolvable <c>kid</c> by offering the whole ring defeats
+    /// <c>kid</c>-based rotation entirely: retired keys would keep validating, so retirement
+    /// would stop meaning anything and a leaked old key would stay useful indefinitely.
+    /// </remarks>
+    Task<System.Security.Cryptography.ECDsa?> ResolveValidationKeyAsync(
+        string keyId,
+        CancellationToken cancellationToken);
 }

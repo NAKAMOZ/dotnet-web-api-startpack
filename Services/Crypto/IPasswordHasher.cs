@@ -21,6 +21,18 @@ public interface IPasswordHasher
     string Hash(string password);
 
     /// <summary>
+    /// Hashes a machine-generated secret — an API key or a recovery code — with the
+    /// deliberately cheap profile (ADR-0006).
+    /// </summary>
+    /// <remarks>
+    /// A separate method rather than a parameter on <see cref="Hash"/>. A parameter has a
+    /// default, and a defaulted parameter is how the fast profile eventually reaches the
+    /// password path; a differently named method cannot be reached by accident and shows up
+    /// in review as itself.
+    /// </remarks>
+    string HashSecret(string secret);
+
+    /// <summary>
     /// Verifies a password against a stored hash, reading the cost parameters from the hash
     /// itself rather than from current configuration.
     /// </summary>

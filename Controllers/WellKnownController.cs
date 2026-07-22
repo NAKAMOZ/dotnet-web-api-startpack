@@ -1,4 +1,5 @@
 using Api.DTOs.WellKnown;
+using Api.Services.Tokens;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,7 +17,7 @@ namespace Api.Controllers;
 [ApiController]
 [Produces("application/json")]
 [AllowAnonymous]
-public sealed class WellKnownController : ControllerBase
+public sealed class WellKnownController(ISigningKeyManager signingKeyManager) : ControllerBase
 {
     /// <summary>The public JSON Web Key Set: the <c>Active</c> and <c>Retiring</c> signing keys.</summary>
     /// <remarks>
@@ -30,10 +31,22 @@ public sealed class WellKnownController : ControllerBase
     /// </remarks>
     [HttpGet("/.well-known/jwks.json")]
     [ProducesResponseType<JwksResponse>(StatusCodes.Status200OK)]
-    public Task<ActionResult<JwksResponse>> GetJwks(CancellationToken cancellationToken) =>
-        Task.FromResult<ActionResult<JwksResponse>>(
-            Problem(
-                statusCode: StatusCodes.Status501NotImplemented,
-                title: "Not implemented",
-                detail: "The signing-key ring lands in §12."));
+    public async Task<ActionResult<JwksResponse>> GetJwks(CancellationToken cancellationToken)
+    {
+        var keys = await signingKeyManager.GetPublishableKeysAsync(cancellationToken);
+
+        return new JwksResponse
+        {
+            Keys = [.. keys.Select(key => new JsonWebKeyResponse
+            {
+                KeyType = key.KeyType,
+                Use = key.Use,
+                Algorithm = key.Algorithm,
+                KeyId = key.KeyId,
+                Curve = key.Curve,
+                X = key.X,
+                Y = key.Y,
+            })],
+        };
+    }
 }
