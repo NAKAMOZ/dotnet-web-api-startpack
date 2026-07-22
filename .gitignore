@@ -118,6 +118,11 @@ secrets.json
 !.env.example
 !.env.template
 
+# HTTP client private environment — holds real tokens and passwords (§3).
+# The shared http/http-client.env.json carries only hosts and ports and IS committed.
+http-client.private.env.json
+*.private.env.json
+
 # User Secrets should normally be outside the repository,
 # but ignore them if copied locally
 secrets/

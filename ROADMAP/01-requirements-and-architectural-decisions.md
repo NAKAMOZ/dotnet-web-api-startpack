@@ -24,7 +24,7 @@ P1 (session cap), P3 (additional directories), P4 (solution layout) — needed b
 | P1 | Absolute session cap = **7 days** | `ADR-0002` |
 | P2 | **URL-segment versioning** `/api/v1/…` via `Asp.Versioning.Mvc` | `ADR-0015` |
 | P3 | **All four** directories approved: `Validators/`, `Extensions/`, `Exceptions/`, `BackgroundServices/` | `ADR-0014` |
-| P4 | **`src/Api/` + `tests/`**; root namespace becomes `Api` | `ADR-0014` |
+| P4 | Layout — **later revised to a flat root layout** by `ADR-0018` | `ADR-0014`, `ADR-0018` |
 
 ## Tasks
 
@@ -96,7 +96,7 @@ Every approved decision has an ADR; P1/P3/P4 answered and recorded; scope docume
 
 1. ~~Absolute session cap: is **7 days** acceptable? (P1)~~ ✅ **Yes — 7 days**, approved 2026-07-22.
 2. ~~Are the four proposed directories approved? (P3)~~ ✅ **Yes — all four.**
-3. ~~Is the `src/` + `tests/` layout approved? (P4)~~ ✅ **Yes.**
+3. ~~Is the `src/` + `tests/` layout approved? (P4)~~ ✅ Yes at the time — **reversed on review**; see `ADR-0018` for the flat layout now in force.
 4. ~~URL-segment versioning? (P2, asked alongside the above since it blocks §3 too)~~ ✅ **Yes — `/api/v1/…`.**
 
 **Remaining:** review `Documentation/Scope.md` and confirm the in-scope / deferred split before §1 is marked ✅.

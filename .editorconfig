@@ -1,5 +1,25 @@
 root = true
 
+# ============================================================
+# All files
+# ============================================================
+[*]
+end_of_line = lf
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml,csproj,props,targets,slnx}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+# Trailing double-space is a hard line break in Markdown.
+trim_trailing_whitespace = false
+
+# ============================================================
+# C#
+# ============================================================
 [*.cs]
 indent_style = space
 indent_size = 4
@@ -13,7 +33,6 @@ dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = false
 
 csharp_new_line_before_open_brace = all
-csharp_style_namespace_declarations = file_scoped:suggestion
 csharp_style_var_for_built_in_types = false:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_elsewhere = false:suggestion
@@ -23,3 +42,41 @@ dotnet_style_qualification_for_property = false:suggestion
 dotnet_style_prefer_auto_properties = true:suggestion
 dotnet_style_prefer_object_initializer = true:suggestion
 dotnet_style_prefer_collection_initializer = true:suggestion
+
+# ------------------------------------------------------------
+# Enforced conventions (§3)
+#
+# These are errors, not suggestions. `EnforceCodeStyleInBuild` in
+# Directory.Build.props runs them during compilation, and
+# TreatWarningsAsErrors makes them non-negotiable — the same rules
+# apply in the IDE, on the command line, and in CI.
+# ------------------------------------------------------------
+
+# File-scoped namespaces everywhere (IDE0161).
+csharp_style_namespace_declarations = file_scoped:error
+dotnet_diagnostic.IDE0161.severity = error
+
+# Explicit accessibility modifiers (IDE0040) — no implicit `private`.
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:error
+dotnet_diagnostic.IDE0040.severity = error
+
+# Unused usings are dead weight and hide real dependencies (IDE0005).
+dotnet_diagnostic.IDE0005.severity = warning
+
+# NOTE: "one type per file" has NO built-in analyzer in the .NET SDK.
+# The roadmap attributes it to the IDE0040 family; that is inaccurate —
+# IDE0040 covers accessibility modifiers only. The rule is enforced by
+# code review, and §20 adds an architecture test that asserts it.
+
+# ============================================================
+# Test projects
+# ============================================================
+[tests/**/*.cs]
+
+# IDE0005 only reports during build when GenerateDocumentationFile is true
+# (https://github.com/dotnet/roslyn/issues/41640). Test projects switch that
+# off — XML docs exist to feed the API's OpenAPI document, and test assemblies
+# have no consumer for them. Leaving IDE0005 enabled here makes the compiler
+# emit an EnableGenerateDocumentationFile diagnostic, which TreatWarningsAsErrors
+# turns into a build failure. Unused-using hygiene is enforced in application code instead.
+dotnet_diagnostic.IDE0005.severity = none

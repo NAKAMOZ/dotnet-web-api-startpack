@@ -8,9 +8,9 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 |---|---|
 | **Planning** | ✅ Complete — all 29 workstreams specified |
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
-| **Decision record** | ✅ 14 ADRs written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
-| **Open decisions** | ⏳ 14 items (P5–P18); **P1–P4 resolved 2026-07-22** — Phase A is unblocked |
-| **Implementation** | ⬜ Not started |
+| **Decision record** | ✅ 17 ADRs written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
+| **Open decisions** | ⏳ 12 items (P6–P14, P16–P18); **P1–P5 and P15 resolved 2026-07-22** |
+| **Implementation** | 🔄 **Phase A complete** — skeleton builds, both test projects green, template sample deleted. No feature code yet; §4/§5 are design workstreams |
 
 ## How to use this board
 
@@ -27,8 +27,8 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 | # | Workstream | Status |
 |---|---|---|
 | 1 | [Requirements and Architectural Decisions](01-requirements-and-architectural-decisions.md) | 🔄 ADRs + Scope written; awaiting owner review of `Documentation/Scope.md` (last DoD item) |
-| 2 | [Technology Selection](02-technology-selection.md) | ⬜ ⏳ P5, P15 |
-| 3 | [Solution and Project Structure](03-solution-and-project-structure.md) | ⬜ unblocked (P2/P3/P4 resolved) |
+| 2 | [Technology Selection](02-technology-selection.md) | ✅ manifest pinned, builds clean, `ADR-0013` written; P5/P15 resolved |
+| 3 | [Solution and Project Structure](03-solution-and-project-structure.md) | 🔄 skeleton built, builds + tests green; awaiting owner commit |
 
 ### Phase B — Architecture
 
@@ -98,8 +98,8 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 
 ## What happens next
 
-1. ~~**Answer the blocking decisions.**~~ ✅ **Done 2026-07-22.** P1 (7-day absolute cap), P2 (URL-segment versioning), P3 (all four directories), P4 (`src/` + `tests/`) were all approved as recommended and recorded in [`Documentation/Decisions/`](../Documentation/Decisions/README.md). Phases A–B are unblocked. Remaining open items are P5–P18, each answered on its own workstream's schedule.
-2. **Execute Phase A** (§1–§3): §1 is written (14 ADRs + `Documentation/Scope.md`) and needs only owner review of the scope doc. **Next up: §2** — pin the package manifest and write `ADR-0013`. Then §3: `git init`, solution skeleton with a composition-root `Program.cs`, the `src/`/`tests/` move, and deletion of the template sample code.
+1. ~~**Answer the blocking decisions.**~~ ✅ **Done 2026-07-22.** P1 (7-day absolute cap), P2 (URL-segment versioning), P3 (all four directories), P4 (layout — later revised to flat by ADR-0018) were all approved as recommended and recorded in [`Documentation/Decisions/`](../Documentation/Decisions/README.md). Phases A–B are unblocked. Remaining open items are P5–P18, each answered on its own workstream's schedule.
+2. ~~**Execute Phase A** (§1–§3).~~ ✅ **Done 2026-07-22.** §1: 17 ADRs + `Documentation/Scope.md` (owner review of the scope doc still outstanding). §2: versions pinned centrally, build clean under warnings-as-errors, transitive security pin for `Microsoft.OpenApi`. §3: `.slnx` solution, flat root layout (ADR-0018), 16-line composition root, both test projects green, template sample deleted. **Next up: §4** — the authentication architecture document. It needs P12, P13 and P17 answered first.
 3. **Execute Phase B** (§4–§5): write the authentication architecture document (token lifecycle, rotation, reuse detection, key ring, dual transport, CSRF) and the authorization model; owner reviews before any data work starts.
 4. **Execute Phase C** (§6–§8): entities → EF configurations → initial migration + seeding. First runnable, migrated database.
 5. **Build features as vertical slices** through Phases D–G: for each feature (auth core → sessions → verification/reset → users → MFA → social → passkeys → API keys → admin), the controller, DTOs, validators, services, tests, and its endpoint Markdown doc land **in the same PR** — that same-PR rule is what keeps `Documentation/` and the OpenAPI document from drifting.

@@ -39,15 +39,15 @@
 
 ## Pending Decisions (owner approval required)
 
-**P1–P4 are resolved** (approved 2026-07-22). They are retained below for traceability; the decisions themselves now live in `Documentation/Decisions/`. **P5–P18 remain open.**
+**P1–P5 and P15 are resolved** (approved 2026-07-22). They are retained below for traceability; the decisions themselves now live in `Documentation/Decisions/`. **P6–P14 and P16–P18 remain open.**
 
 | # | Decision | Recommendation | Blocking workstream(s) |
 |---|---|---|---|
 | ~~P1~~ | Absolute session cap value | ✅ **Approved: 7 days** — `ADR-0002` | ~~4~~ resolved |
 | ~~P2~~ | API versioning style | ✅ **Approved: URL segment `/api/v1/…`** via `Asp.Versioning.Mvc` — `ADR-0015` | ~~3, 11~~ resolved |
 | ~~P3~~ | Additional directories beyond the mandated list | ✅ **Approved: all four** — `Validators/`, `Extensions/`, `Exceptions/`, `BackgroundServices/` — `ADR-0014` | ~~3~~ resolved |
-| ~~P4~~ | Solution layout | ✅ **Approved: `src/Api/` + `tests/`**, root namespace `Api` — `ADR-0014` | ~~3~~ resolved |
-| P5 | Caching | `HybridCache` in-memory first; Redis only when scaling to multiple nodes | 12, 17 |
+| ~~P4~~ | Solution layout | ✅ Resolved — **revised to a flat root layout** (`ADR-0018`, superseding the `src/Api/` decision in `ADR-0014`). Root namespace `Api`. | ~~3~~ resolved |
+| ~~P5~~ | Caching | ✅ **Approved: `HybridCache` in-memory** — Redis deferred to §29 backlog — `ADR-0016` | ~~12, 17~~ resolved |
 | P6 | Rate-limiting store | Built-in ASP.NET Core `RateLimiter`, in-memory (single node); Redis-backed counters deferred with P5 | 17 |
 | P7 | Secret management (prod) | Env vars now; vault target (Azure Key Vault / AWS SM / HashiCorp) chosen with deployment target | 25, 27 |
 | P8 | Email provider (prod) | `IEmailSender` abstraction; Mailpit in dev; prod provider open | 12 |
@@ -57,7 +57,7 @@
 | P12 | Initial social providers | Google + GitHub | 4, 12 |
 | P13 | Social login flow style | SPA-driven PKCE code exchange vs API-driven redirect; recommend supporting API-driven redirect first | 4 |
 | P14 | Deployment target | Open — entire §27 is pending | 27 |
-| P15 | Load-testing tool | k6 | 23 |
+| ~~P15~~ | Load-testing tool | ✅ **Approved: k6** — scripts live outside the solution — `ADR-0017` | ~~23~~ resolved |
 | P16 | Scalar exposure in production | Dev + staging only; disabled in prod | 18 |
 | P17 | Signing-key private-key storage at rest | DB rows encrypted via ASP.NET Core Data Protection; revisit with vault (P7) | 4, 27 |
 | P18 | Audit log retention period | 90 days, then archive/delete via cleanup job | 15 |
@@ -68,45 +68,49 @@
 
 ## Target directory structure
 
-**Approved 2026-07-22** (P3 and P4 — see `Documentation/Decisions/ADR-0014-solution-layout-and-directories.md`). All four proposed directories are approved and the `src/` + `tests/` layout is confirmed; §3 performs the move. Root namespace becomes `Api`.
+**Directories approved 2026-07-22** (P3 — `ADR-0014`). **Layout revised 2026-07-22** (`ADR-0018` supersedes the P4 `src/` decision): the API project sits at the **repository root**, not under `src/Api/`. Root namespace is `Api`.
 
 ```text
-dotnet-web-api-startpack/
-├── src/
-│   └── Api/                              # the existing project, moved (P4)
-│       ├── Attributes/                   # [RequirePermission], [Idempotent], marker attributes
-│       ├── BackgroundServices/           # APPROVED (P3): expired-session/token cleanup workers
-│       ├── Configuration/                # typed options classes (JwtOptions, SessionOptions, …)
-│       ├── Controllers/                  # one controller per resource/responsibility
-│       ├── Data/
-│       │   ├── Configurations/           # one IEntityTypeConfiguration<T> per entity
-│       │   ├── Migrations/               # EF Core migrations
-│       │   └── Seeding/                  # role seed data, dev-only user seeder
-│       ├── DTOs/                         # per-feature request/response records
-│       ├── Exceptions/                   # APPROVED (P3): domain exception types
-│       ├── Extensions/                   # APPROVED (P3): composition-root extension methods
-│       ├── Filters/                      # validation filter, audit action filter
-│       ├── Handlers/                     # authentication + authorization handlers
-│       ├── Helpers/                      # small static utilities (Base64Url, device parsing)
-│       ├── Logging/                      # Serilog setup + enrichers
-│       ├── Mappings/                     # manual entity↔DTO mapping extensions, per feature
-│       ├── Middleware/                   # correlation ID, security headers, exception handling
-│       ├── Models/                       # one file per entity
-│       ├── Properties/                   # launchSettings.json
-│       ├── Services/                     # per-feature service interfaces + implementations
-│       ├── Validators/                   # APPROVED (P3): one FluentValidation validator per request DTO
-│       ├── wwwroot/                      # static assets (kept minimal; .gitkeep)
-│       └── Program.cs                    # composition root only
-├── tests/
+dotnet-web-api-startpack/                 # the API project lives here (ADR-0018)
+├── Attributes/                           # [RequirePermission], [Idempotent], marker attributes
+├── BackgroundServices/                   # APPROVED (P3): expired-session/token cleanup workers
+├── Configuration/                        # typed options classes (JwtOptions, SessionOptions, …)
+├── Controllers/                          # one controller per resource/responsibility
+├── Data/
+│   ├── Configurations/                   # one IEntityTypeConfiguration<T> per entity
+│   ├── Migrations/                       # EF Core migrations
+│   └── Seeding/                          # role seed data, dev-only user seeder
+├── DTOs/                                 # per-feature request/response records
+├── Exceptions/                           # APPROVED (P3): domain exception types
+├── Extensions/                           # APPROVED (P3): composition-root extension methods
+├── Filters/                              # validation filter, audit action filter
+├── Handlers/                             # authentication + authorization handlers
+├── Helpers/                              # small static utilities (Base64Url, device parsing)
+├── Logging/                              # Serilog setup + enrichers
+├── Mappings/                             # manual entity↔DTO mapping extensions, per feature
+├── Middleware/                           # correlation ID, security headers, exception handling
+├── Models/                               # one file per entity
+├── Properties/                           # launchSettings.json
+├── Services/                             # per-feature service interfaces + implementations
+├── Validators/                           # APPROVED (P3): one FluentValidation validator per request DTO
+├── wwwroot/                              # static assets (kept minimal; .gitkeep)
+├── Program.cs                            # composition root only
+├── tests/                                # excluded from the API project's globs — see below
 │   ├── UnitTests/
 │   └── IntegrationTests/
-├── Documentation/                        # per-endpoint Markdown (structure in §19)
+├── Documentation/                        # ADRs, Scope.md, per-endpoint Markdown (§19)
+├── http/                                 # per-controller .http files (§24)
 ├── docker-compose.yml
-├── Dockerfile                            # lives next to src/Api or at root (multi-stage)
+├── Dockerfile                            # at root (multi-stage)
 ├── .github/workflows/ci.yml
-├── ROADMAP.md
-└── dotnet-web-api-startpack.sln
+├── ROADMAP/
+├── Directory.Packages.props              # all NuGet versions (ADR-0013)
+├── Directory.Build.props                 # solution-wide build settings
+├── dotnet-web-api-startpack.csproj
+└── dotnet-web-api-startpack.slnx         # .slnx, the .NET 10 SDK default (see §3)
 ```
+
+⚠️ Because the project file is at the root, the SDK globs `**/*.cs` across the whole repository. `tests/`, `Documentation/`, `ROADMAP/` and `http/` are listed in `<DefaultItemExcludes>` in the csproj. **Any new top-level directory holding C# that is not application source must be added there**, or it silently compiles into the API assembly.
 
 **Justification for the four approved additions (P3 — recorded in `ADR-0014`):**
 

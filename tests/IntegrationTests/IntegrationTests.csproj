@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>IntegrationTests</RootNamespace>
+    <AssemblyName>IntegrationTests</AssemblyName>
+
+    <!-- xunit.v3 test projects are executables. -->
+    <OutputType>Exe</OutputType>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!-- Overrides Directory.Build.props — see UnitTests.csproj for the reason. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <!-- Testcontainers.PostgreSql and Respawn are referenced in §21, when the first
+         test that needs a real database is written (ADR-0011). -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../dotnet-web-api-startpack.csproj" />
+  </ItemGroup>
+
+</Project>

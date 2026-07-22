@@ -1,0 +1,44 @@
+<Project>
+
+  <!--
+    Solution-wide build settings. Imported at the top of every project file, so any
+    project may override a value locally — but should have a recorded reason to.
+    See Documentation/Decisions/ADR-0013-package-manifest.md.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Nullable reference types enforced everywhere: null defects become compile errors,
+         not runtime 500s. Paired with TreatWarningsAsErrors below, this is the point. -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- A warning that can be ignored will be. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Runs the .editorconfig code-style rules during compilation, not just in the IDE.
+         Without this, file-scoped namespaces and accessibility modifiers would be
+         enforced on whoever happens to open the file and on nobody else (§3). -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- XML doc comments feed the OpenAPI document, which feeds Scalar (§18) and the
+         documentation sync test (§19). CS1591 ("missing XML comment for publicly visible
+         type or member") is suppressed: requiring a doc comment on every DTO property
+         would produce ceremony, not documentation. Comments are written where they
+         carry meaning; the generator picks up whatever exists. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Supply-chain audit on every restore, not just in CI. `all` includes transitive
+         dependencies — this is what surfaces a vulnerable package pulled in indirectly.
+         Combined with TreatWarningsAsErrors, a newly published advisory FAILS THE BUILD.
+         That is deliberate. The fix is to pin the patched version in
+         Directory.Packages.props, not to silence the warning. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
+
+</Project>

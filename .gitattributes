@@ -1,0 +1,54 @@
+# ============================================================
+# Line endings
+#
+# LF in the repository for everything text. Git normalises on commit,
+# so a Windows contributor's CRLF working copy stays CRLF locally while
+# the committed blob stays LF — no cross-platform diff noise.
+# ============================================================
+
+* text=auto eol=lf
+
+# Windows-only files must keep CRLF or they break when executed.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Shell scripts must keep LF or they fail to execute on Linux/macOS.
+*.sh        text eol=lf
+
+# ============================================================
+# Binary — never diff, never normalise
+# ============================================================
+
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.dll       binary
+*.exe       binary
+*.pdb       binary
+*.snk       binary
+*.pfx       binary
+
+# ============================================================
+# Diff and merge behaviour
+# ============================================================
+
+*.cs        text diff=csharp
+*.csproj    text merge=union
+*.slnx      text
+*.props     text
+*.targets   text
+*.json      text
+*.md        text
+*.yml       text
+*.yaml      text
+*.http      text
+
+# Generated or lock-style files: collapse in review, they are not read by humans.
+*.Designer.cs       linguist-generated=true
+packages.lock.json  linguist-generated=true -diff

@@ -12,7 +12,7 @@ One decision per file, one page each, four mandated sections: **Context**, **Dec
 
 - Numbers are **monotonic and never reused**, including for withdrawn or superseded decisions.
 - A decision that replaces an earlier one does **not** edit or delete it. The old file's status becomes `Superseded by ADR-XXXX`; the new file names what it supersedes.
-- `ADR-0013` is **reserved** for workstream §2 (`ADR-0013-package-manifest.md`) and is intentionally absent until §2 lands. Do not fill the gap.
+- Pending decisions **P5–P18** are recorded here as they are approved. The convention: a pending decision that *completes* an approved-decisions row folds into that row's ADR; one with no corresponding row gets its own.
 
 ## Index
 
@@ -30,12 +30,17 @@ One decision per file, one page each, four mandated sections: **Context**, **Dec
 | [0010](ADR-0010-logging-serilog.md) | Serilog structured logging | Accepted | Approved-decisions table: *Logging* |
 | [0011](ADR-0011-testing-and-ci.md) | xUnit + Testcontainers testing stack, Docker + GitHub Actions | Accepted | Approved-decisions table: *Testing*, *Containers / CI* |
 | [0012](ADR-0012-api-documentation.md) | Scalar over built-in OpenAPI plus per-endpoint Markdown | Accepted | Approved-decisions table: *API documentation* |
-| — | *reserved — `ADR-0013-package-manifest.md`, workstream §2* | Not yet written | — |
-| [0014](ADR-0014-solution-layout-and-directories.md) | Solution layout and directory structure | Accepted | Resolves **P3**, **P4** |
+| [0013](ADR-0013-package-manifest.md) | Package manifest and Central Package Management | Accepted | Workstream §2 |
+| [0014](ADR-0014-solution-layout-and-directories.md) | Solution layout and directory structure | **Partially superseded by 0018** — the P3 directory set stands; the P4 `src/` layout does not | Resolves **P3**, **P4** |
 | [0015](ADR-0015-api-versioning.md) | URL-segment API versioning | Accepted | Resolves **P2** |
+| [0016](ADR-0016-caching-strategy.md) | In-memory `HybridCache` as the v1 caching layer | Accepted | Resolves **P5** |
+| [0017](ADR-0017-load-testing-tool.md) | k6 as the load-testing tool | Accepted | Resolves **P15** |
+| [0018](ADR-0018-flat-repository-layout.md) | Flat repository layout — API project at the root | Accepted | Supersedes the layout half of **0014** |
 
 The remaining v1 feature scope — the approved-decisions row *v1 feature scope* — is a scope statement rather than an architectural decision and lives in [`../Scope.md`](../Scope.md).
 
 ## Decisions still open
 
-Pending decisions **P5–P18** carry recommendations in `ROADMAP/00-overview.md` but are not approved. Each is answered on the blocking schedule of the workstream that needs it, and each gets an ADR here when it is. Do not treat a recommendation as a decision.
+Pending decisions **P6–P14, P16–P18** carry recommendations in `ROADMAP/00-overview.md` but are not approved. Each is answered on the blocking schedule of the workstream that needs it, and each gets an ADR here when it is. Do not treat a recommendation as a decision.
+
+Resolved so far: **P1–P5** and **P15**.

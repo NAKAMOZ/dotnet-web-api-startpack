@@ -14,7 +14,7 @@ Dockerfile, docker-compose, `.http` request files, developer quickstart.
 - `docker-compose.yml`: `api` (built), `postgres` (`postgres:17-alpine`, healthcheck `pg_isready`, named volume, `citext` available by default), `mailpit` (SMTP :1025, UI :8025). API waits on postgres health.
 - `.env.example` documents every compose-injected variable; `.env` git-ignored.
 - Two dev modes documented: full compose, or `dotnet watch` against compose-run postgres+mailpit only (fast inner loop).
-- `.http` files per feature in `src/Api/HttpRequests/` (`auth.http`, `sessions.http`, `mfa.http`, …) with shared variables file — replaces the template's single `.http`.
+- `.http` files per feature in `http/` (`auth.http`, `sessions.http`, `mfa.http`, …) with shared variables file — replaces the template's single `.http`.
 
 ## Technology Decisions Requiring Approval
 
@@ -24,7 +24,7 @@ None (Docker approved).
 
 - [ ] `Dockerfile` (multi-stage, non-root, healthcheck).
 - [ ] `docker-compose.yml` + `.env.example`.
-- [ ] `src/Api/HttpRequests/*.http` covering every inventory endpoint with example payloads (kept in sync by §19 review checklist).
+- [ ] `http/*.http` covering every inventory endpoint with example payloads (kept in sync by §19 review checklist).
 - [ ] `README.md` quickstart: prerequisites, `docker compose up`, first request walkthrough (register → verify via Mailpit UI → login), inner-loop mode.
 - [ ] Verify Testcontainers (§21) and compose coexist (no port collisions; document ports).
 

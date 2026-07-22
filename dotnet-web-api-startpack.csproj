@@ -1,14 +1,42 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <!-- TargetFramework, Nullable, ImplicitUsings and the warning/audit settings come from
+       Directory.Build.props (ADR-0013). -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>dotnet_web_api_startpack</RootNamespace>
+    <RootNamespace>Api</RootNamespace>
   </PropertyGroup>
 
+  <!--
+    The project lives at the repository root (ADR-0018), so the SDK's default globs reach
+    every subdirectory. Anything that is not application source must be excluded here or
+    it gets compiled into the API.
+
+    tests/**  — separate projects; without this exclusion their .cs files are compiled
+                into this assembly as well, and the same type is then defined twice.
+    Other directories hold no .cs today, but they are excluded so a stray file added
+    later cannot silently become part of the API assembly.
+  -->
+  <PropertyGroup>
+    <DefaultItemExcludes>
+      $(DefaultItemExcludes);
+      tests/**;
+      Documentation/**;
+      ROADMAP/**;
+      http/**;
+      .git/**
+    </DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- Versions are declared centrally in Directory.Packages.props (ADR-0013).
+       Do not add a Version attribute here — it is an error under CPM. -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+  <!-- Integration tests drive the app through WebApplicationFactory, which needs to see
+       the implicitly-generated Program class (§21). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="IntegrationTests" />
   </ItemGroup>
 
 </Project>

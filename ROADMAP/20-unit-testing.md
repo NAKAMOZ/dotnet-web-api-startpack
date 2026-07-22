@@ -10,7 +10,7 @@ Fast, isolated coverage of every decision-bearing unit: validators, token logic,
 
 ## Architectural Decisions
 
-- xUnit v3; folder structure mirrors `src/Api` (`UnitTests/Validators/Auth/…`, `UnitTests/Services/Tokens/…`).
+- xUnit v3; folder structure mirrors the API project root (`UnitTests/Validators/Auth/…`, `UnitTests/Services/Tokens/…`).
 - `TimeProvider` faked via `Microsoft.Extensions.TimeProvider.Testing.FakeTimeProvider` — all expiry math tested deterministically.
 - EF-dependent services are integration-tested (§21), not unit-tested against in-memory providers (in-memory EF misrepresents relational behavior; explicitly avoided).
 - Guard/architecture tests live here: DTO↔validator coverage, sensitive-property leak check, controller thinness rules (§11), audit-event enum↔catalog sync (§15).

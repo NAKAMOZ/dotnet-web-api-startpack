@@ -1,6 +1,9 @@
 # ADR-0014: Solution Layout and Directory Structure
 
-- **Status:** Accepted
+- **Status:** **Partially superseded by [ADR-0018](ADR-0018-flat-repository-layout.md)** (2026-07-22)
+  - The **P4 layout decision below (`src/Api/` + `tests/`) is no longer in force** — the API project lives at the repository root. Read ADR-0018 for the current layout.
+  - The **P3 decision (the four additional directories) stands unchanged** and is still authoritative.
+  - The text below is preserved as written, per the numbering rules in [`README.md`](README.md). It is not edited to match the new decision.
 - **Date:** 2026-07-22
 - **Deciders:** Project owner
 - **Source:** **Resolves pending decisions P3 and P4** (`ROADMAP/00-overview.md`)
