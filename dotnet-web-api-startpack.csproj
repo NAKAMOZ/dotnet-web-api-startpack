@@ -31,6 +31,14 @@
        Do not add a Version attribute here — it is an error under CPM. -->
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+
+    <!-- Design-time only: the migrations tooling. PrivateAssets keeps it out of the
+         published output — a deployed API has no business carrying the scaffolder. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <!-- Integration tests drive the app through WebApplicationFactory, which needs to see

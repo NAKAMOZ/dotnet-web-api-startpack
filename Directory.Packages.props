@@ -28,6 +28,19 @@
   <ItemGroup>
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
+
+    <!--
+      Version alignment, not a new dependency — both are already in the graph.
+      Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 asks for EF Core 10.0.4; the Design
+      package asks for 10.0.10. Inside the API project the higher version wins, but Design
+      is PrivateAssets=all so it does not flow to the test projects, which then resolve
+      10.0.4 against an API assembly compiled against 10.0.10 — MSB3277 on every test build.
+      Pinning the runtime packages centrally gives every project one version.
+      Revisit when the Npgsql provider ships against a 10.0.10-or-later EF Core.
+    -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="10.0.10" />
   </ItemGroup>
 
   <!-- ==================== API — authentication and cryptography ==================== -->

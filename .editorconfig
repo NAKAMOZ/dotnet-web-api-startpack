@@ -80,3 +80,18 @@ dotnet_diagnostic.IDE0005.severity = warning
 # emit an EnableGenerateDocumentationFile diagnostic, which TreatWarningsAsErrors
 # turns into a build failure. Unused-using hygiene is enforced in application code instead.
 dotnet_diagnostic.IDE0005.severity = none
+
+# ============================================================
+# EF Core migrations (§7)
+# ============================================================
+[Data/Migrations/*.cs]
+
+# Scaffolded by `dotnet ef migrations add`, never hand-written. The generator emits
+# block-scoped namespaces and a fixed using block, both of which the rules above make
+# build errors — so without this section every migration has to be hand-edited before the
+# solution compiles, and the edits are lost the next time the file is regenerated.
+# `generated_code` marks the whole directory as machine-authored to every analyzer, rather
+# than suppressing rules one at a time as new ones start firing.
+generated_code = true
+dotnet_diagnostic.IDE0161.severity = none
+dotnet_diagnostic.IDE0005.severity = none

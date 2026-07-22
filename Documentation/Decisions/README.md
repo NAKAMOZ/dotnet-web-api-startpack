@@ -52,3 +52,5 @@ Resolved so far: **P1–P5**, **P12**, **P13**, **P15**, **P17**.
 Longer-form design that a one-page ADR cannot carry:
 
 - [`../Architecture/Authentication.md`](../Architecture/Authentication.md) — the complete token lifecycle: sequence diagrams, `Session` and `RefreshToken` state machines, cookie matrix, claims table, revocation paths (§4).
+- [`../Architecture/Authorization.md`](../Architecture/Authorization.md) — roles, the permission catalog, step-up, API-key scopes, deny-by-default (§5).
+- [`../Architecture/DataAccess.md`](../Architecture/DataAccess.md) — EF Core mapping conventions, per-index rationale, cascade map, execution-strategy and tracking patterns (§7).
