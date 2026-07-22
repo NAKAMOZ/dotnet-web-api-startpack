@@ -22,14 +22,30 @@ None.
 
 ## Tasks
 
-- [ ] One file per entity in `Models/` exactly as listed in the entity table (13 files).
-- [ ] `Models/Enums/` — one file per enum (4 files).
-- [ ] `Models/IAuditableEntity.cs`.
-- [ ] XML doc comments on every security-relevant property (what is hashed, what is plaintext, why).
+- [x] One file per entity in `Models/` exactly as listed in the entity table (13 files).
+- [x] `Models/Enums/` — one file per enum (4 files, plus `AuthenticationMethod` relocated — see Deviations).
+- [x] `Models/IAuditableEntity.cs`.
+- [x] XML doc comments on every security-relevant property (what is hashed, what is plaintext, why).
+
+## Deviations from the original specification
+
+Recorded here rather than silently applied; all three are owner-visible.
+
+1. **`AuthenticationMethod` and `SessionRevocationReason` moved** from `Services/Tokens/` to
+   `Models/Enums/`. `Session` persists both, and an entity referencing the service layer
+   inverts the dependency direction. `Services/Tokens/*.cs` now carries
+   `using Api.Models.Enums;`. File count is therefore 19, not 18 — 18 authored, one moved in.
+2. **Three columns added to `Session`** (`AuthenticatedAt`, `AuthenticationMethods`,
+   `SecurityStamp`), plus `SigningKey.RetiringAt`. Each is required by a flow §4 already
+   specified; the rationale table is in `00-overview.md` under the entity table.
+3. **`VerificationToken.UserId` is nullable**, for `PasskeyAuthenticationChallenge` only —
+   that ceremony begins before any user is identified (Authentication.md §10). `AuditLogEntry`
+   likewise deliberately does **not** implement `IAuditableEntity`: audit rows are append-only,
+   so an `UpdatedAt` on one would describe a write path that must not exist.
 
 ## Expected Deliverables
 
-`Models/*.cs` (18 files total).
+`Models/*.cs` — 19 files (13 entities, 5 enums, `IAuditableEntity`).
 
 ## Dependencies
 
@@ -51,6 +67,12 @@ Entity table in this roadmap kept in sync; mermaid ER diagram updated on schema 
 
 18 files compile; every mandated modularity rule satisfied (one class per file); ER diagram matches code.
 
+**Status:** 19 files compile clean (0 warnings under `TreatWarningsAsErrors`); one type per file;
+`00-overview.md` entity table and ER diagram updated to match. Open item: owner sign-off on the
+three deviations above.
+
 ## Questions for the Project Owner
 
-None.
+1. `User.DisplayName` is the only mutable profile field, so `PATCH /users/me` has something to
+   write. Is a single free-text name the intended v1 profile surface, or should it carry more
+   (locale, timezone, avatar URL)? Anything added later is a migration, not a redesign.

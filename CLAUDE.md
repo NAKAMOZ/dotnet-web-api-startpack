@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-A Better Auth–inspired authentication & authorization REST API on .NET 10. **Phase A complete** (§1–§3) and **§4 written**: decisions recorded, packages pinned, skeleton built, token architecture designed.
+A Better Auth–inspired authentication & authorization REST API on .NET 10. **Phase A complete** (§1–§3), **§4–§5 written**, **§6 landed**: decisions recorded, packages pinned, skeleton built, token architecture designed, entity model implemented.
 
-What exists in code: the composition root, extension stubs, three options classes in `Configuration/`, and five token-service **interfaces** in `Services/Tokens/`. There are **no implementations, no entities, no controllers** — those are §6 (entities) and §12 (service bodies). Do not write feature code ahead of the workstream that owns it.
+What exists in code: the composition root, extension stubs, three options classes in `Configuration/`, five token-service **interfaces** in `Services/Tokens/`, the authorization handlers in `Handlers/Authorization/`, and the 13-entity model in `Models/` (§6). There is still **no `DbContext`, no service implementation, and no controller** — those are §7, §12 and §11. Do not write feature code ahead of the workstream that owns it.
+
+**Entities carry no EF attributes.** All mapping — keys, indexes, `citext`, `jsonb`, cascade behaviour — lands in `Data/Configurations/` in §7. `Models/` stays persistence-agnostic. Enums (including `AuthenticationMethod` and `SessionRevocationReason`, moved out of `Services/Tokens/` in §6) live in `Models/Enums/`; entities must never reference the service layer.
 
 `Documentation/Architecture/Authentication.md` is the token-lifecycle source of truth: claims, cookie matrix, rotation, reuse detection, step-up, revocation paths. `Authorization.md` covers the permission model. Read both before touching anything auth-related.
 

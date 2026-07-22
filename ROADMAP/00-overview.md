@@ -127,7 +127,7 @@ dotnet-web-api-startpack/                 # the API project lives here (ADR-0018
 erDiagram
     User ||--o{ Session : "has"
     User ||--o{ Account : "links"
-    User ||--o{ VerificationToken : "owns"
+    User |o--o{ VerificationToken : "owns"
     User ||--o| TotpCredential : "enrolls"
     User ||--o{ RecoveryCode : "holds"
     User ||--o{ PasskeyCredential : "registers"
@@ -135,27 +135,47 @@ erDiagram
     User ||--o{ UserRole : "assigned"
     Role ||--o{ UserRole : "grants"
     Session ||--o{ RefreshToken : "issues"
-    User ||--o{ AuditLogEntry : "generates"
+    User |o--o{ AuditLogEntry : "generates"
     SigningKey
 ```
 
+Two relationships are **optional on the `User` side**, and the diagram says so: a
+`VerificationToken` of type `PasskeyAuthenticationChallenge` is issued before any user is
+identified, and an `AuditLogEntry` survives the deletion of the account it describes
+(`SetNull`, §7).
+
 | Entity | Purpose | Key fields (beyond id/timestamps) |
 |---|---|---|
-| `User` | Account principal | `Email` (citext, unique), `EmailVerified`, `PasswordHash` (nullable — social/passkey-only users), `LockoutEndsAt`, `FailedLoginCount`, `SecurityStamp` |
-| `Session` | One login on one device | `UserId`, `IpAddress`, `UserAgent`, `DeviceLabel`, `LastActiveAt`, `AbsoluteExpiresAt`, `RevokedAt`, `RevocationReason` |
+| `User` | Account principal | `Email` (citext, unique), `EmailVerified`, `PasswordHash` (nullable — social/passkey-only users), `DisplayName`, `LockoutEndsAt`, `FailedLoginCount`, `SecurityStamp` |
+| `Session` | One login on one device | `UserId`, `IpAddress`, `UserAgent`, `DeviceLabel`, `AuthenticatedAt`, `AuthenticationMethods`, `SecurityStamp` (snapshot), `LastActiveAt`, `AbsoluteExpiresAt`, `RevokedAt`, `RevocationReason` |
 | `RefreshToken` | Rotating opaque token | `SessionId`, `TokenHash` (SHA-256, unique), `ExpiresAt`, `UsedAt`, `ReplacedByTokenId` |
 | `Account` | External identity link | `UserId`, `Provider`, `ProviderAccountId` (unique per provider) |
-| `VerificationToken` | Email-verify + password-reset tokens | `UserId`, `Type` (enum), `TokenHash`, `ExpiresAt`, `ConsumedAt` |
+| `VerificationToken` | Every short-lived single-use credential: email verify, password reset, MFA ticket, WebAuthn challenge | `UserId` (nullable — passkey authentication challenges only), `Type` (enum), `TokenHash`, `ExpiresAt`, `ConsumedAt` |
 | `TotpCredential` | MFA authenticator secret | `UserId` (unique), `SecretEncrypted`, `ConfirmedAt` |
 | `RecoveryCode` | MFA fallback | `UserId`, `CodeHash`, `UsedAt` |
-| `PasskeyCredential` | WebAuthn credential | `UserId`, `CredentialId` (unique), `PublicKey`, `SignCount`, `Aaguid`, `Transports`, `Label` |
-| `ApiKey` | Programmatic access | `UserId`, `KeyPrefix` (lookup), `KeyHash`, `Scopes`, `ExpiresAt`, `LastUsedAt`, `RevokedAt` |
+| `PasskeyCredential` | WebAuthn credential | `UserId`, `CredentialId` (unique), `PublicKey`, `SignCount`, `Aaguid`, `Transports`, `Label`, `LastUsedAt` |
+| `ApiKey` | Programmatic access | `UserId`, `Name`, `KeyPrefix` (lookup), `KeyHash`, `Scopes`, `ExpiresAt`, `LastUsedAt`, `RevokedAt` |
 | `Role` | Authorization role | `Name` (unique), `Description` |
 | `UserRole` | Join table | `UserId` + `RoleId` composite key |
-| `AuditLogEntry` | Security audit trail | `UserId` (nullable), `EventType`, `IpAddress`, `UserAgent`, `CorrelationId`, `Metadata` (jsonb) |
-| `SigningKey` | ES256 key ring | `KeyId` (kid), `PrivateKeyProtected`, `PublicKey`, `Status` (Active/Retiring/Retired), `ActivatedAt`, `RetiredAt` |
+| `AuditLogEntry` | Security audit trail | `UserId` (nullable), `EventType`, `IpAddress`, `UserAgent`, `CorrelationId`, `Metadata` (jsonb), `OccurredAt` |
+| `SigningKey` | ES256 key ring | `KeyId` (kid), `PrivateKeyProtected`, `PublicKey`, `Status` (Active/Retiring/Retired), `ActivatedAt`, `RetiringAt`, `RetiredAt` |
 
 Permissions are **code constants** mapped to roles in a static policy map (not DB rows) in v1 — keeps the schema lean; DB-driven permissions are listed as future work (§29).
+
+### Fields §6 added beyond the original table
+
+The three `Session` additions are direct consequences of the §4 token design, not new scope
+— without them the documented refresh path cannot be implemented:
+
+| Field | Why it must be a column |
+|---|---|
+| `Session.AuthenticatedAt` | The `auth_time` claim survives refresh unchanged (Authentication.md §14). After the first rotation the original login time exists nowhere else, so step-up would have nothing to measure against. |
+| `Session.AuthenticationMethods` | `amr` is reissued on every rotation. Deriving it from the presented token is not possible — the client presents an opaque refresh token, which carries no claims. |
+| `Session.SecurityStamp` | `RefreshOutcome.SecurityStampChanged` compares the user's current stamp against *something*; that something is the value captured at login. |
+
+`SigningKey.RetiringAt` anchors the retirement grace period (`RetireElapsedKeysAsync` needs to
+know when demotion happened). `User.DisplayName` gives `PATCH /users/me` a field to write.
+`ApiKey.Name` makes the key list readable enough to revoke from confidently.
 
 ---
 

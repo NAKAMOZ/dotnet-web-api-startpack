@@ -1,4 +1,4 @@
-namespace Api.Services.Tokens;
+namespace Api.Models.Enums;
 
 /// <summary>
 /// Recorded on every transition into the revoked state. Without it the audit trail can say

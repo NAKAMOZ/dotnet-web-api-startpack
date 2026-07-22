@@ -1,4 +1,4 @@
-namespace Api.Services.Tokens;
+namespace Api.Models.Enums;
 
 /// <summary>
 /// How a session authenticated. Projected into the access token's <c>amr</c> claim so
