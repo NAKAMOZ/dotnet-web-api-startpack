@@ -1,0 +1,334 @@
+# ============================================================
+# .NET 10 Web API
+# ============================================================
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+out/
+
+# Build result files
+*.dll
+*.exe
+*.pdb
+*.cache
+*.ilk
+*.iobj
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*.log
+
+# NuGet
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+packages/
+.nuget/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+.nuget/packages/
+
+# Preserve NuGet build folders when required
+!**/packages/build/
+!**/packages/repositories.config
+
+# ============================================================
+# Visual Studio
+# ============================================================
+
+.vs/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.userprefs
+*.rsuser
+*.vcxproj.user
+
+# Visual Studio generated files
+Generated\ Files/
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# ============================================================
+# JetBrains Rider / ReSharper
+# ============================================================
+
+.idea/
+*.sln.iml
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# ============================================================
+# Visual Studio Code
+# ============================================================
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+.history/
+
+# ============================================================
+# ASP.NET Core configuration and secrets
+# ============================================================
+
+# Local-only application configuration
+appsettings.Local.json
+appsettings.local.json
+appsettings.*.Local.json
+appsettings.*.local.json
+appsettings.Development.local.json
+appsettings.Production.local.json
+
+# Secrets
+secrets.json
+*.secrets.json
+.env
+.env.*
+!.env.example
+!.env.template
+
+# User Secrets should normally be outside the repository,
+# but ignore them if copied locally
+secrets/
+.usersecrets/
+
+# Certificates and private keys
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+*.jks
+
+# Preserve explicitly public certificates when needed
+# !certificates/public/*.cer
+# !certificates/public/*.crt
+
+# ============================================================
+# Database
+# ============================================================
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+
+# Database dumps and backups
+*.bak
+*.backup
+*.dump
+*.sql.gz
+
+# Do not ignore Entity Framework migrations.
+# Migrations should normally be committed.
+
+# ============================================================
+# Testing
+# ============================================================
+
+TestResults/
+test-results/
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+*.testlog
+*.received.*
+*.verified.*
+
+# Snapshot test artifacts
+__snapshots__/
+Snapshots/*.received.*
+
+# ============================================================
+# Code coverage
+# ============================================================
+
+coverage/
+coverage-report/
+coverage-results/
+coveragereport/
+.coverage/
+.nyc_output/
+lcov.info
+*.lcov
+*.cobertura.xml
+coverage.cobertura.xml
+
+# ============================================================
+# BenchmarkDotNet
+# ============================================================
+
+BenchmarkDotNet.Artifacts/
+BenchmarkResults/
+
+# ============================================================
+# Static analysis
+# ============================================================
+
+.sonar/
+.sonarqube/
+.scannerwork/
+sonar-project.properties.local
+StyleCopReport.xml
+
+# ============================================================
+# API documentation and generated clients
+# ============================================================
+
+# Generated OpenAPI clients
+generated/
+Generated/
+generated-clients/
+openapi-generated/
+swagger-generated/
+
+# Temporary OpenAPI files
+openapi.tmp.json
+swagger.tmp.json
+
+# Keep manually maintained API documentation committed
+# Documentation/
+# docs/
+
+# ============================================================
+# Docker
+# ============================================================
+
+docker-compose.override.yml
+docker-compose.local.yml
+compose.override.yml
+compose.local.yml
+
+# Local Docker volumes
+.docker/
+docker-data/
+volumes/
+
+# ============================================================
+# Node.js tooling
+# Useful when Scalar, frontend assets or build tools are used
+# ============================================================
+
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn-cache/
+bun.lockb
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Keep dependency lock files committed
+# package-lock.json
+# pnpm-lock.yaml
+# yarn.lock
+
+# Frontend build caches
+.next/
+.nuxt/
+dist/
+.cache/
+.parcel-cache/
+.turbo/
+.svelte-kit/
+
+# ============================================================
+# Local tools
+# ============================================================
+
+.dotnet/
+.dotnet-tools/
+tools/
+.tooling/
+
+# Keep the .NET tool manifest committed
+!.config/
+!.config/dotnet-tools.json
+
+# ============================================================
+# Runtime uploads and temporary files
+# ============================================================
+
+uploads/
+temp/
+tmp/
+cache/
+
+# Preserve folders using placeholder files
+!uploads/.gitkeep
+!temp/.gitkeep
+
+# ============================================================
+# Operating systems
+# ============================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ============================================================
+# Editors
+# ============================================================
+
+*.swp
+*.swo
+*.bak
+*.orig
+*.rej
+*~
