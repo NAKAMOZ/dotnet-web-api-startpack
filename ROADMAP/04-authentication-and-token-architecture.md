@@ -12,7 +12,7 @@ Design document + interface definitions. Implementation lands in §12; entities 
 
 - **Access token (JWT, ES256, 15 min)** claims: `iss`, `aud`, `sub` (user id), `sid` (session id), `jti`, `iat`, `exp`, `email_verified`, `roles`, `amr` (`pwd`, `otp`, `webauthn`, `recovery` — records how the session authenticated), `token_use: access`.
 - **Refresh token**: 256-bit CSPRNG value, transmitted opaque, stored as SHA-256 hash. **Single-use**: each `/auth/refresh` marks the presented token `UsedAt`, issues a successor (`ReplacedByTokenId` chain), and slides `Session.LastActiveAt`. Presenting an already-used token = **reuse detection** → revoke the session, audit `token_reuse_detected`, 401.
-- **Session expiry**: valid while `now < LastActiveAt + 6h` **and** `now < AbsoluteExpiresAt` (login time + P1 cap). Refresh beyond either bound fails → re-login.
+- **Session expiry**: valid while `now < LastActiveAt + 6h` **and** `now < AbsoluteExpiresAt` (login time + **7 days**, P1 approved — `ADR-0002`). Refresh beyond either bound fails → re-login. A refresh slides `LastActiveAt` but never extends `AbsoluteExpiresAt`.
 - **Dual transport**:
   - Browser: access token in `__Host-auth.access` cookie (`httpOnly`, `Secure`, `SameSite=Lax`, `Path=/`); refresh token in `__Secure-auth.refresh` cookie (`httpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth/refresh` — the `__Host-` prefix is incompatible with a restricted path, hence `__Secure-`).
   - Non-browser: both tokens in the JSON response body; access token sent back as `Authorization: Bearer`.
@@ -27,7 +27,7 @@ Design document + interface definitions. Implementation lands in §12; entities 
 
 ## Technology Decisions Requiring Approval
 
-P1, P12, P13, P17.
+P12, P13, P17. (**P1 resolved**: 7-day absolute cap — `ADR-0002`.)
 
 ## Tasks
 
@@ -69,6 +69,6 @@ Architecture doc reviewed and approved by owner; interfaces compile; every §22 
 
 ## Questions for the Project Owner
 
-1. Confirm P1 cap and P17 key storage.
+1. ~~Confirm P1 cap~~ ✅ **7 days, approved 2026-07-22.** P17 key storage still open.
 2. Google + GitHub as launch providers (P12)? Redirect-first social flow (P13)?
 3. Is the `X-Auth-Transport` header approach acceptable, or should transport be inferred (cookie present ⇒ cookie mode)?

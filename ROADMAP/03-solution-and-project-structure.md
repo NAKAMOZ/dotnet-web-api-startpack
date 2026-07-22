@@ -13,11 +13,11 @@ Git init, solution file, directory tree, `Program.cs` skeleton, extension-method
 - `Program.cs` contains only: builder creation, calls to `Add*` extension methods, calls to `Use*`/`Map*` pipeline extension methods, `app.Run()`. Hard rule enforced in code review.
 - Composition extension methods live in `Extensions/`, grouped by concern (one file each): `ServiceCollectionExtensions.Auth.cs`, `ServiceCollectionExtensions.Data.cs`, `ServiceCollectionExtensions.Validation.cs`, `ApplicationBuilderExtensions.Pipeline.cs`, etc.
 - The weatherforecast sample endpoint and record are deleted — no minimal API handlers remain.
-- Recommended layout (P4): project moves to `src/Api/`, tests under `tests/`. Namespace root becomes `Api` (or owner-preferred name — see questions).
+- Layout (P4, **approved** — `ADR-0014`): project moves to `src/Api/`, tests under `tests/`. Root namespace becomes `Api`.
 
 ## Technology Decisions Requiring Approval
 
-P2 (versioning style — affects route templates in the skeleton), P3, P4.
+✅ **None outstanding — all three resolved 2026-07-22.** P2: URL-segment `/api/v1/…` (`ADR-0015`). P3: all four directories approved (`ADR-0014`). P4: `src/Api/` + `tests/`, root namespace `Api` (`ADR-0014`). This workstream is unblocked; it depends only on §2 landing the package manifest first.
 
 ## Tasks
 
@@ -56,5 +56,7 @@ Solution builds; `Program.cs` under ~40 lines with zero business logic; all mand
 
 ## Questions for the Project Owner
 
-1. Approve URL-segment versioning `/api/v1/…` (P2)?
-2. Preferred root namespace after the move (`Api`, `AuthApi`, keep `dotnet_web_api_startpack`)?
+1. ~~Approve URL-segment versioning `/api/v1/…` (P2)?~~ ✅ **Yes**, approved 2026-07-22 — `ADR-0015`.
+2. ~~Preferred root namespace after the move?~~ ✅ **`Api`** — recorded in `ADR-0014`.
+
+None outstanding.

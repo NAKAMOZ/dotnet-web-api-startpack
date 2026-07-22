@@ -22,7 +22,7 @@
 | Runtime | .NET 10 / ASP.NET Core 10, existing `net10.0` target |
 | API style | RESTful, attribute-routed MVC controllers only; RFC 9457 Problem Details for all errors |
 | Token strategy | JWT access tokens, **15-minute TTL**, signed **ES256** + opaque rotating refresh tokens (SHA-256 hashed at rest, single-use, bound to a session row, reuse detection revokes the session) |
-| Session lifetime | **Sliding 6-hour inactivity window + absolute cap** (cap value itself: `Pending Decision`, recommend 7 days) |
+| Session lifetime | **Sliding 6-hour inactivity window + 7-day absolute cap** (cap value approved 2026-07-22, P1 — ADR-0002) |
 | Session model | **Multi-device**: one session row per login with device metadata (IP, user agent, created, last-active); list / revoke-one / revoke-all endpoints; **password change revokes all sessions** |
 | Token transport | **Both**: `httpOnly` `Secure` cookies (with CSRF defense) for browser clients and `Authorization: Bearer` for mobile/CLI/server clients |
 | Signing keys | ES256 with `kid`-based rotation and a public **JWKS** endpoint; rotation designed in from day one |
@@ -39,12 +39,14 @@
 
 ## Pending Decisions (owner approval required)
 
+**P1–P4 are resolved** (approved 2026-07-22). They are retained below for traceability; the decisions themselves now live in `Documentation/Decisions/`. **P5–P18 remain open.**
+
 | # | Decision | Recommendation | Blocking workstream(s) |
 |---|---|---|---|
-| P1 | Absolute session cap value | 7 days | 4 |
-| P2 | API versioning style | URL segment `/api/v1/…` via `Asp.Versioning.Mvc` | 3, 11 |
-| P3 | Additional directories beyond the mandated list | Approve `Validators/`, `Extensions/`, `Exceptions/`, `BackgroundServices/` (justifications in §3) | 3 |
-| P4 | Solution layout | Move API project to `src/`, tests to `tests/` (justification in §3) | 3 |
+| ~~P1~~ | Absolute session cap value | ✅ **Approved: 7 days** — `ADR-0002` | ~~4~~ resolved |
+| ~~P2~~ | API versioning style | ✅ **Approved: URL segment `/api/v1/…`** via `Asp.Versioning.Mvc` — `ADR-0015` | ~~3, 11~~ resolved |
+| ~~P3~~ | Additional directories beyond the mandated list | ✅ **Approved: all four** — `Validators/`, `Extensions/`, `Exceptions/`, `BackgroundServices/` — `ADR-0014` | ~~3~~ resolved |
+| ~~P4~~ | Solution layout | ✅ **Approved: `src/Api/` + `tests/`**, root namespace `Api` — `ADR-0014` | ~~3~~ resolved |
 | P5 | Caching | `HybridCache` in-memory first; Redis only when scaling to multiple nodes | 12, 17 |
 | P6 | Rate-limiting store | Built-in ASP.NET Core `RateLimiter`, in-memory (single node); Redis-backed counters deferred with P5 | 17 |
 | P7 | Secret management (prod) | Env vars now; vault target (Azure Key Vault / AWS SM / HashiCorp) chosen with deployment target | 25, 27 |
@@ -60,20 +62,20 @@
 | P17 | Signing-key private-key storage at rest | DB rows encrypted via ASP.NET Core Data Protection; revisit with vault (P7) | 4, 27 |
 | P18 | Audit log retention period | 90 days, then archive/delete via cleanup job | 15 |
 
-**Explicitly out of v1 scope** (owner did not select; documented as future work in §29): organizations / multi-tenancy, machine-to-machine client-credentials flow.
+**Explicitly out of v1 scope** (owner did not select; documented as future work in §29): organizations / multi-tenancy, machine-to-machine client-credentials flow. The full in-scope/out-of-scope statement now lives in `Documentation/Scope.md` (§1).
 
 ---
 
 ## Target directory structure
 
-Mandated directories plus proposed additions (flagged; require P3/P4 approval). Shown with the recommended `src/` layout (P4):
+**Approved 2026-07-22** (P3 and P4 — see `Documentation/Decisions/ADR-0014-solution-layout-and-directories.md`). All four proposed directories are approved and the `src/` + `tests/` layout is confirmed; §3 performs the move. Root namespace becomes `Api`.
 
 ```text
 dotnet-web-api-startpack/
 ├── src/
 │   └── Api/                              # the existing project, moved (P4)
 │       ├── Attributes/                   # [RequirePermission], [Idempotent], marker attributes
-│       ├── BackgroundServices/           # PROPOSED (P3): expired-session/token cleanup workers
+│       ├── BackgroundServices/           # APPROVED (P3): expired-session/token cleanup workers
 │       ├── Configuration/                # typed options classes (JwtOptions, SessionOptions, …)
 │       ├── Controllers/                  # one controller per resource/responsibility
 │       ├── Data/
@@ -81,8 +83,8 @@ dotnet-web-api-startpack/
 │       │   ├── Migrations/               # EF Core migrations
 │       │   └── Seeding/                  # role seed data, dev-only user seeder
 │       ├── DTOs/                         # per-feature request/response records
-│       ├── Exceptions/                   # PROPOSED (P3): domain exception types
-│       ├── Extensions/                   # PROPOSED (P3): composition-root extension methods
+│       ├── Exceptions/                   # APPROVED (P3): domain exception types
+│       ├── Extensions/                   # APPROVED (P3): composition-root extension methods
 │       ├── Filters/                      # validation filter, audit action filter
 │       ├── Handlers/                     # authentication + authorization handlers
 │       ├── Helpers/                      # small static utilities (Base64Url, device parsing)
@@ -92,7 +94,7 @@ dotnet-web-api-startpack/
 │       ├── Models/                       # one file per entity
 │       ├── Properties/                   # launchSettings.json
 │       ├── Services/                     # per-feature service interfaces + implementations
-│       ├── Validators/                   # PROPOSED (P3): one FluentValidation validator per request DTO
+│       ├── Validators/                   # APPROVED (P3): one FluentValidation validator per request DTO
 │       ├── wwwroot/                      # static assets (kept minimal; .gitkeep)
 │       └── Program.cs                    # composition root only
 ├── tests/
@@ -106,7 +108,7 @@ dotnet-web-api-startpack/
 └── dotnet-web-api-startpack.sln
 ```
 
-**Justification for proposed additions (P3):**
+**Justification for the four approved additions (P3 — recorded in `ADR-0014`):**
 
 - `Validators/` — FluentValidation is approved; one validator class per request DTO is mandated by the modularity rules. Placing validators inside `DTOs/` would mix two responsibilities in one tree; a sibling directory mirroring the `DTOs/<Feature>/` layout keeps both discoverable.
 - `Extensions/` — `Program.cs` may only call modular extension methods. Those methods (`AddApiServices`, `AddAuthenticationSetup`, `UseApiPipeline`, …) need a home; `Configuration/` is reserved for options classes.
@@ -155,7 +157,7 @@ Permissions are **code constants** mapped to roles in a static policy map (not D
 
 ## Endpoint inventory
 
-Drives the controller split (§11) and the `Documentation/` file list (§19). All routes below assume P2 (URL-segment versioning). Auth column: 🔓 anonymous, 🔐 authenticated, 👑 admin role.
+Drives the controller split (§11) and the `Documentation/` file list (§19). All routes below use URL-segment versioning (P2 approved — `ADR-0015`). Auth column: 🔓 anonymous, 🔐 authenticated, 👑 admin role.
 
 | Method | Route | Auth | Controller |
 |---|---|---|---|

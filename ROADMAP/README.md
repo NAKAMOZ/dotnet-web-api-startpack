@@ -8,7 +8,8 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 |---|---|
 | **Planning** | ✅ Complete — all 29 workstreams specified |
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
-| **Open decisions** | ⏳ 18 items (P1–P18) await owner approval; P1–P4 block Phase A |
+| **Decision record** | ✅ 14 ADRs written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
+| **Open decisions** | ⏳ 14 items (P5–P18); **P1–P4 resolved 2026-07-22** — Phase A is unblocked |
 | **Implementation** | ⬜ Not started |
 
 ## How to use this board
@@ -25,15 +26,15 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 
 | # | Workstream | Status |
 |---|---|---|
-| 1 | [Requirements and Architectural Decisions](01-requirements-and-architectural-decisions.md) | ⬜ |
-| 2 | [Technology Selection](02-technology-selection.md) | ⬜ |
-| 3 | [Solution and Project Structure](03-solution-and-project-structure.md) | ⏳ P2, P3, P4 |
+| 1 | [Requirements and Architectural Decisions](01-requirements-and-architectural-decisions.md) | 🔄 ADRs + Scope written; awaiting owner review of `Documentation/Scope.md` (last DoD item) |
+| 2 | [Technology Selection](02-technology-selection.md) | ⬜ ⏳ P5, P15 |
+| 3 | [Solution and Project Structure](03-solution-and-project-structure.md) | ⬜ unblocked (P2/P3/P4 resolved) |
 
 ### Phase B — Architecture
 
 | # | Workstream | Status |
 |---|---|---|
-| 4 | [Authentication and Token Architecture](04-authentication-and-token-architecture.md) | ⏳ P1, P12, P13, P17 |
+| 4 | [Authentication and Token Architecture](04-authentication-and-token-architecture.md) | ⏳ P12, P13, P17 (P1 resolved: 7-day cap) |
 | 5 | [Authorization and Permissions](05-authorization-and-permissions.md) | ⬜ |
 
 ### Phase C — Data
@@ -97,8 +98,8 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 
 ## What happens next
 
-1. **Answer the blocking decisions.** P1 (session absolute cap), P2 (URL-segment versioning), P3 (additional directories), P4 (`src/` layout) unblock Phases A–B. Each pending decision already carries a recommendation in [00-overview.md](00-overview.md) — approving the recommendations as-is is a valid fast path.
-2. **Execute Phase A** (§1–§3): record decisions as ADRs, pin the package manifest, `git init`, build the solution skeleton with the composition-root `Program.cs`, delete the template sample code.
+1. ~~**Answer the blocking decisions.**~~ ✅ **Done 2026-07-22.** P1 (7-day absolute cap), P2 (URL-segment versioning), P3 (all four directories), P4 (`src/` + `tests/`) were all approved as recommended and recorded in [`Documentation/Decisions/`](../Documentation/Decisions/README.md). Phases A–B are unblocked. Remaining open items are P5–P18, each answered on its own workstream's schedule.
+2. **Execute Phase A** (§1–§3): §1 is written (14 ADRs + `Documentation/Scope.md`) and needs only owner review of the scope doc. **Next up: §2** — pin the package manifest and write `ADR-0013`. Then §3: `git init`, solution skeleton with a composition-root `Program.cs`, the `src/`/`tests/` move, and deletion of the template sample code.
 3. **Execute Phase B** (§4–§5): write the authentication architecture document (token lifecycle, rotation, reuse detection, key ring, dual transport, CSRF) and the authorization model; owner reviews before any data work starts.
 4. **Execute Phase C** (§6–§8): entities → EF configurations → initial migration + seeding. First runnable, migrated database.
 5. **Build features as vertical slices** through Phases D–G: for each feature (auth core → sessions → verification/reset → users → MFA → social → passkeys → API keys → admin), the controller, DTOs, validators, services, tests, and its endpoint Markdown doc land **in the same PR** — that same-PR rule is what keeps `Documentation/` and the OpenAPI document from drifting.

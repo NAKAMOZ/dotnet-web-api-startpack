@@ -18,7 +18,7 @@ The 13 controllers from the endpoint inventory plus a shared base class. Service
 
 ## Technology Decisions Requiring Approval
 
-P2 (versioning) must be approved before route templates are written.
+✅ **None outstanding.** P2 (versioning) is resolved — URL-segment `/api/v1/…` via `Asp.Versioning.Mvc`, approved 2026-07-22 (`Documentation/Decisions/ADR-0015-api-versioning.md`). Route templates use `[Route("api/v{version:apiVersion}/…")]`; `/.well-known/jwks.json` and `/health/*` stay unversioned.
 
 ## Tasks
 
