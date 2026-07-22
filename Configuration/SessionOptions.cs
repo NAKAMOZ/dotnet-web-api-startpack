@@ -26,6 +26,19 @@ public sealed class SessionOptions
     [Range(typeof(TimeSpan), "01:00:00", "90.00:00:00")]
     public TimeSpan AbsoluteLifetime { get; init; } = TimeSpan.FromDays(7);
 
+    /// <summary>
+    /// How recently the user must have authenticated for a step-up-protected operation —
+    /// disabling MFA, regenerating recovery codes, deleting the account, changing the
+    /// password (Authentication.md §14).
+    /// </summary>
+    /// <remarks>
+    /// Measured against the <c>auth_time</c> claim, never against <c>iat</c>. Widening this
+    /// widens the window in which a stolen live session can perform account-takeover
+    /// operations.
+    /// </remarks>
+    [Range(typeof(TimeSpan), "00:01:00", "01:00:00")]
+    public TimeSpan RecentAuthenticationWindow { get; init; } = TimeSpan.FromMinutes(5);
+
     /// <summary>Lifetime of an MFA challenge ticket. Single-use and hashed at rest.</summary>
     public TimeSpan MfaTicketLifetime { get; init; } = TimeSpan.FromMinutes(5);
 

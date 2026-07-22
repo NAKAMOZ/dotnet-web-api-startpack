@@ -25,6 +25,18 @@ public interface ISessionService
     /// </summary>
     Task TouchAsync(Guid sessionId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Advances the session's recorded authentication time after a genuine
+    /// re-authentication, so subsequent tokens carry a fresh <c>auth_time</c> and
+    /// step-up-protected operations become available (Authentication.md §14).
+    /// </summary>
+    /// <remarks>
+    /// Called <b>only</b> from a completed authentication flow. Calling it from
+    /// <see cref="TouchAsync"/> or from the refresh path would make every rotation look
+    /// like a re-authentication and defeat step-up entirely.
+    /// </remarks>
+    Task MarkReauthenticatedAsync(Guid sessionId, CancellationToken cancellationToken);
+
     /// <summary>Revokes one session and every refresh token on it.</summary>
     Task RevokeAsync(Guid sessionId, SessionRevocationReason reason, CancellationToken cancellationToken);
 

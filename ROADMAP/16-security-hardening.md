@@ -43,6 +43,8 @@ This workstream *is* security; its output is the ASVS traceability doc — every
 
 §22 covers lockout boundaries, enumeration parity (body + timing), and header presence.
 
+The constraints these place on the login flow are recorded in `Documentation/Architecture/Authentication.md` §5 — identical response shape and code for unknown-user / wrong-password / locked, dummy-hash timing parity, and counter reset on success.
+
 ## Documentation Requirements
 
 `Documentation/Security/` populated (Enumeration, ASVS checklist).

@@ -20,4 +20,17 @@ public sealed record AccessTokenRequest
 
     /// <summary>How this session authenticated. Becomes <c>amr</c>.</summary>
     public required IReadOnlyCollection<AuthenticationMethod> AuthenticationMethods { get; init; }
+
+    /// <summary>
+    /// When the <b>user</b> last proved an authentication factor. Becomes the
+    /// <c>auth_time</c> claim and drives step-up (Authentication.md §14).
+    /// </summary>
+    /// <remarks>
+    /// This is <b>not</b> the token's <c>iat</c>. It is carried forward unchanged across
+    /// refreshes, and is only advanced by a real re-authentication. Sourcing it from "now"
+    /// on every issuance — the obvious-looking simplification — silently defeats step-up:
+    /// a stolen session refreshes every 15 minutes, so the value would always look recent
+    /// for exactly the attacker the control exists to stop.
+    /// </remarks>
+    public required DateTimeOffset AuthenticatedAt { get; init; }
 }

@@ -59,6 +59,21 @@ This section is written deliberately and fully — it is the core security desig
 
 Design reviewed against §22's negative-test list before implementation starts (every attack listed there must have a designed defense here).
 
+✅ **Review performed 2026-07-22.** All 20 attacks in §22's list are mapped in `Documentation/Architecture/Authentication.md` §16. The review found **six gaps** in the first draft of the design; all are now closed:
+
+| # | Gap found | Fix |
+|---|---|---|
+| 1 | **"Recent auth" was never defined**, despite four endpoints in the inventory depending on it | New §14. Added the `auth_time` claim, a 5-minute `RecentAuthenticationWindow`, and `ISessionService.MarkReauthenticatedAsync` |
+| 2 | `kid` resolution unspecified — unknown and retired `kid` behaviour undefined | New §12 subsection: exact match only, **no fallback to trying other keys** |
+| 3 | CSRF was plain double-submit | Token is now HMAC-bound to `sessionId`; §22 asserts a token from another session fails |
+| 4 | Algorithm confusion described only generically | §2 now names the concrete attack: sign with `HS256` using our *public* key as the HMAC secret |
+| 5 | Lockout and enumeration parity absent from the login flow | §5 now states the three constraints §16 imposes on what login may return |
+| 6 | Cross-session refresh-token use not addressed | §6 states the binding that closes it |
+
+Gap 1 is the substantive one. Without `auth_time`, the natural implementation checks `iat` — which moves forward on every refresh, so a stolen session would satisfy step-up permanently. That is a control that silently does nothing while appearing to work.
+
+§22 also lists input-abuse attacks (oversized bodies, malformed JSON, correlation-ID injection, sort-field injection). Those are §13/§14/§17 concerns and are named as out-of-scope in §16 of the architecture doc so the omission is deliberate rather than overlooked.
+
 ## Documentation Requirements
 
 Architecture doc kept current as the single source of truth; endpoint docs (§19) link to it.
@@ -68,7 +83,7 @@ Architecture doc kept current as the single source of truth; endpoint docs (§19
 Architecture doc reviewed and approved by owner; interfaces compile; every §22 attack scenario has a mapped defense.
 
 - [x] **Interfaces compile** — `dotnet build`, 0 warnings, 0 errors.
-- [x] Attack-to-defence mapping written — `Documentation/Architecture/Authentication.md` §15 lists eight properties §22 must map its negative tests to.
+- [x] **Every §22 attack scenario has a mapped defence** — all 20 mapped in `Documentation/Architecture/Authentication.md` §16, six design gaps found and closed (see Testing Requirements above).
 - [ ] **Architecture doc reviewed and approved by the owner** — the outstanding item. §4 stays 🔄 until this is signed off.
 
 ### Deviations from this workstream's original text
@@ -83,6 +98,8 @@ Architecture doc reviewed and approved by owner; interfaces compile; every §22 
 
 - `SessionRevocationReason` and `RefreshOutcome` enums. Both lifetime bounds and both revocation paths need distinguishable outcomes — `ADR-0002` requires that the API tell "you were idle" apart from "your session aged out", and that distinction has to exist in the service contract, not just the HTTP layer.
 - `ADR-0019` (P12 + P13) and `ADR-0020` (P17) written; `ADR-0003`'s open transport question closed; `ADR-0004`'s P17 placeholder resolved.
+- **Step-up authentication** (§14 of the architecture doc): the `auth_time` claim, `SessionOptions.RecentAuthenticationWindow`, `AccessTokenRequest.AuthenticatedAt`, and `ISessionService.MarkReauthenticatedAsync`. The roadmap marks four endpoints 🔐 *(recent auth)* but never defined the mechanism; the §22 cross-check surfaced it.
+- **`kid` resolution rules** and **session-bound CSRF tokens**, both also surfaced by the §22 cross-check.
 
 ## Questions for the Project Owner
 
