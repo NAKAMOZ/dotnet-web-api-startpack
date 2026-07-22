@@ -20,6 +20,8 @@ What exists in code: the composition root, extension stubs, three options classe
 
 **Development migrates and seeds at startup** (`UseDatabaseSetupAsync`), and only there. Production applies EF migration bundles as a deploy step; the API process must never auto-migrate outside Development.
 
+**Every request DTO has a validator** in `Validators/<Feature>/`, mirroring `DTOs/` (§10, 20 validators). Validators are `internal sealed` and registered by assembly scan — which requires `includeInternalTypes: true`; without it the scan finds nothing and validation silently stops happening. Validators are **structural only**: format, ranges, presence. Anything needing the database (email uniqueness, token validity) belongs in a service, both because a validator must stay side-effect-free and because "this email is taken" is an enumeration oracle. The password policy lives in exactly one place, `PasswordRules` — register, reset and change all call it, so they cannot drift.
+
 **DTOs are `record`s with `required init` properties, one per file, under `DTOs/<Feature>/`** (§9, 47 files). Entities are never serialized and never referenced from a DTO — `DtoContractTests` fails the build on both, and on any property named like a stored secret. Show-once secrets appear in exactly one response each: the API key in `CreateApiKeyResponse`, the TOTP secret in `TotpEnrollmentResponse`, recovery codes in `RecoveryCodesResponse`. Do not add a second endpoint that returns any of them.
 
 `Documentation/Architecture/Authentication.md` is the token-lifecycle source of truth: claims, cookie matrix, rotation, reuse detection, step-up, revocation paths. `Authorization.md` covers the permission model. Read both before touching anything auth-related.

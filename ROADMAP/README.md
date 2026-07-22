@@ -10,7 +10,7 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
 | **Decision record** | ✅ 20 ADRs + the authentication and authorization architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
 | **Open decisions** | ⏳ 9 items (P6–P11, P14, P16, P18); **P1–P5, P12, P13, P15, P17 resolved 2026-07-22** |
-| **Implementation** | 🔄 **Phase A–C done, Phase D started** — 37 tests green. Data layer stands up against a real PostgreSQL (§6–§8) and every endpoint has typed contracts (§9). Token services are still interfaces only. Next: validation (§10), then controllers (§11). |
+| **Implementation** | 🔄 **Phase A–C done, Phase D in progress** — 70 tests green. Data layer stands up against a real PostgreSQL (§6–§8); every endpoint has typed contracts (§9) and a validator (§10). Token services are still interfaces only. Next: controllers (§11) — the first workstream that produces a callable endpoint. |
 
 ## How to use this board
 
@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 | # | Workstream | Status |
 |---|---|---|
 | 9 | [DTO Organization](09-dto-organization.md) | ✅ 47 records across 12 feature namespaces; 5 reflection guard tests green |
-| 10 | [Validation](10-validation.md) | ⬜ |
+| 10 | [Validation](10-validation.md) | 🔄 20 validators + shared rules + filter, 3 guard tests green; the over-the-wire 400 shape is unverifiable until §11 adds controllers |
 | 11 | [Controller Architecture](11-controller-architecture.md) | ⬜ |
 | 12 | [Service and Handler Architecture](12-service-and-handler-architecture.md) | ⬜ |
 | 13 | [API Response and Error Standards](13-api-response-and-error-standards.md) | ⬜ |

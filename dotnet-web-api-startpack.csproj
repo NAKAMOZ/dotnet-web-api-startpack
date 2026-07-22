@@ -30,8 +30,17 @@
 
   <!-- Versions are declared centrally in Directory.Packages.props (ADR-0013).
        Do not add a Version attribute here — it is an error under CPM. -->
+  <!-- The breached-password deny list ships inside the assembly, not as a loose file:
+       a validator whose rules depend on a file that can go missing at deploy time fails
+       open, and a password policy that fails open is not a policy. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Validators/Common/CommonPasswords.txt" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
 
     <!-- Design-time only: the migrations tooling. PrivateAssets keeps it out of the
