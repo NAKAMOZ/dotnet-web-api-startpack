@@ -23,24 +23,24 @@ public static partial class ApplicationBuilderExtensions
 
         app.UseHttpsRedirection();
 
-        // TODO §12: add these two, in this order, once AddAuthenticationServices registers
-        //           the JwtBearer, cookie and API-key schemes:
-        //
-        //               app.UseAuthentication();
-        //               app.UseAuthorization();
-        //
         // Order is not negotiable — authentication establishes who the caller is,
         // authorization decides what they may do with that identity. Reversed, every check
-        // runs against an anonymous principal and the deny-by-default fallback rejects
-        // everything.
+        // runs against an anonymous principal and denies everything.
         //
-        // Neither can be added before §12, and the reason is worth recording because it is
-        // not obvious: §5 configures a deny-by-default fallback policy, which the
-        // authorization middleware applies even to requests that match no endpoint. With
-        // no authentication scheme registered there is nothing to challenge with, so every
-        // request — including a plain 404 — fails with an InvalidOperationException. The
-        // policy itself is correct and is unit-tested in §5; only its pipeline activation
-        // waits for a scheme to exist.
+        // Both are active as of §11, against the placeholder scheme registered in
+        // AddAuthenticationServices. That scheme authenticates nobody, so protected
+        // endpoints answer 401 — the correct response for an unauthenticated caller, and
+        // the reason these two lines could be added before the real schemes exist. Without
+        // a challenge scheme an [Authorize] endpoint throws instead, and every protected
+        // route in the inventory would answer 500.
+        //
+        // Still outstanding for §12: replacing the placeholder with JwtBearer, cookie and
+        // API-key schemes, and only then setting AuthorizationOptions.FallbackPolicy to
+        // DenyByDefault (§5's last open item). The fallback stays off until then because it
+        // applies to requests matching no endpoint as well, which would turn every 404 into
+        // a 401.
+        app.UseAuthentication();
+        app.UseAuthorization();
 
         app.MapControllers();
 

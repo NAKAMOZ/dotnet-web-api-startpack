@@ -22,14 +22,26 @@ The 13 controllers from the endpoint inventory plus a shared base class. Service
 
 ## Tasks
 
-- [ ] `Controllers/ApiControllerBase.cs`.
-- [ ] One file per controller (13 files) implementing exactly the inventory routes — recommended build order: `AuthController` → `SessionsController` → `EmailVerificationController` + `PasswordResetController` → `UsersController` → `MfaController` → `SocialAuthController` → `PasskeysController` → `ApiKeysController` → admin controllers → `WellKnownController`.
-- [ ] `Extensions/ServiceCollectionExtensions.Api.cs`: controllers, versioning (P2), JSON options (camelCase, enums as strings, ignore-null).
-- [ ] Architecture test (§20): no controller references `AppDbContext` directly; every action has `CancellationToken`; every action annotated.
+- [x] `Controllers/ApiControllerBase.cs`.
+- [x] One file per controller — **14, not 13**: the count in this file's Scope omits `WellKnownController`, which the endpoint inventory does list. It does not inherit `ApiControllerBase`, because `/.well-known/jwks.json` is fixed by RFC 8615 and versioning it into `/api/v1/…` would make it undiscoverable to every standard client.
+- [x] `Extensions/ServiceCollectionExtensions.Api.cs`: controllers, versioning (P2), JSON options (camelCase, enums as strings, ignore-null).
+- [x] Architecture tests: no controller references `AppDbContext`; every action takes a `CancellationToken`; every action carries `[ProducesResponseType]`; every action declares an authorization posture; action IL stays small.
+
+## Decisions taken here
+
+1. **A placeholder authentication scheme was added** — `Handlers/Authentication/PlaceholderAuthenticationHandler.cs`, registered as the default in `AddAuthenticationServices`, and `app.UseAuthentication()` / `app.UseAuthorization()` are now in the pipeline.
+
+   This is scope beyond §11 and is flagged for review. The reason it could not wait: ASP.NET Core does not return 401 for an `[Authorize]` endpoint when no challenge scheme is registered — it **throws**, so all 30 protected routes would have answered **500**, and §11's Definition of Done ("all inventory routes respond") would have been unverifiable. The handler returns `AuthenticateResult.NoResult()` unconditionally, so it is fail-closed: if it survives into §12 the symptom is that nobody can log in anywhere.
+
+   **`FallbackPolicy` is still not set** — that remains §12's one-line change. It applies to requests matching no endpoint as well, so activating it now would turn every 404 into a 401.
+
+2. **Every action returns `501 Not Implemented`** via `ApiControllerBase.NotImplementedYet()`. The DoD sanctions stubs; a fabricated success would make an unwritten endpoint look finished to every client and every test.
+
+3. **`PasswordResetController.RequestReset`, not `Request`** — an action named `Request` hides `ControllerBase.Request`. Here it was a compile error; in a controller that used both it would be a subtle bug.
 
 ## Expected Deliverables
 
-13 controller files + base + API extension; endpoint inventory fully routable.
+14 controller files + base + API extension + placeholder scheme; endpoint inventory fully routable.
 
 ## Dependencies
 
@@ -51,6 +63,26 @@ Each controller lands with its endpoint docs (§19) in the same PR — DoD-gated
 
 All inventory routes respond (even if service returns stub in early slices); architecture tests green; zero business logic in controllers by review.
 
+**Status: met.** Verified against the running app (`dotnet run`, PostgreSQL container live):
+
+- The OpenAPI document lists **43 operations across 37 paths** — exactly the endpoint inventory, no more and no less.
+- Anonymous routes answer `501` (`/.well-known/jwks.json`, `/auth/csrf`, `/auth/register`).
+- Protected routes answer `401`, not `500` (`/sessions`, `/users/me`, `/admin/users`, `/mfa/totp`).
+- An unmatched path still answers `404` — the fallback policy is correctly still inactive.
+- Six architecture tests green; 76 in the suite.
+
+This also closed §10's outstanding half. `POST /api/v1/auth/register` with `{"email":"nope","password":"short"}` returns RFC 9457:
+
+```json
+{
+  "type": "https://datatracker.ietf.org/doc/html/rfc9457#section-3",
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "errors":     { "Email": ["Email address is not valid."], "Password": ["Password must be at least 12 characters."] },
+  "errorCodes": { "Email": ["email_invalid"],               "Password": ["password_too_short"] }
+}
+```
+
 ## Questions for the Project Owner
 
-None beyond P2.
+1. **`POST /auth/register` currently declares `409 Conflict` for a duplicate email — which is an account-enumeration oracle.** §16 requires register, reset and login to be enumeration-safe, but §12's exception list contains `EmailAlreadyRegisteredException`, so the roadmap points both ways. The alternatives: keep the 409 and accept that registration discloses which addresses exist, or make registration always return `202 Accepted` and send either a welcome or a "someone tried to register your address" email. The second is what the reset flow already does. Worth deciding before §12 writes the service — it changes the response contract, not just the implementation.

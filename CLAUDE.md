@@ -20,6 +20,8 @@ What exists in code: the composition root, extension stubs, three options classe
 
 **Development migrates and seeds at startup** (`UseDatabaseSetupAsync`), and only there. Production applies EF migration bundles as a deploy step; the API process must never auto-migrate outside Development.
 
+**Controllers are thin by rule** (§11, 14 files): an action maps the request, makes one service call, maps the result to a status. Anything that branches beyond status selection belongs in a service. Controllers never read tokens, cookies or headers — handlers turn those into claims, and `ApiControllerBase` exposes `CurrentUserId`/`CurrentSessionId`. Every action needs a `CancellationToken`, a `[ProducesResponseType]` set, and an explicit `[Authorize]`/`[AllowAnonymous]`/`[RequirePermission]`; `ControllerArchitectureTests` fails the build otherwise. Action bodies currently return `NotImplementedYet()` (501) — §12 replaces each with its service call.
+
 **Every request DTO has a validator** in `Validators/<Feature>/`, mirroring `DTOs/` (§10, 20 validators). Validators are `internal sealed` and registered by assembly scan — which requires `includeInternalTypes: true`; without it the scan finds nothing and validation silently stops happening. Validators are **structural only**: format, ranges, presence. Anything needing the database (email uniqueness, token validity) belongs in a service, both because a validator must stay side-effect-free and because "this email is taken" is an enumeration oracle. The password policy lives in exactly one place, `PasswordRules` — register, reset and change all call it, so they cannot drift.
 
 **DTOs are `record`s with `required init` properties, one per file, under `DTOs/<Feature>/`** (§9, 47 files). Entities are never serialized and never referenced from a DTO — `DtoContractTests` fails the build on both, and on any property named like a stored secret. Show-once secrets appear in exactly one response each: the API key in `CreateApiKeyResponse`, the TOTP secret in `TotpEnrollmentResponse`, recovery codes in `RecoveryCodesResponse`. Do not add a second endpoint that returns any of them.
@@ -28,7 +30,9 @@ What exists in code: the composition root, extension stubs, three options classe
 
 **Options classes carry an `Auth` prefix** — `AuthSessionOptions`, `AuthCookieOptions`. Plain `SessionOptions` and `CookieOptions` both collide with framework types that implicit usings pull into scope.
 
-**Deny-by-default is not active yet.** `AuthorizationPolicies.DenyByDefault` is written and tested but unassigned until §12 registers an authentication scheme — until then every endpoint without an explicit `[Authorize]` is anonymous. The activation line is marked in `ServiceCollectionExtensions.Authorization.cs`.
+**Deny-by-default is not active yet.** `AuthorizationPolicies.DenyByDefault` is written and tested but unassigned — until then every endpoint without an explicit `[Authorize]` is anonymous. The activation line is marked in `ServiceCollectionExtensions.Authorization.cs`, and §12 sets it once the real schemes exist. It cannot be set now because the fallback also applies to requests matching no endpoint, which would turn every 404 into a 401.
+
+⚠️ **`PlaceholderAuthenticationHandler` is temporary and must die in §12.** It is registered as the default scheme and authenticates nobody, so `[Authorize]` endpoints can be *challenged* (401) instead of throwing (500) — ASP.NET Core does not return 401 without a challenge scheme. It is fail-closed: while it is the only scheme, nobody can log in. Replace it with JwtBearer + cookie + API-key, do not build on it.
 
 `Documentation/Decisions/` is the source of truth for architectural decisions; the roadmap is the source of truth for workstream scope and sequencing. Where the two disagree, the ADR wins — `ROADMAP/` is a planning artifact that §29 archives at v1 close.
 
