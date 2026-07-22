@@ -6,7 +6,7 @@ namespace Api.Configuration;
 /// Session lifetime bounds. Both must hold for a session to be valid — see
 /// <c>Documentation/Architecture/Authentication.md</c> §4 and ADR-0002.
 /// </summary>
-public sealed class SessionOptions
+public sealed class AuthSessionOptions
 {
     public const string SectionName = "Session";
 

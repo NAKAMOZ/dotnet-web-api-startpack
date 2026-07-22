@@ -394,16 +394,17 @@ In every case the access token already issued stays cryptographically valid unti
 
 ## 14. Step-up: recent authentication
 
-Four endpoints in the inventory are marked 🔐 *(recent auth)*:
+Three endpoints in the inventory are marked 🔐 *(recent auth)*:
 
 | Endpoint | Why |
 |---|---|
 | `DELETE /api/v1/mfa/totp` | Removing a second factor |
 | `POST /api/v1/mfa/recovery-codes/regenerate` | Invalidates the user's printed codes |
 | `DELETE /api/v1/users/me` | Irreversible account deletion |
-| `PUT /api/v1/users/me/password` | Changes the primary credential |
 
 These are the operations an attacker performs **after** stealing a live session, and a valid access token alone must not be enough to authorise them.
+
+`PUT /api/v1/users/me/password` is deliberately **not** in this list. It requires the current password, which is a stronger proof than a recent-authentication timestamp — and demanding both would mean re-authenticating in order to re-authenticate.
 
 ### Definition
 
@@ -502,7 +503,7 @@ Defined in this workstream, implemented in §12:
 | Options | Covers |
 |---|---|
 | `JwtOptions` | issuer, audience, 15-min TTL, 30-s skew, `ES256`, key-retirement grace |
-| `SessionOptions` | 6-h sliding window, 7-day absolute cap, **5-min step-up window**, ticket and challenge lifetimes, cleanup interval |
+| `AuthSessionOptions` | 6-h sliding window, 7-day absolute cap, **5-min step-up window**, ticket and challenge lifetimes, cleanup interval |
 | `AuthCookieOptions` | the cookie matrix in §3 |
 
 All three are validated at startup (§25). A misconfigured cookie policy or an unset issuer must fail the process at boot, not produce a subtly insecure runtime.

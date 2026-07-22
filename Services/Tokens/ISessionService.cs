@@ -15,7 +15,7 @@ public interface ISessionService
 {
     /// <summary>
     /// Creates a session. <c>AbsoluteExpiresAt</c> is set once here, from
-    /// <c>SessionOptions.AbsoluteLifetime</c>, and is never modified afterwards.
+    /// <c>AuthSessionOptions.AbsoluteLifetime</c>, and is never modified afterwards.
     /// </summary>
     Task<Guid> CreateAsync(NewSessionRequest request, CancellationToken cancellationToken);
 

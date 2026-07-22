@@ -6,6 +6,7 @@ builder.Services
     .AddApiServices()
     .AddDataServices(builder.Configuration)
     .AddAuthenticationServices(builder.Configuration)
+    .AddAuthorizationServices()
     .AddValidationServices()
     .AddObservabilityServices(builder.Configuration);
 

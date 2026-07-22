@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 namespace Api.Extensions;
 
 /// <summary>
@@ -12,6 +14,12 @@ public static partial class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddApiServices(this IServiceCollection services)
     {
+        // Every component that reads the clock takes TimeProvider rather than calling
+        // DateTimeOffset.UtcNow, so session expiry, token TTLs, lockout windows and the
+        // step-up window are testable without real waiting (ADR-0011). Tests substitute
+        // FakeTimeProvider.
+        services.TryAddSingleton(TimeProvider.System);
+
         // Controllers only — no minimal API endpoints anywhere in this project (ADR-0007).
         services.AddControllers();
 

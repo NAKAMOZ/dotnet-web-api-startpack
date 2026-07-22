@@ -8,7 +8,11 @@ A Better Auth–inspired authentication & authorization REST API on .NET 10. **P
 
 What exists in code: the composition root, extension stubs, three options classes in `Configuration/`, and five token-service **interfaces** in `Services/Tokens/`. There are **no implementations, no entities, no controllers** — those are §6 (entities) and §12 (service bodies). Do not write feature code ahead of the workstream that owns it.
 
-`Documentation/Architecture/Authentication.md` is the token-lifecycle source of truth: claims, cookie matrix, rotation, reuse detection, revocation paths. Read it before touching anything auth-related.
+`Documentation/Architecture/Authentication.md` is the token-lifecycle source of truth: claims, cookie matrix, rotation, reuse detection, step-up, revocation paths. `Authorization.md` covers the permission model. Read both before touching anything auth-related.
+
+**Options classes carry an `Auth` prefix** — `AuthSessionOptions`, `AuthCookieOptions`. Plain `SessionOptions` and `CookieOptions` both collide with framework types that implicit usings pull into scope.
+
+**Deny-by-default is not active yet.** `AuthorizationPolicies.DenyByDefault` is written and tested but unassigned until §12 registers an authentication scheme — until then every endpoint without an explicit `[Authorize]` is anonymous. The activation line is marked in `ServiceCollectionExtensions.Authorization.cs`.
 
 `Documentation/Decisions/` is the source of truth for architectural decisions; the roadmap is the source of truth for workstream scope and sequencing. Where the two disagree, the ADR wins — `ROADMAP/` is a planning artifact that §29 archives at v1 close.
 

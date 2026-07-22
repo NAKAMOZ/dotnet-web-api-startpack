@@ -23,6 +23,8 @@ P8 (email provider), P9 (background jobs) — recommendations stand.
 
 ## Tasks
 
+- [ ] **FIRST, before anything else:** once the authentication schemes below are registered, set `options.FallbackPolicy = AuthorizationPolicies.DenyByDefault;` in `ServiceCollectionExtensions.Authorization.cs`, and add `app.UseAuthentication()` immediately above `app.UseAuthorization()` in the pipeline. §5 built deny-by-default but could not switch it on — no scheme existed to challenge with. Until this lands, **every endpoint without an explicit `[Authorize]` is anonymous**. §5's Definition of Done stays open until it does.
+
 - [ ] Implement `Services/Crypto/` first (hasher + token generator) — everything depends on them.
 - [ ] Implement `Services/Tokens/` per §4 design: ES256 issuance with `kid`, key manager (generate/activate/retire, JWKS projection), refresh rotation + reuse detection, MFA tickets.
 - [ ] Implement feature services in the §11 build order; each service file lands with its unit tests.

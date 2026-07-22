@@ -6,5 +6,5 @@ namespace Api.Services.Tokens;
 /// login. <paramref name="Value"/> must never be logged.
 /// </summary>
 /// <param name="Value">The opaque plaintext, returned to the client once.</param>
-/// <param name="ExpiresAt">Five minutes out, per <c>SessionOptions.MfaTicketLifetime</c>.</param>
+/// <param name="ExpiresAt">Five minutes out, per <c>AuthSessionOptions.MfaTicketLifetime</c>.</param>
 public sealed record IssuedMfaTicket(string Value, DateTimeOffset ExpiresAt);
