@@ -27,7 +27,9 @@ Startup fails with a named error when neither is present — a missing connectio
 
 Every table is in the **`auth` schema**, not `public`, including `__EFMigrationsHistory`.
 
-That keeps the API's thirteen tables identifiable as one unit inside a database it may share, and it makes a scoped grant expressible: the runtime role needs rights on `auth` and nothing else.
+That keeps the API's fourteen tables identifiable as one unit inside a database it may share, and it makes a scoped grant expressible: the runtime role needs rights on `auth` and nothing else.
+
+> The grant must include **write** on `auth."DataProtectionKeys"`. Data Protection creates a successor key at runtime as the active one ages, without a migration, so a read-only grant there produces an outage roughly 90 days after deployment rather than at deploy time (ADR-0021).
 
 ```sql
 -- what the API owns
@@ -139,9 +141,32 @@ The §8 Definition of Done, as commands:
 
 ```bash
 dotnet ef database update
-psql -c "SELECT tablename FROM pg_tables WHERE schemaname='auth';"   # 13 tables + __EFMigrationsHistory
+psql -c "SELECT tablename FROM pg_tables WHERE schemaname='auth';"   # 14 tables + __EFMigrationsHistory
 psql -c 'SELECT "Name" FROM auth."Roles";'                            # Admin, User
 psql -c "SELECT extname FROM pg_extension WHERE extname='citext';"    # citext
 ```
 
 From §21 onward the integration harness applies these same migrations to a Testcontainers database on every run — so the migration chain is validated continuously rather than at release time.
+
+---
+
+## 8. One-off: deploying `AddDataProtectionKeys` (ADR-0021)
+
+**Applies once, to any environment that already holds signing keys.** This is not an ordinary schema migration — it changes where the Data Protection key ring lives *and* the discriminator payloads are protected under, so every `SigningKey.PrivateKeyProtected` value written before it becomes unreadable.
+
+**It does not fail loudly.** `/.well-known/jwks.json` keeps answering `200`, because JWKS projects the public key and never unprotects. The failure surfaces only when the API first tries to *sign* an access token.
+
+Run as part of the same deploy, after `dotnet ef database update`:
+
+```bash
+# Discard every orphaned signing key; the key manager generates a fresh one on next use.
+psql -c 'DELETE FROM auth."SigningKeys";'
+```
+
+Consequences to expect, and to announce before rather than after:
+
+- Access tokens signed by the discarded keys **fail validation immediately** — the `kid` resolver returns `[]` for an unresolvable key rather than the whole ring, which is the correct behaviour and the reason this is abrupt rather than silent.
+- Every client must refresh. Sessions and refresh tokens survive (they are opaque and hashed, not Data-Protection payloads), so this is a re-issue, not a mass logout.
+- Live CSRF tokens also fail to unprotect. Cookie-mode clients fetch a new one from `GET /api/v1/auth/csrf`; the first state-changing request after deploy may be rejected once.
+
+A fresh install needs none of this — there are no keys to orphan.

@@ -1,5 +1,6 @@
 using Api.Models;
 using Api.Models.Enums;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Data;
@@ -18,7 +19,8 @@ namespace Api.Data;
 /// EF attributes, so <c>Models/</c> is readable as a domain model rather than a schema.
 /// </para>
 /// </remarks>
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
+    : DbContext(options), IDataProtectionKeyContext
 {
     public DbSet<User> Users => Set<User>();
 
@@ -47,11 +49,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<SigningKey> SigningKeys => Set<SigningKey>();
 
     /// <summary>
+    /// The Data Protection key ring (ADR-0021) — required by
+    /// <see cref="IDataProtectionKeyContext"/>, which is what
+    /// <c>PersistKeysToDbContext&lt;AppDbContext&gt;()</c> constrains on.
+    /// </summary>
+    /// <remarks>
+    /// <b>Nothing in this codebase reads it.</b> Data Protection owns the lifecycle
+    /// entirely — creating successor keys at runtime as the active one ages. The property
+    /// exists so the wiring compiles, and its shape is the package's, not ours.
+    /// </remarks>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+    /// <summary>
     /// PostgreSQL schema every table in this model lives in.
     /// </summary>
     /// <remarks>
     /// Not <c>public</c>. The API may share a database with other things, and a dedicated
-    /// schema keeps its thirteen tables identifiable as one unit — which is also what makes
+    /// schema keeps its fourteen tables identifiable as one unit — which is also what makes
     /// a scoped grant possible: the runtime role needs rights on <c>auth</c> and nothing
     /// else, so a mistake in another schema cannot reach the credential store.
     /// </remarks>

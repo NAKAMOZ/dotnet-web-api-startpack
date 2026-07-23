@@ -1,5 +1,6 @@
 using Api.Services.Audit;
 using Api.Services.Crypto;
+using Api.Services.Security;
 using Api.Services.Tokens;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -37,6 +38,10 @@ public static partial class ServiceCollectionExtensions
 
         // Scoped: it reads through the request's AppDbContext, like every other query path.
         services.AddScoped<IAuditQueryService, AuditQueryService>();
+
+        // Singleton — it holds options and a clock, and mutates the User it is handed rather
+        // than reading one (§16). The login service that calls it is scoped; this is not.
+        services.AddSingleton<LockoutPolicy>();
 
         // TODO §12 (remaining): Services/Auth, Services/Users, Services/Mfa,
         //                       Services/Passkeys, Services/SocialAuth, Services/ApiKeys,

@@ -38,6 +38,7 @@ One decision per file, one page each, four mandated sections: **Context**, **Dec
 | [0018](ADR-0018-flat-repository-layout.md) | Flat repository layout — API project at the root | Accepted | Supersedes the layout half of **0014** |
 | [0019](ADR-0019-social-login.md) | Social login — Google + GitHub, API-driven redirect | Accepted | Resolves **P12**, **P13** |
 | [0020](ADR-0020-signing-key-storage.md) | Signing keys protected by Data Protection | Accepted | Resolves **P17**; completes **0004** |
+| [0021](ADR-0021-data-protection-key-persistence.md) | Data Protection key ring persisted to the database | Accepted | Closes the persistence consequence of **0020** |
 
 The remaining v1 feature scope — the approved-decisions row *v1 feature scope* — is a scope statement rather than an architectural decision and lives in [`../Scope.md`](../Scope.md).
 

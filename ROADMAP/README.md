@@ -61,7 +61,7 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 | # | Workstream | Status |
 |---|---|---|
 | 15 | [Logging and Audit Trails](15-logging-and-audit-trails.md) | 🔄 Serilog wired (two-stage init, correlation + user enrichers, redaction policy, JSON in non-dev); `IAuditLogger` writing on its own scope, `IAuditQueryService` behind a live `GET /admin/audit-logs`; `AuditTrail.md` + catalog guard test; P18 resolved at 90 days. Blocked on §12 for the 20 events whose services do not exist, and for the retention job |
-| 16 | [Security Hardening](16-security-hardening.md) | ⬜ |
+| 16 | [Security Hardening](16-security-hardening.md) | 🔄 Data Protection key ring persisted to the database (ADR-0021 — closes a live defect: the ring was per-process in any container, orphaning every stored signing key on restart); `LockoutOptions` bound at 5/15 min; `LockoutPolicy` scaffolded with its failure transition open; `Documentation/Security/` populated — enumeration parity table + ASVS 4.0.3 L2 traceability; `.github/dependabot.yml`. Blocked on §12 for the login wiring, on §17 for per-IP anti-automation, and on P14 for encrypting the key ring at rest |
 | 17 | [Rate Limiting and Abuse Prevention](17-rate-limiting-and-abuse-prevention.md) | ⬜ |
 
 ### Phase F — Documentation

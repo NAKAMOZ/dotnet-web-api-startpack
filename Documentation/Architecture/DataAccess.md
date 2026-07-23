@@ -22,7 +22,9 @@ Services depend on `AppDbContext` directly. Revisit only if a second persistence
 
 Every table lives in the **`auth` schema**, not `public` — including `__EFMigrationsHistory`. `AppDbContext.Schema` is the constant; `HasDefaultSchema` applies it to the whole model.
 
-The API may share a database with other things. A dedicated schema keeps its thirteen tables identifiable as one unit, and makes a scoped grant expressible: the runtime role needs rights on `auth` and nothing else, so a mistake elsewhere in the database cannot reach the credential store.
+The API may share a database with other things. A dedicated schema keeps its fourteen tables identifiable as one unit, and makes a scoped grant expressible: the runtime role needs rights on `auth` and nothing else, so a mistake elsewhere in the database cannot reach the credential store.
+
+> Thirteen of the fourteen are domain entities. The fourteenth, `DataProtectionKeys`, is the ASP.NET Core Data Protection key ring (ADR-0021) — its entity type ships with the package, nothing in this codebase reads it, and it is the one table written at runtime by something other than a service.
 
 **The connection string is never committed.** Development reads `ConnectionStrings:Postgres` from user-secrets, every other environment from the `ConnectionStrings__Postgres` environment variable (§25). Startup fails with a named error when neither is present.
 

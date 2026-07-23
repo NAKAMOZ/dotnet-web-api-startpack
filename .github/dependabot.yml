@@ -1,0 +1,95 @@
+# Dependency update automation (§16).
+#
+# Dependabot over Renovate: this repository is on GitHub, Dependabot is native there and
+# needs no app installation or bot account, and it understands Central Package Management —
+# it edits Directory.Packages.props rather than trying to write a Version attribute into the
+# csproj, which is build error NU1008 here.
+#
+# ⚠️ This repository fails its build on a NEW ADVISORY, not on an old dependency.
+# NuGet audit runs at mode=all, level=low (Directory.Build.props), so an advisory published
+# against any package — direct or transitive — turns every subsequent `dotnet build` red
+# without a single line of code changing. The security schedule below is daily for exactly
+# that reason: the fix has to be in a PR before someone hits the broken build.
+#
+# ⚠️ A Dependabot PR is a proposal, not an approval. Adding a package requires an ADR
+# (ADR-0013); a version bump does not, but Microsoft.OpenApi must STAY on the 2.x line —
+# 3.x breaks the Microsoft.AspNetCore.OpenApi source generator with CS0200. The `ignore`
+# entry below encodes that so the PR is never opened, rather than opened and rejected each
+# time.
+
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Istanbul
+
+    # Version bumps are batched; security fixes ignore grouping and open individually and
+    # immediately, which is the behaviour we want given the audit gate above.
+    open-pull-requests-limit: 5
+
+    groups:
+      # These ship as one version wave and are pinned together on purpose — see the
+      # alignment comment in Directory.Packages.props. Separate PRs would each fail CI
+      # until the last one merged.
+      aspnetcore-and-efcore:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.EntityFrameworkCore*"
+          - "Microsoft.Extensions.*"
+          - "Npgsql.EntityFrameworkCore.PostgreSQL"
+
+      opentelemetry:
+        patterns:
+          - "OpenTelemetry.*"
+
+      # A test-only bump cannot affect the shipped API, so these are safe to review as one.
+      test-tooling:
+        patterns:
+          - "xunit*"
+          - "Microsoft.NET.Test.Sdk"
+          - "Testcontainers.*"
+          - "NSubstitute"
+          - "Respawn"
+
+    ignore:
+      # ADR-0013. Microsoft.AspNetCore.OpenApi 10.0.10 targets the 2.x line and its
+      # XmlCommentGenerator emits `IOpenApiMediaType.Example = ...`, which is settable in
+      # 2.x and read-only in 3.x. Remove this entry only when the ASP.NET Core package
+      # itself moves to 3.x.
+      - dependency-name: Microsoft.OpenApi
+        versions: [">=3.0.0"]
+
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: scope
+
+    labels:
+      - dependencies
+
+    # NOT covered by this entry: `.config/dotnet-tools.json`. Dependabot's nuget ecosystem
+    # does not read local tool manifests, so the pinned `dotnet-ef` version is a manual bump
+    # — see Documentation/Operations/Migrations.md. It is design-time only and never ships,
+    # which is why that is tolerable rather than a gap.
+
+  # §26 adds the workflows. Configured now so the first workflow committed is covered
+  # rather than remembered — a pinned action that never updates is the supply-chain
+  # failure this file exists to prevent.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Istanbul
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - dependencies
+      - ci

@@ -88,7 +88,7 @@ Per-field codes are defined in `Validators/Common/ValidationErrorCodes.cs`:
 
 > **404 covers both "absent" and "not yours", deliberately.** Answering 403 for the second confirms the resource exists, which lets an attacker enumerate ids by reading status codes. Own-resource routes scope the lookup to the caller and treat a miss as absence.
 
-> ⚠️ **`email_already_registered` is an open decision.** As catalogued it discloses to an anonymous caller which addresses are registered — the same oracle the password-reset flow deliberately refuses to provide. The alternative is for registration to always answer `202` and send either a welcome email or a "someone tried to register your address" notice. Tracked in §11's and §12's owner questions; the code stays listed because the exception type exists either way.
+> ⚠️ **`email_already_registered` is internal-only on the anonymous registration path — resolved by §16.** Returning it there discloses to an anonymous caller which addresses are registered, the same oracle the password-reset flow refuses to provide. `POST /api/v1/auth/register` answers `202` for both cases and sends a "someone tried to register your address" notice instead; the exception is caught and converted before it reaches the client, exactly like `account_locked`. It still surfaces as a genuine `409` where the caller is already authenticated and already knows the address exists — linking a social account to a taken email. See `Documentation/Security/Enumeration.md` §3.
 
 ---
 

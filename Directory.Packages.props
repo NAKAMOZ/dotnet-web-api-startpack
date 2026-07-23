@@ -51,6 +51,14 @@
     <PackageVersion Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
     <PackageVersion Include="Otp.NET" Version="1.4.1" />
     <PackageVersion Include="Fido2.AspNet" Version="4.0.1" />
+
+    <!--
+      Persists the Data Protection key ring to PostgreSQL (ADR-0021). Without it the ring
+      is per-machine and, in a container with no writable home directory, per-process —
+      which makes every stored signing key undecryptable after a restart.
+      Pinned to the same 10.0.10 as every other Microsoft.AspNetCore.* and EF Core package.
+    -->
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
   </ItemGroup>
 
   <!-- ==================== API — validation, logging, caching ==================== -->
