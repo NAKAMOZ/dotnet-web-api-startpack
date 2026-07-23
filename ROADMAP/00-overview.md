@@ -39,7 +39,7 @@
 
 ## Pending Decisions (owner approval required)
 
-**P1–P5, P12, P13, P15 and P17 are resolved** (approved 2026-07-22). They are retained below for traceability; the decisions themselves now live in `Documentation/Decisions/`. **P6–P11, P14, P16 and P18 remain open.**
+**P1–P5, P12, P13, P15 and P17 are resolved** (approved 2026-07-22), and **P18 is resolved** (approved 2026-07-23 — 90-day audit retention). They are retained below for traceability; the decisions themselves now live in `Documentation/Decisions/`. **P6–P11, P14 and P16 remain open.**
 
 | # | Decision | Recommendation | Blocking workstream(s) |
 |---|---|---|---|

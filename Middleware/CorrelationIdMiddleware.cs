@@ -45,11 +45,12 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next)
             return Task.CompletedTask;
         }, context);
 
-        // TODO §15: push the id into Serilog's LogContext here, so every log line written
-        // downstream carries it without a single call site passing it explicitly. That needs
-        // the Serilog package reference, which §15 owns; until then the id is available to
-        // log messages through HttpContext.Items and reaches clients on the response header
-        // and in every Problem Details body.
+        // §15 resolved the LogContext TODO that stood here differently: the id reaches log
+        // events through Api.Logging.CorrelationIdEnricher, which reads this same Items
+        // entry when an event is written. A push here would work, but its sibling
+        // UserIdEnricher cannot be a push — the user id does not exist this early, five
+        // stages above authentication — and one pushed property beside one enriched property
+        // reads like a bug. This file also stays free of a Serilog reference.
         await next(context);
     }
 }

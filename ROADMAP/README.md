@@ -9,8 +9,8 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 | **Planning** | ✅ Complete — all 29 workstreams specified |
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
 | **Decision record** | ✅ 20 ADRs + the authentication and authorization architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
-| **Open decisions** | ⏳ 9 items (P6–P11, P14, P16, P18); **P1–P5, P12, P13, P15, P17 resolved 2026-07-22** |
-| **Implementation** | 🔄 **Phase A–C done, Phase D nearly done** — 138 tests green (132 unit, 6 integration). All 43 operations route, validate and authorize; **deny-by-default is on**, real ES256 key ring live at `/.well-known/jwks.json`. The token pipeline (crypto, issuance, rotation, reuse detection, sessions, MFA tickets, auth schemes) is implemented, and §14's pipeline — correlation ids, one error envelope, security headers, CORS, CSRF — is in place; feature services are not, so 42 of 43 actions still return 501. Next: registration → login → refresh services, then the rest of §12. |
+| **Open decisions** | ⏳ 8 items (P6–P11, P14, P16); **P1–P5, P12, P13, P15, P17 resolved 2026-07-22**; **P18 resolved 2026-07-23** |
+| **Implementation** | 🔄 **Phase A–C done, Phase D nearly done** — 159 tests green (153 unit, 6 integration). All 43 operations route, validate and authorize; **deny-by-default is on**, real ES256 key ring live at `/.well-known/jwks.json`. The token pipeline (crypto, issuance, rotation, reuse detection, sessions, MFA tickets, auth schemes) is implemented; §14's pipeline — correlation ids, one error envelope, security headers, CORS, CSRF — is complete; §15's observability half — Serilog with redaction, the audit trail, the admin audit query — is in. Feature services are still missing, so 41 of 43 actions return 501. Next: registration → login → refresh services, then the rest of §12. |
 
 ## How to use this board
 
@@ -54,13 +54,13 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 | 11 | [Controller Architecture](11-controller-architecture.md) | ✅ 14 controllers; all 43 inventory operations live in the OpenAPI document; 501 for anonymous stubs, 401 for protected; 6 architecture tests green |
 | 12 | [Service and Handler Architecture](12-service-and-handler-architecture.md) | 🔄 token pipeline complete — crypto, ES256 key ring, rotation + reuse detection, real auth schemes, deny-by-default **on**. Feature services (auth, MFA, passkeys, social, API keys, email, cleanup) not started; 42 of 43 actions still 501 |
 | 13 | [API Response and Error Standards](13-api-response-and-error-standards.md) | ✅ one RFC 9457 envelope everywhere, `Documentation/Errors.md` catalogue + 9 guard tests; 403/404/409/500 bodies await §12's services |
-| 14 | [Middleware and Filters](14-middleware-and-filters.md) | 🔄 pipeline assembled in order: correlation id, exception handler, security headers, CORS, CSRF filter + session-bound token service; `Pipeline.md` written; 132 unit + 6 integration tests green. `AuditActionFilter` deferred to §15 (owns `IAuditLogger`); Serilog logging (§15), rate limiter (§17) and forwarded headers (§27) slots reserved |
+| 14 | [Middleware and Filters](14-middleware-and-filters.md) | ✅ pipeline assembled in order: correlation id, request logging, exception handler, security headers, CORS, CSRF filter + session-bound token service; `Pipeline.md` written. `AuditActionFilter` landed with §15, which owns `IAuditLogger`. Rate limiter (§17) and forwarded headers (§27) slots reserved |
 
 ### Phase E — Cross-Cutting Concerns
 
 | # | Workstream | Status |
 |---|---|---|
-| 15 | [Logging and Audit Trails](15-logging-and-audit-trails.md) | ⬜ |
+| 15 | [Logging and Audit Trails](15-logging-and-audit-trails.md) | 🔄 Serilog wired (two-stage init, correlation + user enrichers, redaction policy, JSON in non-dev); `IAuditLogger` writing on its own scope, `IAuditQueryService` behind a live `GET /admin/audit-logs`; `AuditTrail.md` + catalog guard test; P18 resolved at 90 days. Blocked on §12 for the 20 events whose services do not exist, and for the retention job |
 | 16 | [Security Hardening](16-security-hardening.md) | ⬜ |
 | 17 | [Rate Limiting and Abuse Prevention](17-rate-limiting-and-abuse-prevention.md) | ⬜ |
 

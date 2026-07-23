@@ -1,3 +1,4 @@
+using Api.Services.Audit;
 using Api.Services.Crypto;
 using Api.Services.Tokens;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -29,9 +30,17 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IMfaTicketService, MfaTicketService>();
 
+        // Singleton, and the lifetime is the design (§15). AuditLogger writes through a scope
+        // it creates itself rather than the request's, so it holds no scoped dependency —
+        // making it singleton is what stops one being added later without noticing.
+        services.AddSingleton<IAuditLogger, AuditLogger>();
+
+        // Scoped: it reads through the request's AppDbContext, like every other query path.
+        services.AddScoped<IAuditQueryService, AuditQueryService>();
+
         // TODO §12 (remaining): Services/Auth, Services/Users, Services/Mfa,
         //                       Services/Passkeys, Services/SocialAuth, Services/ApiKeys,
-        //                       Services/Email, Services/Audit.
+        //                       Services/Email.
 
         return services;
     }

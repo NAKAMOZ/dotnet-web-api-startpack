@@ -1,6 +1,7 @@
 using Api.Attributes;
 using Api.DTOs.Admin;
 using Api.Handlers.Authorization;
+using Api.Models.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -22,6 +23,7 @@ public sealed class AdminUserRolesController : ApiControllerBase
     /// </remarks>
     [HttpPost]
     [RequirePermission(Permissions.RolesAssign)]
+    [AuditEvent(AuditEventType.RoleGranted)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -36,6 +38,7 @@ public sealed class AdminUserRolesController : ApiControllerBase
     /// <summary>Revokes a role.</summary>
     [HttpDelete("{roleId:guid}")]
     [RequirePermission(Permissions.RolesRevoke)]
+    [AuditEvent(AuditEventType.RoleRevoked)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]

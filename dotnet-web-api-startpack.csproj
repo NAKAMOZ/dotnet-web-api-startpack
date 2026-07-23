@@ -47,6 +47,13 @@
     <PackageReference Include="Isopoh.Cryptography.Argon2" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
 
+    <!-- Structured logging (ADR-0010, §15). Brings the console sink, the compact JSON
+         formatter and Serilog.Settings.Configuration transitively — no separate reference
+         for any of them, and no Serilog.Enrichers.Environment: the two properties it would
+         add are set with Enrich.WithProperty instead, which needs no new package and
+         therefore no new ADR. -->
+    <PackageReference Include="Serilog.AspNetCore" />
+
     <!-- Design-time only: the migrations tooling. PrivateAssets keeps it out of the
          published output — a deployed API has no business carrying the scaffolder. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">

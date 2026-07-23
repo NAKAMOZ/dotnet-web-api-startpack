@@ -58,6 +58,15 @@ public sealed class AdminUsersController : ApiControllerBase
         NotImplementedYet<AdminUserDetailResponse>();
 
     /// <summary>Deletes a user and every credential they hold. The audit trail survives.</summary>
+    /// <remarks>
+    /// <b>Deliberately not marked with <c>[AuditEvent]</c>,</b> unlike the other mutating admin
+    /// actions. <c>AuditActionFilter</c> runs after the action and records the route's user id
+    /// as the row's subject — and by then that user is gone. <c>AuditLogEntry.UserId</c> is a
+    /// foreign key, so the insert would violate it and the one event nobody can afford to lose
+    /// would be the one that fails to write. §12's deletion service records
+    /// <c>admin_user_deleted</c> from inside its own path, with a null subject and the deleted
+    /// id in the metadata (AuditTrail.md §4).
+    /// </remarks>
     [HttpDelete("{userId:guid}")]
     [RequirePermission(Permissions.UsersDeleteAny)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

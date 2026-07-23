@@ -47,6 +47,10 @@ public static partial class ServiceCollectionExtensions
         // exempted inside the filter, where the reasoning is written down.
         services.Configure<MvcOptions>(options => options.Filters.Add<CsrfProtectionFilter>());
 
+        // §14's deferred filter, landed with §15 now that IAuditLogger exists. Global for the
+        // same reason as the two above, and inert on any action without [AuditEvent].
+        services.Configure<MvcOptions>(options => options.Filters.Add<AuditActionFilter>());
+
         return services;
     }
 }

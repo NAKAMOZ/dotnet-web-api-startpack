@@ -33,7 +33,7 @@ None.
 
 - [x] `Middleware/CorrelationIdMiddleware.cs`, `SecurityHeadersMiddleware.cs`, `ExceptionHandlingMiddleware.cs` (as `IExceptionHandler`).
 - [x] `Filters/CsrfProtectionFilter.cs` — plus `Services/Security/CsrfTokenService.cs`, which the filter cannot verify without. §12 wires `GET /api/v1/auth/csrf` to the same service.
-- [ ] `Filters/AuditActionFilter.cs` — **deferred to §15**, which defines `IAuditLogger`. Writing the filter here would mean defining that interface ahead of the workstream that owns it.
+- [x] `Filters/AuditActionFilter.cs` — deferred to §15, which defines `IAuditLogger`, and **landed there**. Writing it here would have meant defining that interface ahead of the workstream that owns it.
 - [x] `Extensions/ApplicationBuilderExtensions.Pipeline.cs` with the ordered pipeline + ordering comment block.
 - [x] `Configuration/ApiCorsOptions.cs` + `Handlers/Cors/OriginAwareCorsPolicyProvider.cs` + wiring in `AddPipelineServices`.
 
@@ -43,6 +43,7 @@ None.
 - `ExceptionHandlingMiddleware` is an `IExceptionHandler`, not a middleware class. The file name is the roadmap's; the shape is what the roadmap's own parenthetical asks for.
 - The CSRF tag is produced by an `ITimeLimitedDataProtector` rather than a raw HMAC. Same authenticated binding, no new secret to distribute — see `Documentation/Architecture/Pipeline.md` §6.
 - CORS needs a custom `ICorsPolicyProvider`: `AllowCredentials` is a property of a built policy, so "credentials only for cookie-mode origins" is not expressible in a single policy.
+- `AuditActionFilter` is registered **globally and opts in by attribute** (`[AuditEvent(AuditEventType.X)]`), not applied to admin controllers by hand. Same reasoning as the CSRF filter: a per-controller filter is one a new controller forgets, and an action that is silently never audited looks exactly like an action nobody performed.
 
 ## Expected Deliverables
 

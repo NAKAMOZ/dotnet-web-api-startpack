@@ -1,6 +1,7 @@
 using Api.Attributes;
 using Api.DTOs.Sessions;
 using Api.Handlers.Authorization;
+using Api.Models.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -18,6 +19,7 @@ public sealed class AdminUserSessionsController : ApiControllerBase
     /// </remarks>
     [HttpDelete]
     [RequirePermission(Permissions.SessionsRevokeAny)]
+    [AuditEvent(AuditEventType.SessionRevoked)]
     [ProducesResponseType<RevokeSessionsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]

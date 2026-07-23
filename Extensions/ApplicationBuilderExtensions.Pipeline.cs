@@ -1,5 +1,6 @@
 using Api.Configuration;
 using Api.Middleware;
+using Serilog;
 
 namespace Api.Extensions;
 
@@ -75,8 +76,15 @@ public static partial class ApplicationBuilderExtensions
         // HttpContext.Items, and echoes it on the response.
         app.UseMiddleware<CorrelationIdMiddleware>();
 
-        // TODO §15: Serilog request logging (app.UseSerilogRequestLogging), enriched with the
-        // correlation id resolved directly above.
+        // ── 3. Request logging ───────────────────────────────────────────────────────
+        // One structured summary event per request, replacing the framework's several lines
+        // of unstructured per-request noise (ADR-0010). Above the exception handler, so it
+        // also records the requests that end in a 500 — and it sees the final status code,
+        // because the handler runs inside it.
+        //
+        // The correlation id is not passed here: CorrelationIdEnricher attaches it to every
+        // event, this one included.
+        app.UseSerilogRequestLogging();
 
         // ── 4. Exception handling ────────────────────────────────────────────────────
         // Dispatches to ExceptionHandlingMiddleware (an IExceptionHandler), which maps

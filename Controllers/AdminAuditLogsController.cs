@@ -2,6 +2,7 @@ using Api.Attributes;
 using Api.DTOs.Admin;
 using Api.DTOs.Common;
 using Api.Handlers.Authorization;
+using Api.Services.Audit;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -13,7 +14,7 @@ namespace Api.Controllers;
 /// answers a different question than the one it was kept for.
 /// </remarks>
 [Route("api/v{version:apiVersion}/admin/audit-logs")]
-public sealed class AdminAuditLogsController : ApiControllerBase
+public sealed class AdminAuditLogsController(IAuditQueryService auditQueryService) : ApiControllerBase
 {
     /// <summary>Queries audit events by user, type, date range or correlation id.</summary>
     [HttpGet]
@@ -22,8 +23,8 @@ public sealed class AdminAuditLogsController : ApiControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
-    public Task<ActionResult<PagedResponse<AuditLogEntryResponse>>> Query(
+    public async Task<ActionResult<PagedResponse<AuditLogEntryResponse>>> Query(
         [FromQuery] AuditLogQuery query,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<PagedResponse<AuditLogEntryResponse>>();
+        Ok(await auditQueryService.QueryAsync(query, cancellationToken));
 }
