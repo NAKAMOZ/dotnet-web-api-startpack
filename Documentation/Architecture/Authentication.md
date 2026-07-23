@@ -78,6 +78,8 @@ csrfToken = base64url(nonce) || "." || base64url(HMAC(key, sessionId || nonce))
 
 The filter verifies the MAC **against the session the request authenticated as**, so a token minted for another session — or forged wholesale — fails even when cookie and header agree. §22 asserts exactly this ("CSRF token bound to session").
 
+> **As implemented (§14), the tag is produced by an `ITimeLimitedDataProtector` rather than a raw HMAC** — encrypt-then-MAC over the same `(sessionId, nonce)` payload, so the binding property above is unchanged. The reason is key management: a raw HMAC needs a secret configured, distributed to every instance and rotated by hand, and the shortcut of generating one per process fails the moment a second instance exists. Data Protection already provides that key ring (ADR-0020), and expiry comes free. See [Pipeline.md §6](Pipeline.md).
+
 > Getting the bearer exemption wrong in the permissive direction (exempting everything) silently disables CSRF protection across the API. §22 asserts the filter fires for cookie-authenticated state-changing requests.
 
 ---

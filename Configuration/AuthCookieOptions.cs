@@ -49,10 +49,10 @@ public sealed class AuthCookieOptions
     /// Header a client sets on login to choose the transport. Default is body; the server
     /// never issues tokens in both cookie and body at once.
     /// </summary>
-    public string TransportHeaderName { get; init; } = "X-Auth-Transport";
+    public string TransportHeaderName { get; init; } = AuthCookieDefaults.TransportHeaderName;
 
     /// <summary>Header carrying the echoed CSRF token in cookie mode.</summary>
-    public string CsrfHeaderName { get; init; } = "X-CSRF-Token";
+    public string CsrfHeaderName { get; init; } = AuthCookieDefaults.CsrfHeaderName;
 
     /// <summary>
     /// Whether <c>Secure</c> is required. Always true outside Development. Note that

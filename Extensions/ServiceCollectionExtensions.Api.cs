@@ -40,9 +40,14 @@ public static partial class ServiceCollectionExtensions
                 options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
             });
 
-        // RFC 9457 Problem Details for every error response (ADR-0007).
-        // §13 customises the payload; this registers the default writer.
-        services.AddProblemDetails();
+        // RFC 9457 Problem Details for every error response (ADR-0007), with §13's
+        // errorCode / correlationId / traceId extensions and the non-Development guard
+        // against leaking exception detail.
+        services.AddProblemDetailsStandards();
+
+        // §14's pipeline services: the exception handler, the CORS policy provider, and the
+        // CSRF token service plus its global filter.
+        services.AddPipelineServices();
 
         // URL-segment versioning: /api/v1/… (P2, ADR-0015).
         services

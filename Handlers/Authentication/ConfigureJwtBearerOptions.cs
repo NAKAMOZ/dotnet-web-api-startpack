@@ -118,6 +118,12 @@ public sealed class ConfigureJwtBearerOptions(
             && context.Request.Cookies.TryGetValue(_cookies.AccessCookieName, out var cookieToken))
         {
             context.Token = cookieToken;
+
+            // The credential is ambient from here on, which is the definition of a request
+            // reachable by CSRF. §14's filter enforces the token on exactly these requests
+            // and exempts the bearer ones — see AuthTransport for why the marker is set here
+            // rather than inferred later.
+            context.HttpContext.Items[AuthTransport.CookieAuthenticatedItemKey] = true;
         }
 
         return Task.CompletedTask;

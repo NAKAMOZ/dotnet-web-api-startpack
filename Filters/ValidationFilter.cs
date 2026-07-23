@@ -1,3 +1,5 @@
+using Api.Exceptions;
+using Api.Middleware;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +32,20 @@ public sealed class ValidationFilter : IAsyncActionFilter
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
+        // Binding failures first, and they must be handled here explicitly.
+        //
+        // §10 suppressed MVC's automatic model-state filter so this filter is the single
+        // producer of 400s. The consequence, found live: a body that fails to deserialize —
+        // `{}` against a record with `required` members, a string where a Guid belongs —
+        // leaves a NULL action argument. This filter would then find nothing to validate,
+        // the action would run with a null model, and the caller would get a misleading
+        // success-shaped response instead of "your request was malformed".
+        if (!context.ModelState.IsValid)
+        {
+            context.Result = BuildMalformedRequestResult(context);
+            return;
+        }
+
         var failures = new List<ValidationFailure>();
 
         foreach (var argument in context.ActionArguments.Values)
@@ -67,10 +83,43 @@ public sealed class ValidationFilter : IAsyncActionFilter
             return;
         }
 
-        context.Result = BuildProblemResult(failures);
+        context.Result = BuildProblemResult(failures, context.HttpContext);
     }
 
-    private static BadRequestObjectResult BuildProblemResult(List<ValidationFailure> failures)
+    /// <summary>
+    /// A 400 for a request the model binder could not read.
+    /// </summary>
+    /// <remarks>
+    /// Field names are reported; the binder's messages are not. Those messages name CLR
+    /// types and JSON paths, which describes our model to whoever is probing it.
+    /// </remarks>
+    private static BadRequestObjectResult BuildMalformedRequestResult(ActionExecutingContext context)
+    {
+        var fields = context.ModelState
+            .Where(entry => entry.Value?.Errors.Count > 0)
+            .Select(entry => entry.Key)
+            .Where(key => !string.IsNullOrEmpty(key))
+            .ToArray();
+
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "The request could not be read.",
+            Type = ProblemTypes.For(Api.Exceptions.ErrorCodes.MalformedRequest),
+            Detail = fields.Length > 0
+                ? $"Could not bind: {string.Join(", ", fields)}."
+                : "The request body could not be parsed.",
+        };
+
+        problem.Extensions[ProblemDetailsExtensions.ErrorCode] = Api.Exceptions.ErrorCodes.MalformedRequest;
+        problem.Extensions[ProblemDetailsExtensions.TraceId] = context.HttpContext.TraceIdentifier;
+
+        return new BadRequestObjectResult(problem) { ContentTypes = { "application/problem+json" } };
+    }
+
+    private static BadRequestObjectResult BuildProblemResult(
+        List<ValidationFailure> failures,
+        HttpContext httpContext)
     {
         var messages = failures
             .GroupBy(failure => failure.PropertyName)
@@ -88,15 +137,25 @@ public sealed class ValidationFilter : IAsyncActionFilter
         {
             Status = StatusCodes.Status400BadRequest,
             Title = "One or more validation errors occurred.",
-
-            // TODO §13: replace with this API's own type URI, once the Problem Details
-            //           catalog exists. The RFC section is a correct placeholder, not a
-            //           final answer — a client should be able to look this type up and
-            //           find documentation for *this* error, not for the standard.
-            Type = "https://datatracker.ietf.org/doc/html/rfc9457#section-3",
+            Type = ProblemTypes.For(Api.Exceptions.ErrorCodes.ValidationFailed),
         };
 
-        problem.Extensions[ErrorCodesExtension] = codes;
+        // Two levels, and both are needed. The top-level code says "this request failed
+        // validation"; the per-field codes say which rule each field broke. A client
+        // branches on the first to decide how to react and reads the second to localise.
+        problem.Extensions[ProblemDetailsExtensions.ErrorCode] = Api.Exceptions.ErrorCodes.ValidationFailed;
+        problem.Extensions[ProblemDetailsExtensions.ErrorCodes] = codes;
+
+        // Set here rather than left to CustomizeProblemDetails. That callback runs through
+        // IProblemDetailsService, and a result written straight to the response by an action
+        // filter never reaches it — so without these two lines a validation failure would be
+        // the one error response in the API with no correlation id to trace it by.
+        problem.Extensions[ProblemDetailsExtensions.TraceId] = httpContext.TraceIdentifier;
+
+        if (httpContext.Items.TryGetValue(CorrelationId.ItemsKey, out var correlationId))
+        {
+            problem.Extensions[ProblemDetailsExtensions.CorrelationId] = correlationId;
+        }
 
         return new BadRequestObjectResult(problem)
         {
