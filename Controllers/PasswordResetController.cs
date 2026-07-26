@@ -1,6 +1,8 @@
+using Api.Configuration;
 using Api.DTOs.PasswordReset;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Api.Controllers;
 
@@ -16,6 +18,7 @@ public sealed class PasswordResetController : ApiControllerBase
     /// credentials at all.
     /// </remarks>
     [HttpPost("request")]
+    [EnableRateLimiting(RateLimitPolicies.EmailSending)]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     // Named RequestReset, not Request: an action called Request hides ControllerBase.Request

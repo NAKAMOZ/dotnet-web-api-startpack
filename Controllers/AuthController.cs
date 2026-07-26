@@ -1,6 +1,8 @@
+using Api.Configuration;
 using Api.DTOs.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Api.Controllers;
 
@@ -15,9 +17,9 @@ public sealed class AuthController : ApiControllerBase
     /// </remarks>
     [HttpPost("register")]
     [AllowAnonymous]
-    [ProducesResponseType<RegisterResponse>(StatusCodes.Status201Created)]
+    [EnableRateLimiting(RateLimitPolicies.Registration)]
+    [ProducesResponseType<RegisterResponse>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<ActionResult<RegisterResponse>> Register(
         [FromBody] RegisterRequest request,
         CancellationToken cancellationToken) =>
@@ -33,6 +35,7 @@ public sealed class AuthController : ApiControllerBase
     /// </remarks>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MfaChallengeResponse>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -45,6 +48,7 @@ public sealed class AuthController : ApiControllerBase
     /// <summary>Completes an MFA login with a TOTP or recovery code.</summary>
     [HttpPost("login/mfa")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -60,6 +64,7 @@ public sealed class AuthController : ApiControllerBase
     /// </remarks>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     [ProducesResponseType<TokenPairResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]

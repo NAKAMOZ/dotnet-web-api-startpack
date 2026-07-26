@@ -8,9 +8,9 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 |---|---|
 | **Planning** | ✅ Complete — all 29 workstreams specified |
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
-| **Decision record** | ✅ 20 ADRs + the authentication and authorization architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
+| **Decision record** | ✅ 21 ADRs + the authentication and authorization architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
 | **Open decisions** | ⏳ 8 items (P6–P11, P14, P16); **P1–P5, P12, P13, P15, P17 resolved 2026-07-22**; **P18 resolved 2026-07-23** |
-| **Implementation** | 🔄 **Phase A–C done, Phase D nearly done** — 159 tests green (153 unit, 6 integration). All 43 operations route, validate and authorize; **deny-by-default is on**, real ES256 key ring live at `/.well-known/jwks.json`. The token pipeline (crypto, issuance, rotation, reuse detection, sessions, MFA tickets, auth schemes) is implemented; §14's pipeline — correlation ids, one error envelope, security headers, CORS, CSRF — is complete; §15's observability half — Serilog with redaction, the audit trail, the admin audit query — is in. Feature services are still missing, so 41 of 43 actions return 501. Next: registration → login → refresh services, then the rest of §12. |
+| **Implementation** | 🔄 **Phase A–D done; cross-cutting, documentation and tests advanced** — 203 tests green (187 unit, 16 integration). All 43 operations route, validate, authorize, carry rate-limit coverage, appear in the transformed v1 OpenAPI document, and have mechanically synced Markdown. Scalar is live in Development/Staging only. The token pipeline and §14 pipeline are implemented; §15's observability half and §16's lockout state machine are in. Feature services are still missing, so 41 of 43 actions return 501. Next: registration → login → refresh services, then the rest of §12. |
 
 ## How to use this board
 
@@ -52,30 +52,30 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 | 9 | [DTO Organization](09-dto-organization.md) | ✅ 47 records across 12 feature namespaces; 5 reflection guard tests green |
 | 10 | [Validation](10-validation.md) | ✅ 20 validators + shared rules + filter; RFC 9457 400 with `errorCodes` verified over HTTP once §11 landed |
 | 11 | [Controller Architecture](11-controller-architecture.md) | ✅ 14 controllers; all 43 inventory operations live in the OpenAPI document; 501 for anonymous stubs, 401 for protected; 6 architecture tests green |
-| 12 | [Service and Handler Architecture](12-service-and-handler-architecture.md) | 🔄 token pipeline complete — crypto, ES256 key ring, rotation + reuse detection, real auth schemes, deny-by-default **on**. Feature services (auth, MFA, passkeys, social, API keys, email, cleanup) not started; 42 of 43 actions still 501 |
+| 12 | [Service and Handler Architecture](12-service-and-handler-architecture.md) | 🔄 token pipeline complete — crypto, ES256 key ring, rotation + reuse detection, real auth schemes, deny-by-default **on**. Feature services (auth, MFA, passkeys, social, API keys, email, cleanup) not started; 41 of 43 actions still 501 |
 | 13 | [API Response and Error Standards](13-api-response-and-error-standards.md) | ✅ one RFC 9457 envelope everywhere, `Documentation/Errors.md` catalogue + 9 guard tests; 403/404/409/500 bodies await §12's services |
-| 14 | [Middleware and Filters](14-middleware-and-filters.md) | ✅ pipeline assembled in order: correlation id, request logging, exception handler, security headers, CORS, CSRF filter + session-bound token service; `Pipeline.md` written. `AuditActionFilter` landed with §15, which owns `IAuditLogger`. Rate limiter (§17) and forwarded headers (§27) slots reserved |
+| 14 | [Middleware and Filters](14-middleware-and-filters.md) | ✅ pipeline assembled in order: correlation id, request logging, exception handler, security headers, rate limiting, CORS, authentication/authorization, CSRF filter + session-bound token service; `Pipeline.md` written. `AuditActionFilter` landed with §15; rate limiting with §17. Forwarded headers (§27) remains reserved ahead of IP-sensitive stages |
 
 ### Phase E — Cross-Cutting Concerns
 
 | # | Workstream | Status |
 |---|---|---|
 | 15 | [Logging and Audit Trails](15-logging-and-audit-trails.md) | 🔄 Serilog wired (two-stage init, correlation + user enrichers, redaction policy, JSON in non-dev); `IAuditLogger` writing on its own scope, `IAuditQueryService` behind a live `GET /admin/audit-logs`; `AuditTrail.md` + catalog guard test; P18 resolved at 90 days. Blocked on §12 for the 20 events whose services do not exist, and for the retention job |
-| 16 | [Security Hardening](16-security-hardening.md) | 🔄 Data Protection key ring persisted to the database (ADR-0021 — closes a live defect: the ring was per-process in any container, orphaning every stored signing key on restart); `LockoutOptions` bound at 5/15 min; `LockoutPolicy` scaffolded with its failure transition open; `Documentation/Security/` populated — enumeration parity table + ASVS 4.0.3 L2 traceability; `.github/dependabot.yml`. Blocked on §12 for the login wiring, on §17 for per-IP anti-automation, and on P14 for encrypting the key ring at rest |
-| 17 | [Rate Limiting and Abuse Prevention](17-rate-limiting-and-abuse-prevention.md) | ⬜ |
+| 16 | [Security Hardening](16-security-hardening.md) | 🔄 Data Protection key ring persisted to the database (ADR-0021); lockout's 5-failure/15-minute fixed-window transition implemented and boundary-tested; anti-enumeration registration contract corrected to 202; `Documentation/Security/` populated; Dependabot configured. Blocked on §12 for login wiring and on P14 for encrypting the key ring at rest |
+| 17 | [Rate Limiting and Abuse Prevention](17-rate-limiting-and-abuse-prevention.md) | 🔄 all four policies, 429 envelope, account/IP partitioning, documentation and matrix tests implemented; awaiting formal P6 approval and an owner decision on expanding the closed audit catalog for rate-limit events |
 
 ### Phase F — Documentation
 
 | # | Workstream | Status |
 |---|---|---|
-| 18 | [Scalar and OpenAPI Configuration](18-scalar-and-openapi-configuration.md) | ⬜ |
-| 19 | [Endpoint-Level Markdown Documentation](19-endpoint-level-markdown-documentation.md) | ⬜ |
+| 18 | [Scalar and OpenAPI Configuration](18-scalar-and-openapi-configuration.md) | 🔄 v1 document transformers + bearer/cookie/API-key schemes + code-derived operation security; Scalar and JSON exposed in Development/Staging and tested absent in Production; awaiting formal P16 approval |
+| 19 | [Endpoint-Level Markdown Documentation](19-endpoint-level-markdown-documentation.md) | 🔄 43/43 files, template and author guide complete; route/method/auth set equality and sixteen-section order enforced against generated OpenAPI; owner review of security narratives remains |
 
 ### Phase G — Testing
 
 | # | Workstream | Status |
 |---|---|---|
-| 20 | [Unit Testing](20-unit-testing.md) | ⬜ |
+| 20 | [Unit Testing](20-unit-testing.md) | 🔄 187 tests: crypto, JWT issuance/signature/rotation race, lockout, authorization, audit mapping, all-validator happy paths and architecture guards. Remaining per-rule validator rejection suites and §12-owned TOTP/refresh behavior are open |
 | 21 | [Integration Testing](21-integration-testing.md) | ⬜ |
 | 22 | [Security Testing](22-security-testing.md) | ⬜ |
 | 23 | [Performance and Load Testing](23-performance-and-load-testing.md) | ⬜ |
@@ -106,4 +106,4 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 6. **Operational close-out** (Phase H): compose environment early (§24 can start alongside Phase C), CI as soon as the first tests exist (§26), deployment after P14 is decided (§27), monitoring wiring (§28).
 7. **v1 close** (Phase I): run the §29 close-out checklist, groom the future-work backlog (organizations/multi-tenancy, M2M, Redis scale-out, …).
 
-Implementation has **not** started and does not start until the project owner explicitly requests it.
+Implementation is active. Pending decisions remain pending unless the project owner explicitly approves them; code that follows a recommendation is marked 🔄 rather than ✅ until that approval is recorded.

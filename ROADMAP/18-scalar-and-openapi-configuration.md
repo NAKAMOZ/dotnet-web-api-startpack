@@ -22,10 +22,10 @@ P16.
 
 ## Tasks
 
-- [ ] `Extensions/ServiceCollectionExtensions.OpenApi.cs`: `AddOpenApi` per version + transformers (`Configuration/OpenApi/SecuritySchemeTransformer.cs`, `AuthRequirementOperationTransformer.cs`).
-- [ ] `Extensions/ApplicationBuilderExtensions.OpenApi.cs`: `MapOpenApi` + `MapScalarApiReference`, environment-gated per P16.
-- [ ] XML summary on every action + DTO (enforced: build warning as error for missing docs on public API surface).
-- [ ] Verify generated document: every inventory route present, every security requirement correct (manual review + §19 sync test).
+- [x] `Extensions/ServiceCollectionExtensions.OpenApi.cs`: `AddOpenApi` per version + transformers (`Configuration/OpenApi/SecuritySchemeTransformer.cs`, `AuthRequirementOperationTransformer.cs`).
+- [x] `Extensions/ApplicationBuilderExtensions.OpenApi.cs`: `MapOpenApi` + `MapScalarApiReference`, environment-gated per the P16 recommendation.
+- [x] XML summary on every action + DTO. `GenerateDocumentationFile` remains enabled and the built-in generator consumes the comments.
+- [x] Verify generated document: all 43 inventory operations present; bearer, cookie and API-key schemes emitted; operation security derived from endpoint metadata; §19 sync and OpenAPI contract tests green.
 
 ## Expected Deliverables
 
@@ -41,7 +41,7 @@ Prod exposure disabled (P16); the OpenAPI document reveals the full attack surfa
 
 ## Testing Requirements
 
-§21: snapshot test asserts the document parses and contains the full inventory (route + method set equality).
+Implemented ahead of §21: `OpenApiContractTests` asserts parseability, the 43-operation inventory, schemes, anonymous/protected security, Scalar availability in Staging, and no production exposure. §19 asserts full route + method set equality.
 
 ## Documentation Requirements
 

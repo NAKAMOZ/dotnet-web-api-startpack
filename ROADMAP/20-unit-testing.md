@@ -21,14 +21,19 @@ None.
 
 ## Tasks
 
-- [ ] Validator suites: every validator, accept/reject boundary per rule (~25 test files).
-- [ ] `Argon2PasswordHasherTests`: hash/verify roundtrip, parameter versioning, `NeedsRehash` on parameter bump, timing-safe failure.
-- [ ] `AccessTokenIssuerTests`: claims set, `kid` header, expiry from FakeTimeProvider, ES256 signature verifies against issuer's public key.
+- [ ] Validator suites: all 20 validators now have an accepted documented fixture; shared password boundaries and decision-heavy query boundaries are covered. Per-rule rejection boundaries for the remaining validators are still open.
+- [x] `Argon2PasswordHasherTests`: hash/verify roundtrip, parameter versioning, `NeedsRehash` on parameter bump, corrupt/wrong input failure, and distinct password/secret profiles.
+- [x] `AccessTokenIssuerTests`: claims set, `kid` header, expiry from FakeTimeProvider, ES256 signature verifies against the issuer's public key, and a rotation-between-header-and-signature race retries rather than issuing an invalid token.
 - [ ] `RefreshRotationStateMachineTests` (store faked): rotate, chain, reuse → session revocation, expiry boundaries, sliding-window math incl. absolute-cap edge.
 - [ ] `TotpServiceTests`: window tolerance, replay rejection. `RecoveryCode` single-use.
-- [ ] `PermissionPolicyProviderTests`, `RolePermissionMapTests`, `RecentAuthHandlerTests`.
-- [ ] Mapping tests per feature + reflection guard test (§9).
-- [ ] Architecture tests (§11 rules).
+- [x] `PermissionPolicyProviderTests`, `RolePermissionMapTests`, `RecentAuthHandlerTests`.
+- [x] Mapping tests for the only live mapping extension (`AuditMappingExtensions`) plus the §9 DTO reflection guards. Remaining feature mappings land with their services.
+- [x] Architecture tests (§11 rules).
+
+### Recorded deviations
+
+- `RefreshTokenService`, `SessionService` and `MfaTicketService` depend directly on `AppDbContext`; no separately fakeable store abstraction exists. In keeping with this workstream's own rule against EF in-memory doubles, their transaction/rotation boundaries move to §21's PostgreSQL integration suite instead of being unit-tested against behavior the production provider does not have.
+- `TotpService` and recovery-code services do not exist yet (§12), so their suites cannot be written without inventing the production API ahead of its owning workstream.
 
 ## Expected Deliverables
 

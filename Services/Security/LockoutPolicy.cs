@@ -51,28 +51,33 @@ public sealed class LockoutPolicy(IOptions<LockoutOptions> options, TimeProvider
             return false;
         }
 
-        // TODO §16: implement the failure transition — see the notes below.
-        //
-        // State available to you:
-        //   user.FailedLoginCount   int, consecutive failures so far
-        //   user.LockoutEndsAt      DateTimeOffset?, null when not locked
-        //   _options.MaxFailedAttempts   5
-        //   _options.LockoutDuration     15 minutes
-        //   timeProvider.GetUtcNow()     never DateTimeOffset.UtcNow
-        //
-        // Decisions this body has to make, none of which have a single obvious answer:
-        //
-        //   1. A lock has expired but FailedLoginCount is still at the threshold from last
-        //      time. Does this failure re-lock immediately, or does the user get a fresh
-        //      allowance? Approved policy is a fresh allowance — so a stale counter has to
-        //      be cleared somewhere, and this is the only method that runs on that path.
-        //   2. On locking, does FailedLoginCount reset to zero or stay at the threshold?
-        //      Whichever you pick, (1) must still hold afterwards.
-        //   3. Return true only on the transition into lockout, not on every failure while
-        //      locked — the caller writes the `account_locked` audit event from this, and a
-        //      duplicate row per attempt makes the audit trail useless for exactly the
-        //      incident it exists to describe.
-        throw new NotImplementedException("§16: lockout failure transition");
+        var now = timeProvider.GetUtcNow();
+
+        if (user.LockoutEndsAt is { } lockoutEndsAt)
+        {
+            if (lockoutEndsAt > now)
+            {
+                // The account is already locked. Do not advance the window and do not tell
+                // the caller to write another account_locked audit event.
+                return false;
+            }
+
+            // An expired lock grants a fresh allowance. The threshold is retained while the
+            // lock is active so the stored state explains why the lock exists, then cleared
+            // on the first attempt after expiry.
+            user.FailedLoginCount = 0;
+            user.LockoutEndsAt = null;
+        }
+
+        user.FailedLoginCount++;
+
+        if (user.FailedLoginCount < _options.MaxFailedAttempts)
+        {
+            return false;
+        }
+
+        user.LockoutEndsAt = now.Add(_options.LockoutDuration);
+        return true;
     }
 
     /// <summary>

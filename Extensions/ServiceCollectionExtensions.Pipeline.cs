@@ -51,6 +51,10 @@ public static partial class ServiceCollectionExtensions
         // same reason as the two above, and inert on any action without [AuditEvent].
         services.Configure<MvcOptions>(options => options.Filters.Add<AuditActionFilter>());
 
+        // The named email policy rejects by IP in middleware. Its account-target half needs
+        // the validated request model or authenticated subject, so it runs here.
+        services.Configure<MvcOptions>(options => options.Filters.AddService<EmailTargetRateLimitFilter>());
+
         return services;
     }
 }

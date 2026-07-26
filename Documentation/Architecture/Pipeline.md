@@ -52,7 +52,9 @@ The pipeline is assembled in exactly one place: `Extensions/ApplicationBuilderEx
 - The bound is not cosmetic. This value reaches log lines, audit rows and response bodies — unbounded, it is a free channel into the log pipeline.
 - The resolved id lives at `HttpContext.Items["CorrelationId"]`, is echoed on the response, and appears in every Problem Details body as `correlationId`.
 
-`TODO §15` — pushing the id into Serilog's `LogContext` lands with the Serilog wiring.
+`CorrelationIdEnricher` attaches the resolved value to Serilog events. It is an enricher
+rather than a `LogContext` push so its sibling `UserIdEnricher` can resolve the principal
+after authentication without splitting request context across two different mechanisms.
 
 ---
 
@@ -145,9 +147,13 @@ The document writes the tag as `HMAC(key, sessionId || nonce)`. The implementati
 |---|---|---|
 | `CsrfProtectionFilter` | Global | Authorization — before model binding, so a forged request is rejected before its body is read |
 | `ValidationFilter` (§10) | Global | Action — the single producer of `400`s |
-| `AuditActionFilter` | Admin controllers | **Deferred to §15**, which owns `IAuditLogger` |
+| `AuditActionFilter` | Global, opt-in by `[AuditEvent]` | Action — writes only after a successful attributed action |
+| `EmailTargetRateLimitFilter` | Global, active only for `email-sending` | Action after validation — enforces the per-target-account half |
 
-Both global filters are registered through `MvcOptions` in `AddPipelineServices`, not on individual controllers: a filter applied per controller is one a new controller forgets, and the omission is invisible until someone exploits it.
+The global filters are registered through `MvcOptions` in `AddPipelineServices`, not on
+individual controllers: a filter applied per controller is one a new controller forgets,
+and the omission is invisible until someone exploits it. The email filter resolves as a
+singleton because its in-memory partitions must survive across requests.
 
 ---
 
@@ -156,7 +162,8 @@ Both global filters are registered through `MvcOptions` in `AddPipelineServices`
 | Item | Owner | Reason |
 |---|---|---|
 | `ForwardedHeadersMiddleware` | §27 | Needs the deployment's proxy allowlist |
-| Serilog request logging + `LogContext` push | §15 | Owns the Serilog package reference and enrichers |
-| Rate limiter | §17 | Slot is reserved in the order |
-| `AuditActionFilter` | §15 | Depends on `IAuditLogger`, which §15 defines |
-| Scalar CSP relaxation | §18 | Self-hosting versus a CDN host is an §18 decision |
+| Feature-service audit producers | §12/§15 | Most catalog events have no service path yet |
+| Audit retention worker | §12/§15 | The 90-day period is approved; the shared cleanup worker does not exist |
+
+Serilog request logging/enrichers, the rate limiter, `AuditActionFilter`, and Scalar's
+self-hosted bundle/CSP relaxation have now landed in their owning workstreams.

@@ -81,7 +81,7 @@ Solution builds; `Program.cs` under ~40 lines with zero business logic; all mand
 - [x] Solution builds — 0 warnings, 0 errors; both test projects green.
 - [x] `Program.cs` is **16 lines**, zero business logic, calls only extension methods.
 - [x] All mandated directories exist (19 with `.gitkeep`).
-- [x] Sample code gone — no `weatherforecast` reference anywhere; no `app.MapGet`/`MapPost` handler remains; the served OpenAPI document is `"paths": {}`.
+- [x] Sample code gone — no `weatherforecast` reference anywhere; no `app.MapGet`/`MapPost` handler remains. The skeleton document was `"paths": {}` at completion; §11 and §18 now populate it with the 43 real operations.
 - [ ] **Committed** — left to the project owner.
 
 **Everything except the commit is done and verified.**

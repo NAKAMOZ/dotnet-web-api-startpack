@@ -49,6 +49,8 @@ public static partial class ServiceCollectionExtensions
         // CSRF token service plus its global filter.
         services.AddPipelineServices();
 
+        services.AddApiRateLimiting();
+
         // URL-segment versioning: /api/v1/… (P2, ADR-0015).
         services
             .AddApiVersioning(options =>
@@ -69,8 +71,7 @@ public static partial class ServiceCollectionExtensions
                 options.SubstituteApiVersionInUrl = true;
             });
 
-        // Built-in OpenAPI generator. Scalar renders it in §18.
-        services.AddOpenApi();
+        services.AddApiOpenApi();
 
         return services;
     }

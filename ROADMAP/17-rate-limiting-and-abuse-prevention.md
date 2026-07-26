@@ -25,10 +25,16 @@ P6.
 
 ## Tasks
 
-- [ ] `Configuration/RateLimitOptions.cs` (all numbers configurable, defaults as above).
-- [ ] `Extensions/ServiceCollectionExtensions.RateLimiting.cs` + `[EnableRateLimiting("policy")]` attributes across controllers per the matrix above.
-- [ ] 429 ProblemDetails integration (limiter `OnRejected` → §13 envelope).
-- [ ] `Documentation/Security/RateLimits.md`: policy matrix (endpoint → policy → limits).
+- [x] `Configuration/RateLimitOptions.cs` (all numbers configurable, defaults as above).
+- [x] `Extensions/ServiceCollectionExtensions.RateLimiting.cs` + `[EnableRateLimiting("policy")]` attributes across controllers per the matrix above. `general` is the global default, so an unannotated endpoint remains covered.
+- [x] 429 ProblemDetails integration (limiter `OnRejected` → §13 envelope), including `Retry-After`, correlation/trace ids and structured rejection logging.
+- [x] `Documentation/Security/RateLimits.md`: policy matrix (endpoint → policy → limits).
+
+### Recorded deviations
+
+- **The per-target half of `email-sending` is an MVC action filter over a built-in partitioned fixed-window limiter.** The per-IP half stays in middleware before authentication. A target account cannot be identified safely there: the reset address has not been model-bound and the verification-resend subject has not been authenticated. `EmailTargetRateLimitFilter` runs after both, hashes email partition keys, and shares one singleton limiter across requests.
+- **The global limiter uses the authenticated subject only when trusted upstream middleware has already established one; ordinary traffic partitions by IP.** §14 deliberately places rate limiting before authentication to stop password-hash CPU exhaustion. Moving it later merely to make the general partition user-based would remove that control.
+- **No audit row is invented for a rejection.** The closed §15 catalog has no `rate_limit_exceeded` event, while recording a rejected refresh as `token_refreshed` or a rejected login as `login_failed` would be false. Rejections are structured operational log events until the owner expands the catalog.
 
 ## Expected Deliverables
 
@@ -44,7 +50,7 @@ Per-account email-sending caps are the defense the per-IP limiter can't provide 
 
 ## Testing Requirements
 
-§21/§22: exceed each policy in-test → 429 + `Retry-After`; verify partition independence (two accounts, one IP; one account, two IPs).
+Implemented integration coverage: every policy can be exhausted to `429` + `Retry-After`; two target accounts on one IP remain independent; one target account across several IPs shares its account allowance; auth partitions remain independent across IPs.
 
 ## Documentation Requirements
 

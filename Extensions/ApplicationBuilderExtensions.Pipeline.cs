@@ -100,17 +100,9 @@ public static partial class ApplicationBuilderExtensions
         // makes "one envelope for every non-2xx" true rather than aspirational.
         app.UseStatusCodePages();
 
-        if (app.Environment.IsDevelopment())
-        {
-            // OpenAPI document is exposed in Development only; Scalar UI arrives in §18
-            // and is disabled in production (P16, still pending).
-            //
-            // AllowAnonymous is required as of §12: the deny-by-default fallback applies to
-            // every endpoint without authorization metadata, and this one has none — without
-            // the opt-out the document itself answers 401 in development.
-            app.MapOpenApi().AllowAnonymous();
-        }
-        else
+        app.MapApiDocumentation();
+
+        if (!app.Environment.IsDevelopment())
         {
             // ── 5. HSTS ──────────────────────────────────────────────────────────────
             // Development only ever runs on localhost, where a browser that has cached an
@@ -124,8 +116,10 @@ public static partial class ApplicationBuilderExtensions
         // ── 6. Security headers ──────────────────────────────────────────────────────
         app.UseMiddleware<SecurityHeadersMiddleware>();
 
-        // TODO §17: rate limiting, here — before authentication, so unauthenticated abuse is
-        // throttled before it reaches a password hash.
+        // The general limiter covers every route. Credential and email endpoints carry named
+        // policies that add tighter caps. This stays before authentication so rejected login
+        // attempts never pay for a database lookup or Argon2 verification.
+        app.UseRateLimiter();
 
         // ── 8. CORS ──────────────────────────────────────────────────────────────────
         // The policy comes from OriginAwareCorsPolicyProvider, which offers credentials to

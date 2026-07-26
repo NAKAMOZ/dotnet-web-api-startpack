@@ -129,8 +129,8 @@ Last reviewed: 2026-07-23 (§16). Re-review at v1 close (§29) and whenever §12
 | Req | Requirement | Status | Evidence |
 |---|---|---|---|
 | 11.1.1 | Logic flows processed in sequence | ✅ | MFA tickets are single-use and hashed at rest; refresh rotation is one transaction inside `CreateExecutionStrategy()` |
-| 11.1.2 | Limits on business-logic flows | 🔄 | Lockout (§16) + rate limiting (§17) |
-| 11.1.4 | Anti-automation on high-value flows | 🔄 | §17 |
+| 11.1.2 | Limits on business-logic flows | ✅ | Lockout (§16) + `auth-strict`, `email-sending`, `registration`, and global limits — `RateLimits.md` |
+| 11.1.4 | Anti-automation on high-value flows | ✅ | IP and target-account partition tests — `RateLimitingTests` |
 | 11.1.5 | Business-logic limits enforced server-side | ✅ | Validators are structural only; anything needing the database is a service decision, never a client one |
 
 ## V13 — API and Web Service

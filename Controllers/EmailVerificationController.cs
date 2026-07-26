@@ -1,6 +1,8 @@
+using Api.Configuration;
 using Api.DTOs.EmailVerification;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Api.Controllers;
 
@@ -16,6 +18,7 @@ public sealed class EmailVerificationController : ApiControllerBase
     /// </remarks>
     [HttpPost("send")]
     [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.EmailSending)]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]

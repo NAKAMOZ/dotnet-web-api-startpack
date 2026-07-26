@@ -1,7 +1,9 @@
+using Api.Configuration;
 using Api.DTOs.Auth;
 using Api.DTOs.Passkeys;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Api.Controllers;
 
@@ -51,6 +53,7 @@ public sealed class PasskeysController : ApiControllerBase
     /// <summary>Verifies an assertion and creates a session with <c>amr: [webauthn]</c>.</summary>
     [HttpPost("authentication/complete")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]

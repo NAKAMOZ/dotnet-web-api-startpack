@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-A Better Auth–inspired authentication & authorization REST API on .NET 10. **Phase A complete** (§1–§3), **§4–§5 written**, **§6–§7 landed**: decisions recorded, packages pinned, skeleton built, token architecture designed, entity model implemented and mapped to PostgreSQL.
+A Better Auth–inspired authentication & authorization REST API on .NET 10. **Phases A–D landed**, with §15–§20 partially or fully implemented: decisions recorded, packages pinned, data/token/pipeline architecture built, rate limiting active, OpenAPI + Scalar configured, all endpoint Markdown present, and 203 tests green.
 
 What exists in code: the full data layer (§6–§8, migration applied), 47 DTOs (§9), 20 validators (§10), 14 controllers covering all 43 inventory operations (§11), and the **token pipeline** (§12): Argon2id hashing, CSPRNG tokens, the ES256 signing-key ring with JWKS, access-token issuance, refresh rotation with reuse detection, session lifetime, MFA tickets, and the real authentication schemes.
 
@@ -18,9 +18,15 @@ What exists in code: the full data layer (§6–§8, migration applied), 47 DTOs
 
 **§16 landed everything that does not need a login service.** The Data Protection key ring is now persisted to PostgreSQL (`ADR-0021`) — before this it was per-machine, and per-process in any container without a writable home, which orphaned every stored signing key on restart. Two lines in `ServiceCollectionExtensions.Auth.cs` are load-bearing: `PersistKeysToDbContext<AppDbContext>()` and `SetApplicationName`, whose constant is mixed into every purpose chain — **change it and every existing protected payload, signing keys included, becomes unreadable**. That failure is silent through JWKS, which projects public keys and never unprotects; it appears only at signing time. `Documentation/Operations/Migrations.md` §8 has the one-off deploy step. `auth` now holds **fourteen** tables, and the runtime role needs **write** on `DataProtectionKeys` — Data Protection rolls a successor key at runtime, so a read-only grant fails ~90 days in.
 
-**Lockout arithmetic lives in `Services/Security/LockoutPolicy.cs`, not in the login service** — a recorded deviation from §16, so §22 can assert boundaries without a database and a password hash per case. Policy is 5 failures / 15 minutes, fixed window, counter reset on success. It is only half a control: lockout bounds guessing against *one* account and does nothing about one password sprayed across ten thousand, which is §17's per-IP limiting. `LockoutPolicy.RegisterFailure` is scaffolded and **currently throws**.
+**Lockout arithmetic lives in `Services/Security/LockoutPolicy.cs`, not in the login service** — a recorded deviation from §16, so §22 can assert boundaries without a database and a password hash per case. Policy is 5 failures / 15 minutes, fixed window, counter reset on success, and a fresh allowance after an expired lock. The transition is implemented and boundary-tested; wiring it into login remains blocked on §12's missing `LoginService`. It is only half a control: lockout bounds guessing against *one* account and does nothing about one password sprayed across ten thousand, which is §17's per-IP limiting.
 
 **`Documentation/Security/Enumeration.md` is the anti-enumeration contract**, written ahead of §12's services rather than after them — every 🔓 endpoint's exists-vs-absent response pair, on status, body, timing and side effects. It resolves the open question in `Documentation/Errors.md` §4: anonymous registration answers **202 for both cases**, and `email_already_registered` becomes internal-only there, exactly like `account_locked`. `ASVS-Checklist.md` is the L2 traceability doc; its ⏸️ and ❌ rows are the point of it, and the one ❌ is that the key ring itself is unencrypted at rest pending P7/P14.
+
+**§17 rate limiting is active before authentication.** `general` is the global sliding-window default; `auth-strict`, `registration`, and the IP half of `email-sending` are named endpoint policies. The target-account half of `email-sending` is deliberately `EmailTargetRateLimitFilter`, after authentication and validation: before those stages neither the reset email nor the verified resend subject can be trusted. Email keys are SHA-256 hashed in memory. All rejections are RFC 9457 `rate_limited` with `Retry-After`. Only `RemoteIpAddress` is read — never raw `X-Forwarded-For`; §27 must configure known proxies ahead of this stage. P6's formal store approval remains pending even though the recommended in-memory implementation is present.
+
+**§18–§19 are mechanically joined.** `SecuritySchemeTransformer` publishes bearer, cookie and API-key schemes; `AuthRequirementOperationTransformer` derives per-operation security from endpoint metadata. `/openapi/v1.json` and `/scalar/v1` exist in Development and Staging and are unmapped in Production (P16 formal approval remains pending). All 43 endpoint files are under `Documentation/<Feature>/`; `DocumentationSyncTests` compares their `method`/`route`/`auth` front matter to generated OpenAPI in both directions and enforces the sixteen headings.
+
+**The test baseline is 203: 187 unit, 16 integration.** Unit coverage includes lockout boundaries, JWT claims/ES256 signatures and the key-rotation race, crypto, authorization, mappings, all-validator accepted fixtures and architecture guards. EF-dependent refresh/session transitions stay out of unit tests; §21 must exercise them against PostgreSQL rather than EF's in-memory provider.
 
 **Two password-hashing profiles, and they must never merge.** `IPasswordHasher.Hash` is the slow profile for user passwords; `HashSecret` is the deliberately cheap one for API keys and recovery codes, which are high-entropy machine-generated secrets with no dictionary to attack. Separate methods rather than a parameter, because a defaulted parameter is how the fast profile eventually reaches the password path.
 
@@ -38,11 +44,11 @@ What exists in code: the full data layer (§6–§8, migration applied), 47 DTOs
 
 **Every non-2xx response is RFC 9457 with a stable `errorCode`** (§13). `Documentation/Errors.md` is the catalogue and guard tests fail the build if a code is missing from it. Exception→status mapping lives in exactly one place, `Exceptions/ExceptionToProblemDetailsMap.cs` — services never construct responses and controllers never map errors. `title`/`detail` are prose that may be reworded; `errorCode` is the contract. Two rules that are load-bearing: outside Development the framework's `exception` extension is stripped and 5xx `detail` is blanked, and `AccountLockedException` maps **identically** to `InvalidCredentialsException` so lockout stays invisible.
 
-**The pipeline order is load-bearing and lives only in `Extensions/ApplicationBuilderExtensions.Pipeline.cs`** (§14). `Documentation/Architecture/Pipeline.md` is the source of truth: correlation id → exception handler → security headers → CORS → authentication → authorization → endpoints, each position justified. Two things that look like over-engineering and are not. First, `CorrelationIdMiddleware` and `SecurityHeadersMiddleware` write their headers from `Response.OnStarting` callbacks, because `UseExceptionHandler` calls `Response.Clear()` before writing a problem body — headers set on the way in would be present on every 2xx and missing on every 5xx (`PipelineTests` fails if this is "simplified"). Second, CORS uses a custom `ICorsPolicyProvider`: `AllowCredentials` is a property of a built policy, so "credentials only for cookie-mode origins" cannot be expressed in a single one. Rate limiting (§17) goes **before** authentication and CORS **before** it too — a preflight carries no credentials and would 401 behind deny-by-default.
+**The pipeline order is load-bearing and lives only in `Extensions/ApplicationBuilderExtensions.Pipeline.cs`** (§14). `Documentation/Architecture/Pipeline.md` is the source of truth: correlation id → request logging → exception handler → HTTPS/security headers → rate limiting → CORS → authentication → authorization → endpoints, each position justified. Two things that look like over-engineering and are not. First, `CorrelationIdMiddleware` and `SecurityHeadersMiddleware` write their headers from `Response.OnStarting` callbacks, because `UseExceptionHandler` calls `Response.Clear()` before writing a problem body — headers set on the way in would be present on every 2xx and missing on every 5xx (`PipelineTests` fails if this is "simplified"). Second, CORS uses a custom `ICorsPolicyProvider`: `AllowCredentials` is a property of a built policy, so "credentials only for cookie-mode origins" cannot be expressed in a single one. Rate limiting goes **before** authentication to stop password-hash CPU exhaustion; CORS also stays before authentication because a preflight carries no credentials and would 401 behind deny-by-default.
 
 **CSRF is enforced globally by `Filters/CsrfProtectionFilter.cs`**, and the exemption is the dangerous half. A request is challenged only when it is state-changing, authenticated, **and** authenticated by cookie — the marker `AuthTransport.CookieAuthenticatedItemKey`, set by `ConfigureJwtBearerOptions` at the moment it reads the access cookie. Do not re-derive that condition from the absence of an `Authorization` header; the handler's precedence rule is the only authority. Both halves are checked: constant-time double submit, plus the token's tag verified against the request's `sid` claim. The tag comes from an `ITimeLimitedDataProtector`, a recorded deviation from Authentication.md's raw-HMAC formula with the same binding property.
 
-**Controllers are thin by rule** (§11, 14 files): an action maps the request, makes one service call, maps the result to a status. Anything that branches beyond status selection belongs in a service. Controllers never read tokens, cookies or headers — handlers turn those into claims, and `ApiControllerBase` exposes `CurrentUserId`/`CurrentSessionId`. Every action needs a `CancellationToken`, a `[ProducesResponseType]` set, and an explicit `[Authorize]`/`[AllowAnonymous]`/`[RequirePermission]`; `ControllerArchitectureTests` fails the build otherwise. Action bodies currently return `NotImplementedYet()` (501) — §12 replaces each with its service call.
+**Controllers are thin by rule** (§11, 14 files): an action maps the request, makes one service call, maps the result to a status. Anything that branches beyond status selection belongs in a service. Controllers never read tokens, cookies or headers — handlers turn those into claims, and `ApiControllerBase` exposes `CurrentUserId`/`CurrentSessionId`. Every action needs a `CancellationToken`, a `[ProducesResponseType]` set, and an explicit `[Authorize]`/`[AllowAnonymous]`/`[RequirePermission]`; `ControllerArchitectureTests` fails the build otherwise. 41 action bodies currently return `NotImplementedYet()` (501) — §12 replaces each with its service call.
 
 **Every request DTO has a validator** in `Validators/<Feature>/`, mirroring `DTOs/` (§10, 20 validators). Validators are `internal sealed` and registered by assembly scan — which requires `includeInternalTypes: true`; without it the scan finds nothing and validation silently stops happening. Validators are **structural only**: format, ranges, presence. Anything needing the database (email uniqueness, token validity) belongs in a service, both because a validator must stay side-effect-free and because "this email is taken" is an enumeration oracle. The password policy lives in exactly one place, `PasswordRules` — register, reset and change all call it, so they cannot drift.
 
@@ -52,7 +58,7 @@ What exists in code: the full data layer (§6–§8, migration applied), 47 DTOs
 
 **Options classes carry an `Auth` prefix** — `AuthSessionOptions`, `AuthCookieOptions`. Plain `SessionOptions` and `CookieOptions` both collide with framework types that implicit usings pull into scope.
 
-**Deny-by-default is ACTIVE** (activated in §12). Any endpoint with no authorization metadata requires an authenticated user, so a forgotten `[Authorize]` fails closed. Two consequences that look like bugs otherwise: an unknown path answers **401, not 404** (the fallback covers requests matching no endpoint — an anonymous caller learns nothing about which paths exist), and any non-controller endpoint that must stay public needs an explicit `.AllowAnonymous()`, as `MapOpenApi()` has.
+**Deny-by-default is ACTIVE** (activated in §12). Any endpoint with no authorization metadata requires an authenticated user, so a forgotten `[Authorize]` fails closed. Two consequences that look like bugs otherwise: an unknown path answers **401, not 404** (the fallback covers requests matching no endpoint — an anonymous caller learns nothing about which paths exist), and any non-controller endpoint that must stay public needs an explicit `.AllowAnonymous()`, as OpenAPI and Scalar do.
 
 **Authentication is a composite policy scheme**: `Composite` forwards to `ApiKey` when the `Authorization` header contains `ak_`, otherwise to `JwtBearer`. JwtBearer is configured by `ConfigureJwtBearerOptions` (an `IConfigureNamedOptions` class, *not* an inline lambda — a lambda would need `BuildServiceProvider()` during registration, which creates a second container with a second Data Protection key ring). Two lines there are load-bearing and must not be "simplified": `ValidAlgorithms = [ES256]` (the pin that closes `alg:none` and HS256-with-the-public-key), and the `kid` resolver returning `[]` for an unresolvable key — never the whole ring, or retired keys keep validating.
 
@@ -69,10 +75,10 @@ Directory.Packages.props          all NuGet versions (CPM)
 Directory.Build.props             solution-wide build settings
 Program.cs                        composition root, 16 lines, zero logic
 Extensions/                       the Add*/Use* methods Program.cs calls
-Controllers/ DTOs/ Validators/ Services/ Models/ Data/ …   empty, .gitkeep only
+Controllers/ DTOs/ Validators/ Services/ Models/ Data/ …   application source
 tests/UnitTests/                  validators, mappers, services in isolation
 tests/IntegrationTests/           WebApplicationFactory; Testcontainers arrives in §21
-Documentation/                    ADRs, Scope.md; per-endpoint docs land per feature (§19)
+Documentation/                    ADRs, architecture/security docs, 43 endpoint files
 http/                             per-controller .http files, populated in §24
 ROADMAP/                          the 29 workstreams
 ```
@@ -87,7 +93,8 @@ Run from the repo root.
 - **Build**: `dotnet build`
 - **Test**: `dotnet test`
 - **Watch**: `dotnet watch run`
-- **OpenAPI document**: `curl http://localhost:5035/openapi/v1.json` — currently `"paths": {}`, correctly, since no controllers exist. Scalar UI arrives in §18.
+- **OpenAPI document**: `curl http://localhost:5035/openapi/v1.json` (Development/Staging only)
+- **Scalar UI**: `http://localhost:5035/scalar/v1` (Development/Staging only)
 
 The solution file is **`.slnx`**, not `.sln` — the .NET 10 SDK's default format. Requires SDK 10, VS 2022 17.14+, or Rider 2025.1+. The roadmap text says `.sln`; this is a recorded deviation.
 
@@ -107,7 +114,7 @@ These will fail your build, by design:
 ## Decision record (`Documentation/`)
 
 - `Documentation/Decisions/README.md` — ADR index and numbering rules.
-- `ADR-0001`–`ADR-0020` — one decision per file. New decisions get a new ADR; superseding one sets the old file's status to `Superseded by ADR-XXXX` rather than editing or deleting it.
+- `ADR-0001`–`ADR-0021` — one decision per file. New decisions get a new ADR; superseding one sets the old file's status to `Superseded by ADR-XXXX` rather than editing or deleting it.
 - `Documentation/Scope.md` — v1 in-scope capabilities and the deferred list with reasons.
 
 ## The roadmap (`ROADMAP/`)

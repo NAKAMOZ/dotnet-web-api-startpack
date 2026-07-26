@@ -40,10 +40,10 @@ None.
 
 ## Tasks
 
-- [ ] Write `Documentation/_Template.md`.
-- [ ] Author each endpoint file as its feature slice lands (§11 build order) — 43 files total per the tree above.
-- [ ] Implement `DocumentationSyncTests.cs` (file↔operation set equality; per-file route/method/auth assertions via a small front-matter block in each doc: `method`, `route`, `auth` keys the test parses).
-- [ ] `Documentation/README.md`: how to author, how the sync test works, front-matter spec.
+- [x] Write `Documentation/_Template.md`.
+- [x] Author each endpoint file — 43 files total per the tree above, each with endpoint-specific security considerations.
+- [x] Implement `DocumentationSyncTests.cs` (file↔operation set equality; per-file route/method/auth assertions via a small front-matter block in each doc: `method`, `route`, `auth` keys the test parses). A second assertion enforces the sixteen sections and their order.
+- [x] `Documentation/README.md`: how to author, how the sync test works, front-matter spec.
 
 ## Expected Deliverables
 

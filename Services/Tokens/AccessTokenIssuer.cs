@@ -52,28 +52,42 @@ public sealed class AccessTokenIssuer(
             ["token_use"] = "access",
         };
 
-        // The header must carry the kid, and the header is part of what gets signed — so the
-        // signing key's identity has to be known before there is anything to sign.
-        var keyId = await signingKeyManager.GetActiveKeyIdAsync(cancellationToken);
-
-        var header = new Dictionary<string, object>
+        // Rotation can occur between reading the active kid and signing. SignAsync reports
+        // the key that actually signed, so a mismatch is retried with a rebuilt header;
+        // returning it would publish a token whose kid resolves a different public key.
+        for (var attempt = 0; attempt < 3; attempt++)
         {
-            // Pinned, never negotiated. A validator that reads this field to choose a
-            // strategy is the algorithm-confusion vulnerability (Authentication.md §2).
-            ["alg"] = _jwt.Algorithm,
-            ["typ"] = "JWT",
-            ["kid"] = keyId,
-        };
+            // The header must carry the kid, and the header is part of what gets signed — so
+            // the signing key's identity has to be known before there is anything to sign.
+            var keyId = await signingKeyManager.GetActiveKeyIdAsync(cancellationToken);
 
-        var signingInput = $"{EncodeSegment(header)}.{EncodeSegment(payload)}";
+            var header = new Dictionary<string, object>
+            {
+                // Pinned, never negotiated. A validator that reads this field to choose a
+                // strategy is the algorithm-confusion vulnerability (Authentication.md §2).
+                ["alg"] = _jwt.Algorithm,
+                ["typ"] = "JWT",
+                ["kid"] = keyId,
+            };
 
-        var signature = await signingKeyManager.SignAsync(
-            Encoding.ASCII.GetBytes(signingInput),
-            cancellationToken);
+            var signingInput = $"{EncodeSegment(header)}.{EncodeSegment(payload)}";
 
-        var token = $"{signingInput}.{WebEncoders.Base64UrlEncode(signature.Signature)}";
+            var signature = await signingKeyManager.SignAsync(
+                Encoding.ASCII.GetBytes(signingInput),
+                cancellationToken);
 
-        return new IssuedAccessToken(token, tokenId, expiresAt);
+            if (!string.Equals(signature.KeyId, keyId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var token = $"{signingInput}.{WebEncoders.Base64UrlEncode(signature.Signature)}";
+
+            return new IssuedAccessToken(token, tokenId, expiresAt);
+        }
+
+        throw new InvalidOperationException(
+            "The active signing key changed repeatedly while an access token was being issued.");
     }
 
     /// <summary>Maps an internal enum member to its RFC 8176 <c>amr</c> value.</summary>

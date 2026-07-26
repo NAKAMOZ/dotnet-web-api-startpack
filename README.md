@@ -6,8 +6,10 @@ Architecturally inspired by Better Auth; no Better Auth source is copied.
 
 No user interface ships with it. Consumers build their own.
 
-**Status:** Phase A complete — decisions recorded, packages pinned, solution skeleton built.
-No feature code yet. See [`ROADMAP/README.md`](ROADMAP/README.md) for the workstream board.
+**Status:** API plumbing, token infrastructure, cross-cutting controls, OpenAPI/Scalar, and
+all 43 endpoint contracts are present. The feature services are still being built, so 41
+actions intentionally return `501 Not Implemented`. See
+[`ROADMAP/README.md`](ROADMAP/README.md) for the workstream board.
 
 ## Quickstart
 
@@ -29,8 +31,10 @@ The API starts on `http://localhost:5035` (HTTPS profile on 7052).
 curl http://localhost:5035/openapi/v1.json
 ```
 
-Currently returns `"paths": {}` — correctly, since no controllers exist yet. The Scalar UI
-arrives in §18.
+In Development or Staging, browse the interactive Scalar UI at
+`http://localhost:5035/scalar/v1`. Paste a JWT into the `bearer` scheme, use the
+browser-managed `cookie` scheme, or supply an `apiKey`. Both the OpenAPI document and Scalar
+are intentionally unavailable in Production.
 
 ## Requirements
 
