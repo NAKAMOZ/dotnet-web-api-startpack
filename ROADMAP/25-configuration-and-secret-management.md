@@ -21,11 +21,15 @@ P7.
 
 ## Tasks
 
-- [ ] 10 options files + `IValidateOptions` classes for cross-field rules.
-- [ ] `Extensions/ServiceCollectionExtensions.Options.cs` registering all with `ValidateOnStart`.
-- [ ] `dotnet user-secrets init`; `Documentation/Operations/Configuration.md`: full key reference (key, type, default, secret? yes/no, env var name).
-- [ ] Startup misconfiguration test (§21): missing signing-key config → host fails to start with a clear message.
-- [ ] Sweep: no connection strings, client secrets, or keys in any committed file (CI grep gate for known patterns).
+- [x] 12 concerns are represented by typed options files + `IValidateOptions` classes for cross-field rules, including production proxy trust and OTLP export. Existing collision-avoiding names `AuthSessionOptions` and `ApiCorsOptions` are retained.
+- [x] `Extensions/ServiceCollectionExtensions.Options.cs` registering all with `ValidateOnStart`.
+- [x] `dotnet user-secrets init`; `Documentation/Operations/Configuration.md`: full key reference (key, type, default, secret? yes/no, env var name).
+- [x] Startup misconfiguration test (§21): missing JWT issuer fails host startup with `OptionsValidationException`. There is deliberately no configured signing-key secret: ADR-0020 generates and protects the database key ring.
+- [x] Sweep: no connection strings, client secrets, or keys in any committed file (CI grep gate for known patterns).
+
+**Current status (2026-07-26):** implementation and tests are complete for the env-vars-now
+recommendation. Formal completion still requires the owner to resolve P7; no vault provider
+has been inferred while P14 is open.
 
 ## Expected Deliverables
 

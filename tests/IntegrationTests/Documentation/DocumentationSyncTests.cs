@@ -87,6 +87,7 @@ public class DocumentationSyncTests : IClassFixture<WebApplicationFactory<Progra
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Staging");
+                builder.UseTrustedTestProxy();
                 builder.UseSetting(
                     "ConnectionStrings:Postgres",
                     "Host=localhost;Database=documentation-sync-tests");

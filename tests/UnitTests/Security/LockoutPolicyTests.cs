@@ -1,4 +1,5 @@
 using Api.Configuration;
+using Api.Logging;
 using Api.Models;
 using Api.Services.Security;
 using Microsoft.Extensions.Options;
@@ -110,7 +111,8 @@ public class LockoutPolicyTests
                 MaxFailedAttempts = 5,
                 LockoutDuration = TimeSpan.FromMinutes(15),
             }),
-            time);
+            time,
+            new AuthMetrics());
 
         var user = new User
         {

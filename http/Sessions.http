@@ -1,0 +1,16 @@
+@api = {{apiBase}}
+@sessionId = 0198f3a0-0000-7000-8001-000000000101
+
+### List sessions
+GET {{api}}/sessions
+Authorization: Bearer {{accessToken}}
+
+### Revoke one session
+DELETE {{api}}/sessions/{{sessionId}}
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+
+### Revoke all except current
+DELETE {{api}}/sessions
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}

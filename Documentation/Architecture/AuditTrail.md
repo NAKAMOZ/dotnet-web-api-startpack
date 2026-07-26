@@ -53,7 +53,7 @@ The stored form is the enum member name (`LoginFailed`); the snake_case name is 
 | `role_granted` | `RoleGranted` | the target account | `AuditActionFilter` |
 | `role_revoked` | `RoleRevoked` | the target account | `AuditActionFilter` |
 | `admin_user_deleted` | `AdminUserDeleted` | **null** — see §4 | §12 users service |
-| `signing_key_rotated` | `SigningKeyRotated` | null (no subject) | §12 key-rotation job |
+| `signing_key_rotated` | `SigningKeyRotated` | null (no subject) | `SigningKeyManager.RotateAsync` (operator command; future job reuses it) |
 
 As of §15 the two writers that exist are `AuditActionFilter` and `IAuditLogger` itself. Every row marked "§12 …" is a **call site that does not exist yet**; §12 adds them as each service lands, and §21 asserts each event appears after its triggering flow.
 

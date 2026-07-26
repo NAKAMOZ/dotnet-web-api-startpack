@@ -1,0 +1,26 @@
+@api = {{apiBase}}
+
+### Begin TOTP enrollment
+POST {{api}}/mfa/totp/enroll
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+
+### Confirm TOTP and receive recovery codes
+POST {{api}}/mfa/totp/confirm
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+Content-Type: application/json
+
+{
+  "code": "{{totpCode}}"
+}
+
+### Disable TOTP (recent authentication required)
+DELETE {{api}}/mfa/totp
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+
+### Regenerate recovery codes (recent authentication required)
+POST {{api}}/mfa/recovery-codes/regenerate
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}

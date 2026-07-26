@@ -72,6 +72,7 @@ Two failure modes to design against:
 | `OpenTelemetry.Instrumentation.Http` | 1.17.0 | Outbound HTTP traces (social provider calls) | Apache-2.0 |
 | `OpenTelemetry.Instrumentation.Runtime` | 1.17.0 | GC, thread-pool, exception counters | Apache-2.0 |
 | `OpenTelemetry.Exporter.OpenTelemetryProtocol` | 1.17.0 | OTLP export; backend still open (P10) | Apache-2.0 |
+| `Npgsql.OpenTelemetry` | 10.0.3 | Npgsql command tracing (§28); version-aligned with Npgsql | PostgreSQL |
 | `AspNetCore.HealthChecks.NpgSql` | 9.0.0 | Readiness probe against PostgreSQL | Apache-2.0 |
 
 **Tests**

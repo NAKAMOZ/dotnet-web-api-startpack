@@ -6,8 +6,8 @@ using Api.DTOs.PasswordReset;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IntegrationTests;
 
@@ -203,6 +203,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
         var factory = _factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Production");
+            builder.UseTrustedTestProxy();
             builder.UseSetting(
                 "ConnectionStrings:Postgres",
                 "Host=localhost;Database=rate-limiting-tests");

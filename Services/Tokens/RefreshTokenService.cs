@@ -1,7 +1,9 @@
 using Api.Configuration;
 using Api.Data;
+using Api.Logging;
 using Api.Models;
 using Api.Models.Enums;
+using Api.Services.Audit;
 using Api.Services.Crypto;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -15,7 +17,9 @@ public sealed class RefreshTokenService(
     IAccessTokenIssuer accessTokenIssuer,
     IOptions<AuthSessionOptions> sessionOptions,
     TimeProvider timeProvider,
-    ILogger<RefreshTokenService> logger) : IRefreshTokenService
+    ILogger<RefreshTokenService> logger,
+    IAuditLogger auditLogger,
+    AuthMetrics metrics) : IRefreshTokenService
 {
     private readonly AuthSessionOptions _options = sessionOptions.Value;
 
@@ -52,7 +56,7 @@ public sealed class RefreshTokenService(
 
             if (stored is null)
             {
-                return RefreshResult.Failure(RefreshOutcome.NotFound);
+                return Failure(RefreshOutcome.NotFound);
             }
 
             var session = stored.Session;
@@ -72,18 +76,25 @@ public sealed class RefreshTokenService(
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
+                await auditLogger.LogAsync(
+                    AuditEventType.TokenReuseDetected,
+                    session.UserId,
+                    new { session.Id },
+                    cancellationToken);
+                metrics.RecordReuseDetection();
+                await EnsureActiveSessionGaugeAsync(cancellationToken);
 
-                return RefreshResult.Failure(RefreshOutcome.ReuseDetected, session.Id);
+                return Failure(RefreshOutcome.ReuseDetected, session.Id);
             }
 
             if (session.RevokedAt is not null)
             {
-                return RefreshResult.Failure(RefreshOutcome.SessionRevoked, session.Id);
+                return Failure(RefreshOutcome.SessionRevoked, session.Id);
             }
 
             if (stored.ExpiresAt <= now)
             {
-                return RefreshResult.Failure(RefreshOutcome.TokenExpired, session.Id);
+                return Failure(RefreshOutcome.TokenExpired, session.Id);
             }
 
             // The two session bounds are reported separately so a client can tell "you were
@@ -91,12 +102,12 @@ public sealed class RefreshTokenService(
             // exist in the service contract, not just in the HTTP layer.
             if (session.AbsoluteExpiresAt <= now)
             {
-                return RefreshResult.Failure(RefreshOutcome.SessionExpired, session.Id);
+                return Failure(RefreshOutcome.SessionExpired, session.Id);
             }
 
             if (session.LastActiveAt + _options.InactivityWindow <= now)
             {
-                return RefreshResult.Failure(RefreshOutcome.SessionIdle, session.Id);
+                return Failure(RefreshOutcome.SessionIdle, session.Id);
             }
 
             var currentStamp = await dbContext.Users
@@ -109,7 +120,7 @@ public sealed class RefreshTokenService(
             // one access-token lifetime (Authentication.md §6).
             if (!tokenGenerator.FixedTimeEquals(currentStamp, session.SecurityStamp))
             {
-                return RefreshResult.Failure(RefreshOutcome.SecurityStampChanged, session.Id);
+                return Failure(RefreshOutcome.SecurityStampChanged, session.Id);
             }
 
             var (issuedRefresh, successor) = CreateToken(session.Id, session.AbsoluteExpiresAt);
@@ -151,6 +162,13 @@ public sealed class RefreshTokenService(
             // leaves two live tokens on one chain — which makes reuse detection unreliable.
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+            await auditLogger.LogAsync(
+                AuditEventType.TokenRefreshed,
+                session.UserId,
+                new { session.Id },
+                cancellationToken);
+            metrics.RecordRefresh("success");
+            await EnsureActiveSessionGaugeAsync(cancellationToken);
 
             return RefreshResult.Success(session.Id, accessToken, issuedRefresh);
         });
@@ -185,4 +203,36 @@ public sealed class RefreshTokenService(
 
         return (new IssuedRefreshToken(plaintext, entity.Id, sessionExpiry), entity);
     }
+
+    private RefreshResult Failure(RefreshOutcome outcome, Guid? sessionId = null)
+    {
+        metrics.RecordRefresh(ToMetricResult(outcome));
+        return RefreshResult.Failure(outcome, sessionId);
+    }
+
+    private async Task EnsureActiveSessionGaugeAsync(CancellationToken cancellationToken)
+    {
+        if (metrics.HasActiveSessionSample)
+        {
+            return;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var count = await dbContext.Sessions.CountAsync(
+            session => session.RevokedAt == null && session.AbsoluteExpiresAt > now,
+            cancellationToken);
+        metrics.SetActiveSessions(count);
+    }
+
+    private static string ToMetricResult(RefreshOutcome outcome) => outcome switch
+    {
+        RefreshOutcome.NotFound => "not_found",
+        RefreshOutcome.ReuseDetected => "reuse_detected",
+        RefreshOutcome.SessionRevoked => "session_revoked",
+        RefreshOutcome.TokenExpired => "token_expired",
+        RefreshOutcome.SessionExpired => "session_expired",
+        RefreshOutcome.SessionIdle => "session_idle",
+        RefreshOutcome.SecurityStampChanged => "security_stamp_changed",
+        _ => "failure",
+    };
 }

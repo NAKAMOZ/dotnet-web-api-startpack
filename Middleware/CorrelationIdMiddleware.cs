@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Api.Middleware;
 
 /// <summary>
@@ -26,6 +28,7 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next)
             : CorrelationId.New();
 
         context.Items[CorrelationId.ItemsKey] = correlationId;
+        Activity.Current?.SetTag("app.correlation_id", correlationId);
 
         // ── Why OnStarting rather than a plain header write ──────────────────────────
         //

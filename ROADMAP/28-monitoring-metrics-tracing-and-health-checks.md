@@ -21,10 +21,16 @@ P10 (export backend).
 
 ## Tasks
 
-- [ ] `Extensions/ServiceCollectionExtensions.HealthChecks.cs` + `ApplicationBuilderExtensions.HealthChecks.cs` (endpoints, response writer minimal — no dependency detail leakage to anonymous callers).
-- [ ] `Extensions/ServiceCollectionExtensions.Telemetry.cs`: OTel wiring, resource attributes (service name/version), OTLP exporter config-gated.
-- [ ] `Logging/AuthMetrics.cs` + instrumentation calls in §12 services.
-- [ ] `Documentation/Operations/Monitoring.md`: metric catalog, alert catalog with rationale, dashboard sketch.
+- [x] `Extensions/ServiceCollectionExtensions.HealthChecks.cs` + `ApplicationBuilderExtensions.HealthChecks.cs`: live/ready split, PostgreSQL connectivity + pending-migration readiness, five-second timeout, minimal anonymous response.
+- [x] `Extensions/ServiceCollectionExtensions.Telemetry.cs`: ASP.NET Core, HttpClient, runtime and Npgsql wiring; service resource attributes; validated, config-gated OTLP trace/metric export.
+- [🔄] `Logging/AuthMetrics.cs` + instrumentation: full catalog exists; refresh, reuse, lockout, active-session and Argon2 points are wired. Login/MFA emitters wait on their missing §12 services.
+- [x] `Documentation/Operations/Monitoring.md`: signal/metric catalog, health contract, alert thresholds, dashboard sketch and backend-neutral local collector procedure.
+
+**Current status (2026-07-26):** health dependency failure is container-tested; the metric
+catalog has a `MeterListener` assertion; the pinned local collector received service/resource
+attributes, correlated ASP.NET spans, Npgsql traces/metrics and `auth.active_sessions` over
+OTLP. P10 still blocks production backend/retention/on-call acceptance, and §12 blocks the
+login/MFA call sites. The DoD is not yet claimed.
 
 ## Expected Deliverables
 
@@ -40,7 +46,9 @@ Health endpoints, OTel wiring, `AuthMetrics`, monitoring doc.
 
 ## Testing Requirements
 
-§21: health endpoints return correct status with DB up/down (container stop in-test); metrics emitted for a login flow (MeterListener assertion).
+§21: health endpoints return correct status with DB up/down (isolated container stop in-test);
+the complete metric catalog has a `MeterListener` assertion. Login-flow emission remains
+blocked until the login service exists; current service points are instrumented.
 
 ## Documentation Requirements
 

@@ -16,15 +16,20 @@ Production checklist, migration execution, key/secret handling, reverse-proxy co
 
 ## Technology Decisions Requiring Approval
 
-P14 (target), P7 (vault), P17 (key storage — finalized here if vault chosen).
+P14 (target), P7 (vault). P17 is resolved by ADR-0020/0021; P7/P14 may supersede it.
 
 ## Tasks
 
-- [ ] `Documentation/Operations/ProductionChecklist.md`: TLS + HSTS; forwarded headers configured + tested; Scalar disabled (P16); dev seeder provably inert; DB roles split; signing keys per P17; Data Protection table present (§16); secrets per P7; log shipping destination; PostgreSQL backup/restore tested; rate limits reviewed vs real traffic (§23); CORS allowlist final.
-- [ ] `Documentation/Operations/Runbooks/MassRevocation.md`: incident procedure — bump all `SecurityStamp`s / revoke all sessions, rotate signing keys, invalidate refresh tokens; exact SQL/endpoints.
-- [ ] `Documentation/Operations/Runbooks/KeyCompromise.md`: immediate retire-all + re-issue procedure.
-- [ ] Expand-contract migration policy note in `Documentation/Operations/Migrations.md`.
+- [x] `Documentation/Operations/ProductionChecklist.md`: TLS + HSTS; trusted forwarded headers; Scalar disabled; dev seeder inert; DB roles split; signing/Data Protection keys; secrets; log/telemetry destination; backup/restore; rate limits; CORS; migration-first health-gated rollout. Every item names verification evidence.
+- [x] `Documentation/Operations/Runbooks/MassRevocation.md`: incident procedure with exact transactional SQL for security stamps, sessions, refresh tokens and audit evidence.
+- [x] `Documentation/Operations/Runbooks/KeyCompromise.md`: immediate retirement, replacement generation, verification and full-database escalation procedure.
+- [x] Expand-contract migration and rollback policy in `Documentation/Operations/Migrations.md`.
 - [ ] After P14: target-specific deploy definition (infra-as-code or platform config) + enable CD stub (§26).
+
+**Current status (2026-07-26):** target-agnostic production controls are implemented,
+including fail-fast proxy trust configuration/tests and one-shot signing-key rotation
+commands. P14 still blocks a real platform deployment, CD enablement and staging rehearsal;
+P7/P14 still block Data Protection key-ring encryption at rest. The DoD is not claimed.
 
 ## Expected Deliverables
 
@@ -32,7 +37,7 @@ Production checklist, two incident runbooks, migration policy; post-P14: working
 
 ## Dependencies
 
-§8, §16, §24, §26; P14/P7/P17 decisions.
+§8, §16, §24, §26; P14/P7 decisions.
 
 ## Security Considerations
 

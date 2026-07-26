@@ -1,4 +1,3 @@
-using Api.Configuration;
 using Api.Filters;
 using Api.Handlers.Cors;
 using Api.Middleware;
@@ -26,11 +25,6 @@ public static partial class ServiceCollectionExtensions
         // so the framework owns the ordering and the re-throw when no handler claims an
         // exception (§13's map decides what each one becomes).
         services.AddExceptionHandler<ExceptionHandlingMiddleware>();
-
-        services
-            .AddOptions<ApiCorsOptions>()
-            .BindConfiguration(ApiCorsOptions.SectionName)
-            .ValidateOnStart();
 
         // AddCors registers the CORS services and the default policy provider; the line
         // after replaces that provider. Both are needed — the middleware resolves several

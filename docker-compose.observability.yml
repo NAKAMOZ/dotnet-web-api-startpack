@@ -1,0 +1,18 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:0.153.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./deploy/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+
+  api:
+    environment:
+      Telemetry__OtlpExporterEnabled: "true"
+      Telemetry__OtlpEndpoint: "http://otel-collector:4317"
+      OTEL_METRIC_EXPORT_INTERVAL: "5000"
+    depends_on:
+      otel-collector:
+        condition: service_started

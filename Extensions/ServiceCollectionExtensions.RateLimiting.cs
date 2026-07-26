@@ -14,12 +14,6 @@ public static partial class ServiceCollectionExtensions
     /// <summary>Registers §17's named endpoint policies and the default general limiter.</summary>
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services)
     {
-        services
-            .AddOptions<RateLimitOptions>()
-            .BindConfiguration(RateLimitOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
         services.AddRateLimiter();
         services
             .AddOptions<Microsoft.AspNetCore.RateLimiting.RateLimiterOptions>()

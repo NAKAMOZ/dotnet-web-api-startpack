@@ -1,0 +1,27 @@
+@api = {{apiBase}}
+@keyId = 0198f3a0-0000-7000-8001-000000000301
+
+### Create key — secret is returned once
+POST {{api}}/api-keys
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+Content-Type: application/json
+
+{
+  "name": "Local automation",
+  "scopes": ["users:read"],
+  "expiresAt": "2026-12-31T00:00:00Z"
+}
+
+### List keys (metadata only)
+GET {{api}}/api-keys
+Authorization: Bearer {{accessToken}}
+
+### Revoke key
+DELETE {{api}}/api-keys/{{keyId}}
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+
+### Authenticate with a key
+GET {{api}}/users/me
+Authorization: ApiKey {{apiKey}}

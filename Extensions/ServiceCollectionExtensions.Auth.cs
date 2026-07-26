@@ -1,4 +1,3 @@
-using Api.Configuration;
 using Api.Data;
 using Api.Handlers.Authentication;
 using Microsoft.AspNetCore.Authentication;
@@ -22,33 +21,8 @@ public static partial class ServiceCollectionExtensions
     /// <summary>
     /// Authentication schemes, token services, and authorization policies.
     /// </summary>
-    public static IServiceCollection AddAuthenticationServices(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddAuthenticationServices(this IServiceCollection services)
     {
-        services
-            .AddOptions<JwtOptions>()
-            .BindConfiguration(JwtOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        services
-            .AddOptions<AuthCookieOptions>()
-            .BindConfiguration(AuthCookieOptions.SectionName)
-            .ValidateOnStart();
-
-        services
-            .AddOptions<PasswordHashingOptions>()
-            .BindConfiguration(PasswordHashingOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        services
-            .AddOptions<LockoutOptions>()
-            .BindConfiguration(LockoutOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
         // Protects signing-key private material at rest (ADR-0020). Interim until a vault is
         // chosen (P7) — which is exactly why only ISigningKeyManager unprotects: the eventual
         // migration is then a change in one component.

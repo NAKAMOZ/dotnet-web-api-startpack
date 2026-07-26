@@ -13,7 +13,7 @@ Scope: the chapters of ASVS L2 that apply to a stateless authentication and auth
 
 **Read the ⏸️ rows.** They are the point of this document; the ✅ rows are the easy half.
 
-Last reviewed: 2026-07-23 (§16). Re-review at v1 close (§29) and whenever §12 lands a feature service.
+Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12 lands a feature service.
 
 ---
 
@@ -21,7 +21,7 @@ Last reviewed: 2026-07-23 (§16). Re-review at v1 close (§29) and whenever §12
 
 | Req | Requirement | Status | Evidence |
 |---|---|---|---|
-| 1.1.x | Secure SDLC, documented decisions | ✅ | `Documentation/Decisions/` — 21 ADRs, one per decision, superseded rather than edited |
+| 1.1.x | Secure SDLC, documented decisions | ✅ | `Documentation/Decisions/` — 23 ADRs, one per decision, superseded rather than edited |
 | 1.2.2 | Components communicate with least-privilege accounts | 🔄 | Single `auth` schema makes a scoped grant expressible (`AppDbContext.Schema`); the grant itself is §27's deploy step |
 | 1.4.1 | Access control enforced at a trusted layer | ✅ | Deny-by-default fallback policy, §5/§12 — `Extensions/ServiceCollectionExtensions.Authorization.cs` |
 | 1.4.4 | One access-control mechanism, not several | ✅ | `[RequirePermission]` only; scheme-agnostic behind the `Composite` policy scheme |
@@ -122,6 +122,7 @@ Last reviewed: 2026-07-23 (§16). Re-review at v1 close (§29) and whenever §12
 |---|---|---|---|
 | 9.1.1 | TLS for all client connectivity | ✅ | `UseHttpsRedirection`; HSTS outside Development — `ApplicationBuilderExtensions.Pipeline.cs` |
 | 9.1.2–9.1.3 | Strong cipher suites, TLS 1.2+ | ⏸️ | A host/reverse-proxy property, not an application one. §27 runbook item |
+| — | Forwarded scheme/client IP accepted only from trusted proxies | ✅ | Validated exact IP/CIDR allowlist, fail-fast production configuration and known/unknown proxy tests — `ReverseProxyOptionsValidator`, `ForwardedHeadersTests` |
 | 9.2.x | Server-side TLS for outbound connections | 🔄 | Applies once social login and email delivery exist (§12) |
 
 ## V11 — Business Logic

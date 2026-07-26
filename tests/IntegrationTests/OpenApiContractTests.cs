@@ -91,6 +91,7 @@ public class OpenApiContractTests : IClassFixture<WebApplicationFactory<Program>
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment(environment);
+                builder.UseTrustedTestProxy();
                 builder.UseSetting(
                     "ConnectionStrings:Postgres",
                     "Host=localhost;Database=openapi-contract-tests");

@@ -67,9 +67,11 @@ public static partial class ApplicationBuilderExtensions
     /// </remarks>
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
-        // TODO §27: ForwardedHeadersMiddleware, in production only and with a known-proxy
-        // allowlist. Accepting X-Forwarded-For from anywhere lets any caller choose the IP
-        // that lands in the rate limiter and the audit trail.
+        // ── 1. Forwarded headers ──────────────────────────────────────────────────────
+        // Disabled in local Development; mandatory in production-like environments.
+        // The middleware accepts values only from the exact proxies/networks validated at
+        // startup — never from a caller merely because it sent an X-Forwarded-* header.
+        app.UseTrustedForwardedHeaders();
 
         // ── 2. Correlation id ────────────────────────────────────────────────────────
         // Adopts a validated inbound X-Correlation-Id or mints one, publishes it on
@@ -101,6 +103,7 @@ public static partial class ApplicationBuilderExtensions
         app.UseStatusCodePages();
 
         app.MapApiDocumentation();
+        app.MapApplicationHealthChecks();
 
         if (!app.Environment.IsDevelopment())
         {

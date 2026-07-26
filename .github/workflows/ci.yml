@@ -1,0 +1,183 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  quality:
+    name: Restore, format, build, and audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '.config/dotnet-tools.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore
+      - run: dotnet format dotnet-web-api-startpack.slnx --verify-no-changes --no-restore
+      - run: dotnet build --configuration Release --no-restore
+      - name: Vulnerable package gate
+        run: dotnet list package --vulnerable --include-transitive
+      - name: Secret pattern gate
+        run: bash scripts/check-secrets.sh
+
+  unit:
+    name: Unit tests and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '.config/dotnet-tools.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore
+      - name: Unit tests with scoped 85% line gate
+        run: >-
+          dotnet test tests/UnitTests/UnitTests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=unit.trx"
+          --results-directory TestResults/unit
+          /p:CollectCoverage=true
+          /p:CoverletOutput=${{ github.workspace }}/TestResults/unit/coverage
+          /p:CoverletOutputFormat=cobertura
+          /p:Threshold=85
+          /p:ThresholdType=line
+          /p:ThresholdStat=total
+          /p:Include="[*]Api.Services.Crypto.*%2c[*]Api.Validators.*"
+      - name: Coverage summary
+        if: always()
+        run: |
+          if test -f TestResults/unit/coverage.cobertura.xml; then
+            rate="$(sed -n 's/.*line-rate="\([^"]*\)".*/\1/p' TestResults/unit/coverage.cobertura.xml | head -1)"
+            echo "### Unit coverage" >> "$GITHUB_STEP_SUMMARY"
+            echo "Scoped crypto + validators line rate: ${rate}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: unit-test-results
+          path: TestResults/unit
+
+  integration:
+    name: PostgreSQL integration and security tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '.config/dotnet-tools.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore
+      - name: Integration tests
+        run: >-
+          dotnet test tests/IntegrationTests/IntegrationTests.csproj
+          --configuration Release
+          --no-restore
+          --filter "Category!=Security"
+          --logger "trx;LogFileName=integration.trx"
+          --results-directory TestResults/integration
+      - name: Security attack tests
+        run: >-
+          dotnet test tests/IntegrationTests/IntegrationTests.csproj
+          --configuration Release
+          --no-restore
+          --filter "Category=Security"
+          --logger "trx;LogFileName=security.trx"
+          --results-directory TestResults/integration
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: integration-test-results
+          path: TestResults/integration
+
+  image:
+    name: Container build and readiness smoke
+    needs: [quality, unit, integration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: dotnet-web-api-startpack:local
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Compose smoke
+        run: |
+          docker compose up --detach --no-build
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:5035/health/ready; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs api postgres
+          exit 1
+      - name: Stop smoke stack
+        if: always()
+        run: docker compose down --volumes
+
+  migration-bundle:
+    name: EF migration bundle
+    needs: quality
+    runs-on: ubuntu-latest
+    env:
+      ConnectionStrings__Postgres: Host=localhost;Database=bundle;Username=bundle;Password=bundle
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '.config/dotnet-tools.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore --runtime linux-x64
+      - run: dotnet tool restore
+      - run: mkdir -p artifacts
+      - run: >-
+          dotnet ef migrations bundle
+          --self-contained
+          --runtime linux-x64
+          --configuration Release
+          --output artifacts/efbundle
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ef-migration-bundle-linux-x64
+          path: artifacts/efbundle
+
+  cd:
+    name: CD (pending deployment decision P14)
+    if: ${{ false }}
+    needs: [image, migration-bundle]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Enable only after P14 defines the target and environment approvals."

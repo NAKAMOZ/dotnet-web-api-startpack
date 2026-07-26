@@ -3,6 +3,7 @@ using Api.Configuration;
 using Api.Data;
 using Api.Models;
 using Api.Models.Enums;
+using Api.Services.Audit;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,8 @@ public sealed class SigningKeyManager(
     IDataProtectionProvider dataProtectionProvider,
     IOptions<JwtOptions> jwtOptions,
     TimeProvider timeProvider,
-    ILogger<SigningKeyManager> logger) : ISigningKeyManager
+    ILogger<SigningKeyManager> logger,
+    IAuditLogger auditLogger) : ISigningKeyManager
 {
     /// <summary>
     /// Data Protection purpose string. Changing it makes every stored key undecryptable —
@@ -94,6 +96,11 @@ public sealed class SigningKeyManager(
             "Signing key rotated. New kid {KeyId}, previous {PreviousKeyId} now retiring.",
             replacement.KeyId,
             current?.KeyId ?? "(none)");
+        await auditLogger.LogAsync(
+            AuditEventType.SigningKeyRotated,
+            null,
+            new { replacement.KeyId },
+            cancellationToken);
 
         return replacement.KeyId;
     }

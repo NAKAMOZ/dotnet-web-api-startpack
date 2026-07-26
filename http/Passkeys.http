@@ -1,0 +1,46 @@
+@api = {{apiBase}}
+@credentialId = 0198f3a0-0000-7000-8001-000000000201
+
+### Registration options
+POST {{api}}/passkeys/registration/options
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "displayName": "Laptop passkey"
+}
+
+### Complete registration (replace values with WebAuthn client output)
+POST {{api}}/passkeys/registration/complete
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+Content-Type: application/json
+
+{
+  "challengeId": "{{passkeyChallengeId}}",
+  "credential": "{{passkeyRegistrationCredential}}"
+}
+
+### Authentication options
+POST {{api}}/passkeys/authentication/options
+Content-Type: application/json
+
+{}
+
+### Complete authentication (replace with authenticator output)
+POST {{api}}/passkeys/authentication/complete
+Content-Type: application/json
+
+{
+  "challengeId": "{{passkeyChallengeId}}",
+  "credential": "{{passkeyAuthenticationCredential}}"
+}
+
+### List passkeys
+GET {{api}}/passkeys
+Authorization: Bearer {{accessToken}}
+
+### Delete passkey
+DELETE {{api}}/passkeys/{{credentialId}}
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}

@@ -1,0 +1,13 @@
+@api = {{apiBase}}
+
+### Resend verification
+POST {{api}}/email-verification/send
+Authorization: Bearer {{accessToken}}
+
+### Confirm verification
+POST {{api}}/email-verification/confirm
+Content-Type: application/json
+
+{
+  "token": "{{verificationToken}}"
+}

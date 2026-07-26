@@ -22,11 +22,17 @@ None (Docker approved).
 
 ## Tasks
 
-- [ ] `Dockerfile` (multi-stage, non-root, healthcheck).
-- [ ] `docker-compose.yml` + `.env.example`.
-- [ ] `http/*.http` covering every inventory endpoint with example payloads (kept in sync by §19 review checklist).
-- [ ] `README.md` quickstart: prerequisites, `docker compose up`, first request walkthrough (register → verify via Mailpit UI → login), inner-loop mode.
-- [ ] Verify Testcontainers (§21) and compose coexist (no port collisions; document ports).
+- [x] `Dockerfile` (multi-stage, non-root, healthcheck).
+- [x] `docker-compose.yml` + `.env.example`.
+- [x] `http/*.http` covering every inventory endpoint with example payloads (kept in sync by §19 review checklist).
+- [x] `README.md` quickstart: prerequisites, `docker compose up`, first request walkthrough (register → verify via Mailpit UI → login), inner-loop mode.
+- [x] Verify Testcontainers (§21) and compose coexist (no port collisions; document ports).
+
+**Verified 2026-07-26:** the image built, ran as UID 1654, and the full stack reported
+`/health/ready` healthy against PostgreSQL. The local machine already owned port 5432, so
+Compose now defaults its host-side mapping to 55432 while PostgreSQL remains on 5432 inside
+the network; Testcontainers independently uses a random host port. Register/login
+completion remains blocked by §12's 501 actions.
 
 ## Expected Deliverables
 

@@ -1,4 +1,5 @@
 using Api.Configuration;
+using Api.Logging;
 using Api.Services.Crypto;
 using Microsoft.Extensions.Options;
 
@@ -23,7 +24,7 @@ public class Argon2PasswordHasherTests
             SecretMemoryKib = 1024,
             SecretIterations = 1,
             SecretParallelism = 1,
-        }));
+        }), new AuthMetrics());
 
     [Fact]
     public void VerifiesItsOwnHash()

@@ -21,10 +21,12 @@ namespace Api.Handlers.Authentication;
 public sealed class ConfigureJwtBearerOptions(
     IOptions<JwtOptions> jwtOptions,
     IOptions<AuthCookieOptions> cookieOptions,
-    IServiceScopeFactory scopeFactory) : IConfigureNamedOptions<JwtBearerOptions>
+    IServiceScopeFactory scopeFactory,
+    TimeProvider timeProvider) : IConfigureNamedOptions<JwtBearerOptions>
 {
     private readonly JwtOptions _jwt = jwtOptions.Value;
     private readonly AuthCookieOptions _cookies = cookieOptions.Value;
+    private readonly TimeProvider _timeProvider = timeProvider;
 
     public void Configure(string? name, JwtBearerOptions options)
     {
@@ -52,6 +54,8 @@ public sealed class ConfigureJwtBearerOptions(
             ValidAudience = _jwt.Audience,
 
             ValidateLifetime = true,
+            RequireExpirationTime = true,
+            LifetimeValidator = ValidateLifetime,
 
             // 30 seconds, not the framework default of five minutes — which would extend
             // every access token's effective life by a third (Authentication.md §2).
@@ -127,6 +131,25 @@ public sealed class ConfigureJwtBearerOptions(
         }
 
         return Task.CompletedTask;
+    }
+
+    private bool ValidateLifetime(
+        DateTime? notBefore,
+        DateTime? expires,
+        SecurityToken token,
+        TokenValidationParameters parameters)
+    {
+        _ = token;
+
+        if (expires is null || (notBefore is not null && notBefore > expires))
+        {
+            return false;
+        }
+
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        return (notBefore is null || notBefore <= now + parameters.ClockSkew)
+               && expires >= now - parameters.ClockSkew;
     }
 
     private static Task OnTokenValidated(TokenValidatedContext context)

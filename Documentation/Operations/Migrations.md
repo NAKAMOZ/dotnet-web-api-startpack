@@ -16,7 +16,7 @@ dotnet tool restore     # once per clone — installs the pinned dotnet-ef (.con
 
 | Environment | Source |
 |---|---|
-| Development | `dotnet user-secrets set "ConnectionStrings:Postgres" "Host=127.0.0.1;Port=5432;Database=appdb;Username=appuser;Password=…"` |
+| Development | `dotnet user-secrets set "ConnectionStrings:Postgres" "Host=127.0.0.1;Port=55432;Database=startpack;Username=startpack;Password=…"` |
 | Everything else | `ConnectionStrings__Postgres` environment variable (§25) |
 
 Startup fails with a named error when neither is present — a missing connection string should look like a missing connection string, not like a database outage on the first login.
@@ -170,3 +170,32 @@ Consequences to expect, and to announce before rather than after:
 - Live CSRF tokens also fail to unprotect. Cookie-mode clients fetch a new one from `GET /api/v1/auth/csrf`; the first state-changing request after deploy may be rejected once.
 
 A fresh install needs none of this — there are no keys to orphan.
+
+---
+
+## 9. Expand-contract policy
+
+Production rollback means deploying the previous image, not asking an incident responder to
+reverse a destructive schema change. Every schema evolution therefore follows three releases:
+
+1. **Expand:** add nullable columns/tables/indexes or compatible defaults. The old image must
+   continue to read and write.
+2. **Migrate:** deploy code that understands both shapes; backfill in bounded, restartable
+   batches and measure completion.
+3. **Contract:** only after the minimum overlap window and rollback window have passed,
+   remove the old read/write path, then remove the old schema in a later migration.
+
+Rules:
+
+- no rename as drop/add; add the new column, dual-write, backfill, switch reads, then drop;
+- no new `NOT NULL` without a populated default/backfill and a separate validation step;
+- build large PostgreSQL indexes concurrently through hand-reviewed SQL where table locking
+  would violate the availability budget;
+- enum/string values are added before writers emit them and removed only after no row uses
+  them;
+- never combine an irreversible data deletion with the release that stops reading the data;
+- every migration PR states compatibility with the previous image and its abort point.
+
+The migration bundle runs before the new image. If it fails, traffic remains on the old image.
+If the new image fails readiness, roll back the image and leave the additive migration in
+place. A destructive `Down()` is not an emergency rollback.

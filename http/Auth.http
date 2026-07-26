@@ -1,0 +1,54 @@
+@api = {{apiBase}}
+
+### Register
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "new-user@example.test",
+  "password": "V4lid!River-Stone-Cobalt-47",
+  "displayName": "New User"
+}
+
+### Login — bearer/body transport
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@localhost.dev",
+  "password": "Dev_User_Password_1!"
+}
+
+### Login — cookie transport
+POST {{api}}/auth/login
+X-Auth-Transport: cookie
+Content-Type: application/json
+
+{
+  "email": "user@localhost.dev",
+  "password": "Dev_User_Password_1!"
+}
+
+### Complete MFA login
+POST {{api}}/auth/login/mfa
+Content-Type: application/json
+
+{
+  "ticket": "{{mfaTicket}}",
+  "code": "{{totpCode}}"
+}
+
+### Refresh — body transport
+POST {{api}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Logout
+POST {{api}}/auth/logout
+Authorization: Bearer {{accessToken}}
+
+### Issue CSRF token (cookie mode)
+GET {{api}}/auth/csrf

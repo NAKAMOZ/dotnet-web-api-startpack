@@ -45,11 +45,4 @@ public sealed class AuthSessionOptions
     /// <summary>Lifetime of a stored WebAuthn challenge.</summary>
     public TimeSpan WebAuthnChallengeLifetime { get; init; } = TimeSpan.FromMinutes(5);
 
-    /// <summary>
-    /// How often the cleanup worker removes expired sessions and their spent refresh
-    /// tokens (§12). Used tokens are retained until the parent session is well past
-    /// <see cref="AbsoluteLifetime"/> — deleting them early would break reuse detection,
-    /// because a deleted token is indistinguishable from one that never existed.
-    /// </summary>
-    public TimeSpan CleanupInterval { get; init; } = TimeSpan.FromHours(1);
 }

@@ -1,5 +1,7 @@
 # dotnet-web-api-startpack
 
+[![CI](actions/workflows/ci.yml/badge.svg)](actions/workflows/ci.yml)
+
 A headless authentication and authorization REST API on .NET 10 — email/password, sessions,
 roles, email verification, password reset, TOTP MFA, social login, passkeys, and API keys.
 Architecturally inspired by Better Auth; no Better Auth source is copied.
@@ -13,21 +15,19 @@ actions intentionally return `501 Not Implemented`. See
 
 ## Quickstart
 
-> Stub — the compose steps land in §24, which adds `docker-compose.yml` with PostgreSQL and Mailpit.
-
 ```bash
 git clone <repo-url>
 cd dotnet-web-api-startpack
-
-# TODO §24: docker compose up -d      # PostgreSQL + Mailpit
-# TODO §8:  dotnet ef database update
-
-dotnet run
+cp .env.example .env                  # optional local port overrides
+docker compose up --build
 ```
 
-The API starts on `http://localhost:5035` (HTTPS profile on 7052).
+This starts the API on `http://localhost:5035`, PostgreSQL on `localhost:55432`, and
+Mailpit at `http://localhost:8025`. In Development the API applies EF migrations and
+idempotently seeds the documented local accounts.
 
 ```bash
+curl --fail http://localhost:5035/health/ready
 curl http://localhost:5035/openapi/v1.json
 ```
 
@@ -42,6 +42,13 @@ are intentionally unavailable in Production.
 - Docker — required for integration tests (Testcontainers spins up a real PostgreSQL)
 - An IDE understanding `.slnx`: VS 2022 17.14+, Rider 2025.1+, or VS Code
 
+The registration and login actions still return 501 until §12's feature services land.
+The complete request sequence is already prepared in [`http/Auth.http`](http/Auth.http);
+when those services are enabled, retrieve the verification link from Mailpit and continue
+with the login request. See
+[`Documentation/Operations/LocalDevelopment.md`](Documentation/Operations/LocalDevelopment.md)
+for the fast inner loop and troubleshooting.
+
 ## Common commands
 
 | | |
@@ -50,6 +57,9 @@ are intentionally unavailable in Production.
 | Test | `dotnet test` |
 | Run | `dotnet run` |
 | Watch | `dotnet watch run` |
+| Local stack | `docker compose up --build` |
+| Local stack + OTLP debug collector | `docker compose -f docker-compose.yml -f docker-compose.observability.yml up --build` |
+| Infrastructure only | `docker compose up -d postgres mailpit` |
 
 ## Layout
 

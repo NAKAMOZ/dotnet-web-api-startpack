@@ -1,0 +1,41 @@
+@api = {{apiBase}}
+@accountId = 0198f3a0-0000-7000-8001-000000000401
+
+### Get profile
+GET {{api}}/users/me
+Authorization: Bearer {{accessToken}}
+
+### Update profile
+PATCH {{api}}/users/me
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+Content-Type: application/json
+
+{
+  "displayName": "Updated Name"
+}
+
+### Delete account (recent authentication required)
+DELETE {{api}}/users/me
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+
+### Change password
+PUT {{api}}/users/me/password
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Dev_User_Password_1!",
+  "newPassword": "N3w!River-Stone-Cobalt-82"
+}
+
+### List linked accounts
+GET {{api}}/users/me/accounts
+Authorization: Bearer {{accessToken}}
+
+### Unlink account
+DELETE {{api}}/users/me/accounts/{{accountId}}
+Authorization: Bearer {{accessToken}}
+X-CSRF-Token: {{csrfToken}}

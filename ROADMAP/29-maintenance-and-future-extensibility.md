@@ -21,8 +21,8 @@ None now; each backlog item re-enters the consultation process (per the project'
 
 ## Tasks
 
-- [ ] `Documentation/Operations/MaintenanceCadence.md`: rotation schedule, dependency cadence, parameter-upgrade procedure, version-deprecation policy.
-- [ ] `Documentation/FutureWork.md` — deferred items with one-paragraph design sketches and their trigger conditions:
+- [x] `Documentation/Operations/MaintenanceCadence.md`: rotation schedule, dependency cadence, parameter-upgrade procedure, version-deprecation policy.
+- [x] `Documentation/FutureWork.md` — deferred items with design sketches, trigger conditions and security implications:
   - Organizations / multi-tenancy (owner-excluded from v1): org + membership entities, org-scoped roles, invitation flow.
   - M2M client-credentials flow (owner-excluded from v1): client registry, `client_credentials` grant, service tokens.
   - DB-driven permissions (replaces static map, §5) when roles need runtime editing.
@@ -32,7 +32,12 @@ None now; each backlog item re-enters the consultation process (per the project'
   - Automated key-rotation `BackgroundService`.
   - Webhooks / event notifications on auth events (Better Auth parity feature).
   - SCIM provisioning; WebAuthn conditional UI (passkey autofill) notes.
-- [ ] End-of-v1 review checklist: re-run §22 suite, re-tune §23 budgets, ASVS re-check (§16).
+- [x] `Documentation/Operations/V1Closeout.md`: executable end-of-v1 review checklist covering §22, §23, ASVS, backup/restore, runbook rehearsal, delivery evidence and roadmap archive.
+
+**Current status (2026-07-26):** all three maintenance/close-out artifacts are written and
+the key manager has operator commands for healthy rotate/retire cadence. Approval, backlog
+grooming and execution of the v1 close-out checklist necessarily wait for feature completion,
+P7/P10/P14 and the project owner; the DoD is not yet claimed.
 
 ## Expected Deliverables
 

@@ -19,22 +19,27 @@ Optional OWASP ZAP baseline scan in CI — `Pending Decision` (recommend: add on
 
 ## Tasks
 
-- [ ] JWT attacks: `alg: none`; HS256-signed token using the public key as HMAC secret (algorithm confusion); tampered payload; expired token (time advance via `TimeProvider`); wrong `iss`/`aud`; unknown `kid`; retired-key `kid`.
+- [x] JWT attacks: `alg: none`; HS256-signed token using the public key as HMAC secret (algorithm confusion); tampered payload; expired token (time advance via `TimeProvider`); wrong `iss`/`aud`; unknown `kid`; retired-key `kid`.
   - The retired-`kid` test is the regression guard that matters most: adding a "try every key" fallback looks like a robustness improvement and silently makes key retirement meaningless.
-- [ ] Refresh attacks: replay rotated token (session-revocation assertion incl. the *legitimate* holder being logged out + audited); cross-session token use; token from revoked session.
-- [ ] CSRF: cookie-mode state changes without/with-wrong `X-CSRF-Token`; CSRF token bound to session (a token minted for session A must fail on session B, even when cookie and header agree).
+- [ ] Refresh attacks: replay rotation, successor-holder logout, session revocation, and audit are covered at the real PostgreSQL service boundary. Cross-session and revoked-session presentations over HTTP wait for §12's refresh action.
+- [x] CSRF: cookie-mode state changes without/with-wrong `X-CSRF-Token`; CSRF token bound to session (a token minted for session A must fail on session B, even when cookie and header agree).
 - [ ] Enumeration: register/reset/login response-body equality and timing-delta assertion (existing vs non-existing account, statistical bound documented as best-effort).
 - [ ] Lockout: boundary (5th vs 6th), reset-on-success, admin unlock, lockout invisible in response shape.
-- [ ] AuthZ: every 👑 endpoint as `User` role → 403; every 🔐 endpoint anonymous → 401; API key exceeding scopes → 403; recent-auth expiry → step-up denied.
+- [ ] AuthZ: all 8 👑 endpoints as `User` → 403 and all 30 protected endpoints anonymous → 401 are covered over HTTP; recent-auth expiry and API-key step-up denial are covered at the policy boundary. API-key scope enforcement waits for §12's API-key service.
   - Step-up must be tested against `auth_time`, **not** `iat`: assert that refreshing a session repeatedly does *not* restore step-up eligibility. An implementation reading `iat` passes every happy-path test while providing no protection (Authentication.md §14).
   - API keys can never satisfy step-up — they carry no `auth_time`.
 - [ ] Input abuse: oversized bodies (request size limits), malformed JSON, header injection into correlation ID (format validation), sort-field injection.
 - [ ] Redaction test: capture all logs during a full flow run; assert zero occurrences of any issued token/password/secret material (§15).
-- [ ] CI: `dotnet list package --vulnerable --include-transitive` failing gate (§26).
+- [x] CI: `dotnet list package --vulnerable --include-transitive` failing gate (§26).
 
 ## Expected Deliverables
 
 `IntegrationTests/Security/` suites; traceability table in `Documentation/Security/AttackCoverage.md`.
+
+**Current status (2026-07-26):** 47 `Category=Security` cases are separately selectable
+and green. `AttackCoverage.md` maps covered and genuinely blocked claims; enumeration,
+HTTP lockout/admin unlock, API-key scopes, oversized-body policy, and the full-flow scalar
+log scan remain tied to missing §12/§27 production behavior.
 
 ## Dependencies
 

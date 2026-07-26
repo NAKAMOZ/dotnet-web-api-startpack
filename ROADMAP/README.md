@@ -8,9 +8,9 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 |---|---|
 | **Planning** | ✅ Complete — all 29 workstreams specified |
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
-| **Decision record** | ✅ 21 ADRs + the authentication and authorization architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
+| **Decision record** | ✅ 23 ADRs + the authentication and authorization architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
 | **Open decisions** | ⏳ 8 items (P6–P11, P14, P16); **P1–P5, P12, P13, P15, P17 resolved 2026-07-22**; **P18 resolved 2026-07-23** |
-| **Implementation** | 🔄 **Phase A–D done; cross-cutting, documentation and tests advanced** — 203 tests green (187 unit, 16 integration). All 43 operations route, validate, authorize, carry rate-limit coverage, appear in the transformed v1 OpenAPI document, and have mechanically synced Markdown. Scalar is live in Development/Staging only. The token pipeline and §14 pipeline are implemented; §15's observability half and §16's lockout state machine are in. Feature services are still missing, so 41 of 43 actions return 501. Next: registration → login → refresh services, then the rest of §12. |
+| **Implementation** | 🔄 **Phase A–D done; cross-cutting, documentation, tests and local operations advanced** — 274 tests green (202 unit, 72 integration; 47 security-tagged). Real PostgreSQL migrations/Respawn, typed startup validation, k6 budgets, a non-root Docker/Compose stack, health failure probes, backend-neutral OpenTelemetry/auth metrics, production runbooks and the CI workflow are present. All 43 operations route, validate, authorize, carry rate-limit coverage, appear in transformed OpenAPI, have synced Markdown, and have mechanically synced `.http` examples. Feature services are still missing, so 41 of 43 actions return 501. Next: registration → login → refresh services, then the rest of §12. |
 
 ## How to use this board
 
@@ -75,26 +75,26 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 
 | # | Workstream | Status |
 |---|---|---|
-| 20 | [Unit Testing](20-unit-testing.md) | 🔄 187 tests: crypto, JWT issuance/signature/rotation race, lockout, authorization, audit mapping, all-validator happy paths and architecture guards. Remaining per-rule validator rejection suites and §12-owned TOTP/refresh behavior are open |
-| 21 | [Integration Testing](21-integration-testing.md) | ⬜ |
-| 22 | [Security Testing](22-security-testing.md) | ⬜ |
-| 23 | [Performance and Load Testing](23-performance-and-load-testing.md) | ⬜ |
+| 20 | [Unit Testing](20-unit-testing.md) | 🔄 202 tests: crypto, JWT issuance/signature/rotation race, lockout, authorization, audit mapping, options/proxy validation, auth metrics, Argon2 tuning, all-validator happy paths and architecture guards. Remaining per-rule validator rejection suites and §12-owned TOTP behavior are open |
+| 21 | [Integration Testing](21-integration-testing.md) | 🔄 72 PostgreSQL-backed tests; supported token/cross-cutting/health-failure flows green; feature flows wait on §12 |
+| 22 | [Security Testing](22-security-testing.md) | 🔄 47 attack cases + traceability; enumeration/API-key/full-flow cases wait on §12 |
+| 23 | [Performance and Load Testing](23-performance-and-load-testing.md) | 🔄 k6 + Argon2 harness ready; endpoint baselines wait on §12/P14 |
 
 ### Phase H — Operations
 
 | # | Workstream | Status |
 |---|---|---|
-| 24 | [Docker and Local Development](24-docker-and-local-development.md) | ⬜ |
-| 25 | [Configuration and Secret Management](25-configuration-and-secret-management.md) | ⬜ |
-| 26 | [CI/CD](26-ci-cd.md) | ⬜ |
-| 27 | [Deployment and Production Readiness](27-deployment-and-production-readiness.md) | ⏳ P14 |
-| 28 | [Monitoring, Metrics, Tracing, and Health Checks](28-monitoring-metrics-tracing-and-health-checks.md) | ⬜ |
+| 24 | [Docker and Local Development](24-docker-and-local-development.md) | 🔄 image/Compose/HTTP/health verified; register/login walkthrough waits on §12 |
+| 25 | [Configuration and Secret Management](25-configuration-and-secret-management.md) | 🔄 typed validation + reference + secret gate complete; formal P7 decision open |
+| 26 | [CI/CD](26-ci-cd.md) | 🔄 workflow and local gates verified; GitHub run/branch protection require owner push |
+| 27 | [Deployment and Production Readiness](27-deployment-and-production-readiness.md) | 🔄 target-neutral checklist/runbooks/proxy trust done; P7/P14 block platform deploy and key-ring protector |
+| 28 | [Monitoring, Metrics, Tracing, and Health Checks](28-monitoring-metrics-tracing-and-health-checks.md) | 🔄 health/OTel/auth metrics/alerts done; §12 call sites and P10 backend acceptance remain |
 
 ### Phase I — Longevity
 
 | # | Workstream | Status |
 |---|---|---|
-| 29 | [Maintenance and Future Extensibility](29-maintenance-and-future-extensibility.md) | ⬜ |
+| 29 | [Maintenance and Future Extensibility](29-maintenance-and-future-extensibility.md) | 🔄 cadence, secured future backlog and close-out checklist written; owner review/execution remain |
 
 ## What happens next
 

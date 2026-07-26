@@ -9,15 +9,22 @@ SerilogSetup.Bootstrap();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
+    .AddValidatedOptions()
     .AddApiServices()
+    .AddForwardedHeaderServices()
     .AddDataServices(builder.Configuration)
-    .AddAuthenticationServices(builder.Configuration)
+    .AddAuthenticationServices()
     .AddAuthorizationServices()
     .AddDomainServices()
     .AddValidationServices()
     .AddObservabilityServices(builder.Configuration);
 
 var app = builder.Build();
+
+if (await app.RunOperationalCommandAsync(args))
+{
+    return;
+}
 
 await app.UseDatabaseSetupAsync();
 

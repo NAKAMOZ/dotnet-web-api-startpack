@@ -1,0 +1,47 @@
+@api = {{apiBase}}
+@userId = 0198f3a0-0000-7000-8001-000000000002
+@roleId = 0198f3a0-0000-7000-8000-000000000001
+
+### List/filter/sort users
+GET {{api}}/admin/users?page=1&pageSize=20&sort=createdAt:desc
+Authorization: Bearer {{adminAccessToken}}
+
+### Get user detail
+GET {{api}}/admin/users/{{userId}}
+Authorization: Bearer {{adminAccessToken}}
+
+### Update user
+PATCH {{api}}/admin/users/{{userId}}
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "displayName": "Reviewed User",
+  "emailVerified": true,
+  "clearLockout": true
+}
+
+### Delete user
+DELETE {{api}}/admin/users/{{userId}}
+Authorization: Bearer {{adminAccessToken}}
+
+### Grant role
+POST {{api}}/admin/users/{{userId}}/roles
+Authorization: Bearer {{adminAccessToken}}
+Content-Type: application/json
+
+{
+  "roleId": "{{roleId}}"
+}
+
+### Revoke role
+DELETE {{api}}/admin/users/{{userId}}/roles/{{roleId}}
+Authorization: Bearer {{adminAccessToken}}
+
+### Revoke every session for a user
+DELETE {{api}}/admin/users/{{userId}}/sessions
+Authorization: Bearer {{adminAccessToken}}
+
+### Query audit log
+GET {{api}}/admin/audit-logs?page=1&pageSize=20&sort=occurredAt:desc
+Authorization: Bearer {{adminAccessToken}}

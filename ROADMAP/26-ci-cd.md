@@ -20,11 +20,17 @@ None for CI (GitHub Actions approved); CD blocked on P14.
 
 ## Tasks
 
-- [ ] `.github/workflows/ci.yml` implementing the stage list with caching (NuGet, Docker layers).
-- [ ] Coverage reporting (coverlet → summary in PR).
-- [ ] `.github/dependabot.yml` (or Renovate — align with §16 choice).
-- [ ] Branch-protection setup documented in `Documentation/Operations/CI.md` (applied when repo is pushed to GitHub).
-- [ ] Badge row in `README.md`.
+- [x] `.github/workflows/ci.yml` implementing the stage list with caching (NuGet, Docker layers).
+- [x] Coverage reporting (coverlet → summary in PR). Crypto + validators enforce 85% and currently measure 98.49%; ADR-0022 keeps the incomplete whole-token namespace gate visible.
+- [x] `.github/dependabot.yml` (Dependabot, aligned with §16).
+- [x] Branch-protection setup documented in `Documentation/Operations/CI.md`; applying it requires the external GitHub repository/owner.
+- [x] Badge row in `README.md`.
+
+**Locally verified 2026-07-26:** restore/build/format, 202 unit tests, 72 integration tests
+(47 security), the 85% scoped coverage gate, secret scan, Compose validation, image build,
+non-root execution, and readiness smoke. The workflow itself, branch rules, synthetic gate
+violations, badge resolution, and uploaded migration artifact require a GitHub push, so the
+Definition of Done is not yet claimed.
 
 ## Expected Deliverables
 

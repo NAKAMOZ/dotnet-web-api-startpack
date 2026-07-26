@@ -1,22 +1,39 @@
+using System.Diagnostics;
 using Api.Configuration;
+using Api.Logging;
 using Isopoh.Cryptography.Argon2;
 using Microsoft.Extensions.Options;
 
 namespace Api.Services.Crypto;
 
 /// <inheritdoc cref="IPasswordHasher"/>
-public sealed class Argon2PasswordHasher(IOptions<PasswordHashingOptions> options) : IPasswordHasher
+public sealed class Argon2PasswordHasher(
+    IOptions<PasswordHashingOptions> options,
+    AuthMetrics metrics) : IPasswordHasher
 {
     private readonly PasswordHashingOptions _options = options.Value;
 
-    public string Hash(string password) =>
-        Argon2.Hash(
-            password,
-            timeCost: _options.PasswordIterations,
-            memoryCost: _options.PasswordMemoryKib,
-            parallelism: _options.PasswordParallelism,
-            type: Argon2Type.HybridAddressing,
-            hashLength: _options.HashLength);
+    public string Hash(string password)
+    {
+        var started = Stopwatch.GetTimestamp();
+
+        try
+        {
+            return Argon2.Hash(
+                password,
+                timeCost: _options.PasswordIterations,
+                memoryCost: _options.PasswordMemoryKib,
+                parallelism: _options.PasswordParallelism,
+                type: Argon2Type.HybridAddressing,
+                hashLength: _options.HashLength);
+        }
+        finally
+        {
+            metrics.RecordPasswordHashDuration(
+                Stopwatch.GetElapsedTime(started),
+                "hash");
+        }
+    }
 
     /// <summary>
     /// Hashes a machine-generated secret — an API key or a recovery code — with the cheap
@@ -38,6 +55,8 @@ public sealed class Argon2PasswordHasher(IOptions<PasswordHashingOptions> option
 
     public bool Verify(string password, string hash)
     {
+        var started = Stopwatch.GetTimestamp();
+
         // A malformed stored value is an authentication failure, not a 500. Throwing here
         // would tell a caller their guess reached something unusual — and would turn one
         // corrupt row into an outage for that account.
@@ -48,6 +67,12 @@ public sealed class Argon2PasswordHasher(IOptions<PasswordHashingOptions> option
         catch (Exception exception) when (exception is FormatException or ArgumentException)
         {
             return false;
+        }
+        finally
+        {
+            metrics.RecordPasswordHashDuration(
+                Stopwatch.GetElapsedTime(started),
+                "verify");
         }
     }
 

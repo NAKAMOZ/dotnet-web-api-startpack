@@ -1,0 +1,8 @@
+@api = {{apiBase}}
+@provider = google
+
+### Start Google authorization
+GET {{api}}/auth/social/{{provider}}/authorize
+
+### Google callback (the provider normally redirects here)
+GET {{api}}/auth/social/{{provider}}/callback?code={{socialCode}}&state={{socialState}}

@@ -33,8 +33,9 @@ public static partial class ServiceCollectionExtensions
         // this process may build more than one host — see the remarks on SerilogSetup.Bootstrap.
         services.AddSerilog(SerilogSetup.Configure, preserveStaticLogger: true);
 
-        // TODO §28: OpenTelemetry traces and metrics; /health/live and /health/ready.
         // TODO §12: HybridCache, in-memory only (ADR-0016).
-        return services;
+        return services
+            .AddApplicationHealthChecks(configuration)
+            .AddTelemetryServices(configuration);
     }
 }

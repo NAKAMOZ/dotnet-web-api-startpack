@@ -1,5 +1,6 @@
 using Api.Configuration;
 using Api.Data;
+using Api.Logging;
 using Api.Models;
 using Api.Models.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,8 @@ namespace Api.Services.Tokens;
 public sealed class SessionService(
     AppDbContext dbContext,
     IOptions<AuthSessionOptions> sessionOptions,
-    TimeProvider timeProvider) : ISessionService
+    TimeProvider timeProvider,
+    AuthMetrics metrics) : ISessionService
 {
     private readonly AuthSessionOptions _options = sessionOptions.Value;
 
@@ -46,6 +48,7 @@ public sealed class SessionService(
 
         dbContext.Sessions.Add(session);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await UpdateActiveSessionGaugeAsync(cancellationToken);
 
         return session.Id;
     }
@@ -86,13 +89,18 @@ public sealed class SessionService(
 
         // Only live sessions: a revoked session must keep its original reason and timestamp,
         // or the audit trail records the last thing that touched it rather than what ended it.
-        await dbContext.Sessions
+        var affected = await dbContext.Sessions
             .Where(session => session.Id == sessionId && session.RevokedAt == null)
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(session => session.RevokedAt, now)
                     .SetProperty(session => session.RevocationReason, reason),
                 cancellationToken);
+
+        if (affected > 0)
+        {
+            await UpdateActiveSessionGaugeAsync(cancellationToken);
+        }
     }
 
     public async Task<int> RevokeAllForUserAsync(
@@ -103,7 +111,7 @@ public sealed class SessionService(
     {
         var now = timeProvider.GetUtcNow();
 
-        return await dbContext.Sessions
+        var affected = await dbContext.Sessions
             .Where(session => session.UserId == userId
                               && session.RevokedAt == null
                               && (exceptSessionId == null || session.Id != exceptSessionId))
@@ -112,6 +120,24 @@ public sealed class SessionService(
                     .SetProperty(session => session.RevokedAt, now)
                     .SetProperty(session => session.RevocationReason, reason),
                 cancellationToken);
+
+        if (affected > 0)
+        {
+            await UpdateActiveSessionGaugeAsync(cancellationToken);
+        }
+
+        return affected;
+    }
+
+    private async Task UpdateActiveSessionGaugeAsync(CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        var count = await dbContext.Sessions
+            .CountAsync(
+                session => session.RevokedAt == null && session.AbsoluteExpiresAt > now,
+                cancellationToken);
+
+        metrics.SetActiveSessions(count);
     }
 
     private static string? Truncate(string? value, int maxLength) =>

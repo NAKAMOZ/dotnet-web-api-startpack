@@ -1,4 +1,5 @@
 using Api.Configuration;
+using Api.Logging;
 using Api.Models;
 using Microsoft.Extensions.Options;
 
@@ -23,7 +24,10 @@ namespace Api.Services.Security;
 /// to the login service, never a reason to a response.
 /// </para>
 /// </remarks>
-public sealed class LockoutPolicy(IOptions<LockoutOptions> options, TimeProvider timeProvider)
+public sealed class LockoutPolicy(
+    IOptions<LockoutOptions> options,
+    TimeProvider timeProvider,
+    AuthMetrics metrics)
 {
     private readonly LockoutOptions _options = options.Value;
 
@@ -77,6 +81,7 @@ public sealed class LockoutPolicy(IOptions<LockoutOptions> options, TimeProvider
         }
 
         user.LockoutEndsAt = now.Add(_options.LockoutDuration);
+        metrics.RecordLockout();
         return true;
     }
 

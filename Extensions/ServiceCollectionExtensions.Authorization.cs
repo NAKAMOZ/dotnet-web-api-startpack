@@ -1,5 +1,4 @@
 using Api.Attributes;
-using Api.Configuration;
 using Api.Handlers.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
@@ -13,16 +12,6 @@ public static partial class ServiceCollectionExtensions
     public static IServiceCollection AddAuthorizationServices(this IServiceCollection services)
     {
         ValidatePermissionCatalog();
-
-        // Step-up reads its window from configuration. Bound here rather than left to
-        // defaults so a value set in appsettings actually takes effect — an unbound options
-        // class silently serves its defaults and gives no sign that configuration was
-        // ignored. §25 extends this to every options class with full startup validation.
-        services
-            .AddOptions<AuthSessionOptions>()
-            .BindConfiguration(AuthSessionOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
 
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();

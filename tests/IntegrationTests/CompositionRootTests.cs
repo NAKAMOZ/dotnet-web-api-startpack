@@ -6,8 +6,8 @@ namespace IntegrationTests;
 /// <summary>
 /// Proves the composition root actually builds a working host: every
 /// <c>Add*</c> extension resolves and the pipeline starts (§3).
-/// This is a skeleton smoke test, not a feature test — §21 replaces it with the
-/// Testcontainers-backed fixture once there is a database to talk to.
+/// This remains the fast, database-free composition smoke. §21's separate collection owns
+/// the Testcontainers-backed migration and persistence tests.
 /// </summary>
 public class CompositionRootTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -27,6 +27,7 @@ public class CompositionRootTests : IClassFixture<WebApplicationFactory<Program>
             // turns UseDatabaseSetupAsync into the no-op it is everywhere but Development.
             // §21 covers the migrate-and-seed path against a Testcontainers instance.
             builder.UseEnvironment("Production");
+            builder.UseTrustedTestProxy();
 
             // Still required: §7 fails the boot when no connection string is configured, and
             // no committed file carries one. Nothing ever connects through it here.

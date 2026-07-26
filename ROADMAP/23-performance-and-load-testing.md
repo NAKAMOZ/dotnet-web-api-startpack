@@ -20,11 +20,11 @@ P15 (k6); budget numbers.
 
 ## Tasks
 
-- [ ] `tests/load/` k6 scripts: `login.js`, `refresh.js`, `me.js`, `mixed.js` (realistic mix), with shared config + thresholds encoding the budgets.
-- [ ] `tests/load/README.md`: how to run against compose/staging, interpreting thresholds.
-- [ ] Argon2id tuning script (`tests/load/tune-argon2.md` procedure + a small harness in `UnitTests` benchmarking hash time on the current machine).
-- [ ] Record baseline results in `Documentation/Operations/PerformanceBaseline.md`.
-- [ ] Verify rate limits (§17) vs load profiles don't strangle legitimate bursts (adjust or document).
+- [x] `tests/load/` k6 scripts: `login.js`, `refresh.js`, `me.js`, `mixed.js` (realistic mix), with shared config + thresholds encoding the budgets.
+- [x] `tests/load/README.md`: how to run against compose/staging, interpreting thresholds.
+- [x] Argon2id tuning script (`tests/load/tune-argon2.md` procedure + a small harness in `UnitTests` benchmarking hash time on the current machine).
+- [ ] Record baseline results in `Documentation/Operations/PerformanceBaseline.md`. Local Argon2 Release median recorded at 177.0 ms; endpoint baselines correctly remain blocked while the measured actions return 501 and P14 leaves production hardware unknown.
+- [x] Verify rate limits (§17) vs load profiles don't strangle legitimate bursts (adjust or document). Controlled-test overrides and the separate normal-policy saturation run are documented; execution waits for the feature actions.
 
 ## Expected Deliverables
 

@@ -4,9 +4,10 @@ Hand-driven requests for local development, one file per controller — the same
 [`Documentation/`](../Documentation/) and the controller list in §11.
 
 The template's single `dotnet-web-api-startpack.http` was deleted in §3 along with the
-`/weatherforecast` sample. These files are **populated in §24**, as each feature slice lands.
+`/weatherforecast` sample. Every inventory endpoint now has a request here. Feature-service
+stubs currently answer 501; the same requests become executable as each §12 slice lands.
 
-## Planned layout
+## Layout
 
 ```text
 http/
@@ -41,4 +42,27 @@ VS Code with the REST Client extension, Visual Studio, or JetBrains Rider all ex
 
 ```bash
 dotnet run
+```
+
+Create `http-client.private.env.json` beside the shared environment file for credentials:
+
+```json
+{
+  "dev": {
+    "accessToken": "",
+    "adminAccessToken": "",
+    "refreshToken": "",
+    "csrfToken": "",
+    "verificationToken": "",
+    "passwordResetToken": "",
+    "mfaTicket": "",
+    "totpCode": "",
+    "apiKey": "",
+    "socialCode": "",
+    "socialState": "",
+    "passkeyChallengeId": "",
+    "passkeyRegistrationCredential": "",
+    "passkeyAuthenticationCredential": ""
+  }
+}
 ```
