@@ -36,6 +36,7 @@
        open, and a password policy that fails open is not a policy. -->
   <ItemGroup>
     <EmbeddedResource Include="Validators/Common/CommonPasswords.txt" />
+    <EmbeddedResource Include="Templates/*.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,7 +47,12 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
+    <PackageReference Include="AspNet.Security.OAuth.GitHub" />
+    <PackageReference Include="Fido2.AspNet" />
     <PackageReference Include="Isopoh.Cryptography.Argon2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
+    <PackageReference Include="Otp.NET" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />

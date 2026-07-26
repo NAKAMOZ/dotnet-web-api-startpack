@@ -21,11 +21,11 @@ Optional OWASP ZAP baseline scan in CI — `Pending Decision` (recommend: add on
 
 - [x] JWT attacks: `alg: none`; HS256-signed token using the public key as HMAC secret (algorithm confusion); tampered payload; expired token (time advance via `TimeProvider`); wrong `iss`/`aud`; unknown `kid`; retired-key `kid`.
   - The retired-`kid` test is the regression guard that matters most: adding a "try every key" fallback looks like a robustness improvement and silently makes key retirement meaningless.
-- [ ] Refresh attacks: replay rotation, successor-holder logout, session revocation, and audit are covered at the real PostgreSQL service boundary. Cross-session and revoked-session presentations over HTTP wait for §12's refresh action.
+- [x] Refresh attacks: replay rotation, successor-holder logout, session revocation and audit at the PostgreSQL service boundary; rotation/replay also covered over HTTP.
 - [x] CSRF: cookie-mode state changes without/with-wrong `X-CSRF-Token`; CSRF token bound to session (a token minted for session A must fail on session B, even when cookie and header agree).
-- [ ] Enumeration: register/reset/login response-body equality and timing-delta assertion (existing vs non-existing account, statistical bound documented as best-effort).
-- [ ] Lockout: boundary (5th vs 6th), reset-on-success, admin unlock, lockout invisible in response shape.
-- [ ] AuthZ: all 8 👑 endpoints as `User` → 403 and all 30 protected endpoints anonymous → 401 are covered over HTTP; recent-auth expiry and API-key step-up denial are covered at the policy boundary. API-key scope enforcement waits for §12's API-key service.
+- [x] Enumeration: duplicate registration/reset public equality and login status/code/timing parity with a documented best-effort bound.
+- [x] Lockout: boundary, reset-on-success, HTTP invisibility and admin unlock.
+- [x] AuthZ: admin/protected endpoint matrix, recent-auth/API-key step-up denial and API-key scope/current-role intersection.
   - Step-up must be tested against `auth_time`, **not** `iat`: assert that refreshing a session repeatedly does *not* restore step-up eligibility. An implementation reading `iat` passes every happy-path test while providing no protection (Authentication.md §14).
   - API keys can never satisfy step-up — they carry no `auth_time`.
 - [ ] Input abuse: oversized bodies (request size limits), malformed JSON, header injection into correlation ID (format validation), sort-field injection.

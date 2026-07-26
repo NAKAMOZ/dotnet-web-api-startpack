@@ -23,14 +23,13 @@ P10 (export backend).
 
 - [x] `Extensions/ServiceCollectionExtensions.HealthChecks.cs` + `ApplicationBuilderExtensions.HealthChecks.cs`: live/ready split, PostgreSQL connectivity + pending-migration readiness, five-second timeout, minimal anonymous response.
 - [x] `Extensions/ServiceCollectionExtensions.Telemetry.cs`: ASP.NET Core, HttpClient, runtime and Npgsql wiring; service resource attributes; validated, config-gated OTLP trace/metric export.
-- [🔄] `Logging/AuthMetrics.cs` + instrumentation: full catalog exists; refresh, reuse, lockout, active-session and Argon2 points are wired. Login/MFA emitters wait on their missing §12 services.
+- [x] `Logging/AuthMetrics.cs` + instrumentation: refresh, reuse, lockout, active-session, Argon2, login and MFA points are wired with low-cardinality result tags.
 - [x] `Documentation/Operations/Monitoring.md`: signal/metric catalog, health contract, alert thresholds, dashboard sketch and backend-neutral local collector procedure.
 
 **Current status (2026-07-26):** health dependency failure is container-tested; the metric
 catalog has a `MeterListener` assertion; the pinned local collector received service/resource
 attributes, correlated ASP.NET spans, Npgsql traces/metrics and `auth.active_sessions` over
-OTLP. P10 still blocks production backend/retention/on-call acceptance, and §12 blocks the
-login/MFA call sites. The DoD is not yet claimed.
+OTLP. P10 still blocks production backend/retention/on-call acceptance. The DoD is not yet claimed.
 
 ## Expected Deliverables
 
@@ -48,7 +47,7 @@ Health endpoints, OTel wiring, `AuthMetrics`, monitoring doc.
 
 §21: health endpoints return correct status with DB up/down (isolated container stop in-test);
 the complete metric catalog has a `MeterListener` assertion. Login-flow emission remains
-blocked until the login service exists; current service points are instrumented.
+covered by the login and MFA services; current service points are instrumented.
 
 ## Documentation Requirements
 

@@ -1,5 +1,6 @@
 using Api.DTOs.Auth;
 using Api.DTOs.SocialAuth;
+using Api.Services.SocialAuth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,17 +9,17 @@ namespace Api.Controllers;
 /// <summary>Google and GitHub login through an API-driven redirect (ADR-0019).</summary>
 [Route("api/v{version:apiVersion}/auth/social")]
 [AllowAnonymous]
-public sealed class SocialAuthController : ApiControllerBase
+public sealed class SocialAuthController(ISocialAuthService socialAuthService) : ApiControllerBase
 {
     /// <summary>Starts the OAuth flow — redirects to the provider with signed, single-use state.</summary>
     [HttpGet("{provider}/authorize")]
     [ProducesResponseType(StatusCodes.Status302Found)]
     [ProducesResponseType<SocialAuthorizeResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult<SocialAuthorizeResponse>> Authorize(
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<SocialAuthorizeResponse>> Authorize(
         string provider,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<SocialAuthorizeResponse>();
+        Ok(await socialAuthService.AuthorizeAsync(provider, cancellationToken));
 
     /// <summary>Completes the flow: validates state, exchanges the code, creates a session.</summary>
     /// <remarks>
@@ -29,10 +30,10 @@ public sealed class SocialAuthController : ApiControllerBase
     [HttpGet("{provider}/callback")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult<LoginResponse>> Callback(
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<LoginResponse>> Callback(
         string provider,
         [FromQuery] SocialCallbackQuery query,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<LoginResponse>();
+        Ok(await socialAuthService.CallbackAsync(provider, query, cancellationToken));
 }

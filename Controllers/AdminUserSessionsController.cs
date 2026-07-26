@@ -2,13 +2,15 @@ using Api.Attributes;
 using Api.DTOs.Sessions;
 using Api.Handlers.Authorization;
 using Api.Models.Enums;
+using Api.Services.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 /// <summary>Administrative session revocation — the incident-response lever.</summary>
 [Route("api/v{version:apiVersion}/admin/users/{userId:guid}/sessions")]
-public sealed class AdminUserSessionsController : ApiControllerBase
+public sealed class AdminUserSessionsController(IAdminSessionService adminSessionService)
+    : ApiControllerBase
 {
     /// <summary>Revokes every session for one user.</summary>
     /// <remarks>
@@ -24,8 +26,8 @@ public sealed class AdminUserSessionsController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult<RevokeSessionsResponse>> RevokeAll(
+    public async Task<ActionResult<RevokeSessionsResponse>> RevokeAll(
         Guid userId,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<RevokeSessionsResponse>();
+        Ok(await adminSessionService.RevokeAllAsync(userId, cancellationToken));
 }

@@ -57,7 +57,7 @@ public sealed class JwtAttackTests(IntegrationTestFactory factory)
         });
 
         var duringGrace = await SendToProtectedEndpointAsync(oldToken);
-        Assert.Equal(HttpStatusCode.NotImplemented, duringGrace.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, duringGrace.StatusCode);
 
         var jwks = await factory.CreateClient().GetFromJsonAsync<JsonObject>(
             "/.well-known/jwks.json",

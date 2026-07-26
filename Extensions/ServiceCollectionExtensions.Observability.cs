@@ -34,7 +34,8 @@ public static partial class ServiceCollectionExtensions
         // this process may build more than one host — see the remarks on SerilogSetup.Bootstrap.
         services.AddSerilog(SerilogSetup.Configure, preserveStaticLogger: true);
 
-        // TODO §12: HybridCache, in-memory only (ADR-0016).
+        services.AddHybridCache();
+
         return services
             .AddApplicationHealthChecks(configuration)
             .AddTelemetryServices(configuration, environment);

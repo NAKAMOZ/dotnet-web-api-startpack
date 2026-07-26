@@ -41,14 +41,17 @@ One decision per file, one page each, four mandated sections: **Context**, **Dec
 | [0021](ADR-0021-data-protection-key-persistence.md) | Data Protection key ring persisted to the database | Accepted | Closes the persistence consequence of **0020** |
 | [0022](ADR-0022-coverlet-coverage-gate.md) | Coverlet for scoped CI coverage enforcement | Accepted | Workstreams §20 and §26 |
 | [0023](ADR-0023-backend-neutral-opentelemetry.md) | Backend-neutral OpenTelemetry pipeline | Accepted | Workstream §28; does not resolve **P10** |
+| [0024](ADR-0024-smtp-email-delivery.md) | SMTP email delivery with Mailpit in development | Accepted | Resolves **P8** |
+| [0025](ADR-0025-in-process-auth-cleanup.md) | In-process background cleanup for authentication artifacts | Accepted | Resolves **P9** |
+| [0026](ADR-0026-preserve-current-session-on-password-change.md) | Preserve current session on deliberate password change | Accepted | Supersedes ADR-0002's password-change revocation rule |
 
 The remaining v1 feature scope — the approved-decisions row *v1 feature scope* — is a scope statement rather than an architectural decision and lives in [`../Scope.md`](../Scope.md).
 
 ## Decisions still open
 
-Pending decisions **P6–P11, P14, P16** carry recommendations in `ROADMAP/00-overview.md` but are not approved. Each is answered on the blocking schedule of the workstream that needs it, and each gets an ADR here when it is. Do not treat a recommendation as a decision.
+Pending decisions **P6, P7, P10, P11, P14, P16** carry recommendations in `ROADMAP/00-overview.md` but are not approved. Each is answered on the blocking schedule of the workstream that needs it, and each gets an ADR here when it is. Do not treat a recommendation as a decision.
 
-Resolved so far: **P1–P5**, **P12**, **P13**, **P15**, **P17**, **P18**.
+Resolved so far: **P1–P5**, **P8**, **P9**, **P12**, **P13**, **P15**, **P17**, **P18**.
 
 ## Architecture documents
 

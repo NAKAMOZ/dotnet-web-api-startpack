@@ -48,29 +48,6 @@ public abstract class ApiControllerBase : ControllerBase
     /// </remarks>
     protected Guid CurrentSessionId => ClaimAsGuid("sid");
 
-    /// <summary>
-    /// Placeholder result for actions whose service does not exist yet (§12).
-    /// </summary>
-    /// <remarks>
-    /// A routed, annotated, validated endpoint that answers <c>501</c> is honest: the route
-    /// exists and its contract is fixed, the behaviour is not written. Returning a fabricated
-    /// success would be worse than useless — it would make the endpoint look finished to
-    /// every client and every test.
-    /// </remarks>
-    protected ObjectResult NotImplementedYet() =>
-        Problem(
-            statusCode: StatusCodes.Status501NotImplemented,
-            title: "Not implemented",
-            detail: "This endpoint is routed, annotated and validated. Its service implementation lands in §12.");
-
-    /// <summary>Typed convenience wrapper over <see cref="NotImplementedYet"/>.</summary>
-    protected Task<ActionResult<T>> NotImplementedYet<T>() =>
-        Task.FromResult<ActionResult<T>>(NotImplementedYet());
-
-    /// <summary>Untyped convenience wrapper over <see cref="NotImplementedYet"/>.</summary>
-    protected Task<ActionResult> NotImplementedYetResult() =>
-        Task.FromResult<ActionResult>(NotImplementedYet());
-
     private Guid ClaimAsGuid(params string[] claimTypes)
     {
         foreach (var claimType in claimTypes)

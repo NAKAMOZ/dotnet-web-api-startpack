@@ -1,5 +1,6 @@
 using Api.Configuration;
 using Api.DTOs.Auth;
+using Api.Services.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -8,7 +9,12 @@ namespace Api.Controllers;
 
 /// <summary>Registration, login, MFA completion, refresh, logout and CSRF token issuance.</summary>
 [Route("api/v{version:apiVersion}/auth")]
-public sealed class AuthController : ApiControllerBase
+public sealed class AuthController(
+    IRegistrationService registrationService,
+    ILoginService loginService,
+    IRefreshService refreshService,
+    ILogoutService logoutService,
+    IAuthTokenTransport tokenTransport) : ApiControllerBase
 {
     /// <summary>Creates an account and sends a verification email.</summary>
     /// <remarks>
@@ -23,7 +29,12 @@ public sealed class AuthController : ApiControllerBase
     public Task<ActionResult<RegisterResponse>> Register(
         [FromBody] RegisterRequest request,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<RegisterResponse>();
+        RegisterCoreAsync(request, cancellationToken);
+
+    private async Task<ActionResult<RegisterResponse>> RegisterCoreAsync(
+        RegisterRequest request,
+        CancellationToken cancellationToken) =>
+        Accepted(await registrationService.RegisterAsync(request, cancellationToken));
 
     /// <summary>
     /// Authenticates with email and password. Returns <c>202</c> with an MFA ticket when a
@@ -43,7 +54,7 @@ public sealed class AuthController : ApiControllerBase
     public Task<ActionResult<LoginResponse>> Login(
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<LoginResponse>();
+        LoginCoreAsync(request, cancellationToken);
 
     /// <summary>Completes an MFA login with a TOTP or recovery code.</summary>
     [HttpPost("login/mfa")]
@@ -52,10 +63,10 @@ public sealed class AuthController : ApiControllerBase
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<LoginResponse>> CompleteMfaLogin(
+    public async Task<ActionResult<LoginResponse>> CompleteMfaLogin(
         [FromBody] MfaLoginRequest request,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<LoginResponse>();
+        Ok(await loginService.CompleteMfaAsync(request, cancellationToken));
 
     /// <summary>Rotates a refresh token, returning a new pair.</summary>
     /// <remarks>
@@ -68,23 +79,41 @@ public sealed class AuthController : ApiControllerBase
     [ProducesResponseType<TokenPairResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<TokenPairResponse>> Refresh(
+    public async Task<ActionResult<TokenPairResponse>> Refresh(
         [FromBody] RefreshRequest request,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<TokenPairResponse>();
+        Ok(await refreshService.RefreshAsync(request.RefreshToken, cancellationToken));
 
     /// <summary>Revokes the current session and clears the auth cookies.</summary>
     [HttpPost("logout")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult> Logout(CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+    public async Task<ActionResult> Logout(CancellationToken cancellationToken)
+    {
+        await logoutService.LogoutAsync(CurrentUserId, CurrentSessionId, cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Issues a session-bound CSRF token and sets the readable CSRF cookie.</summary>
     [HttpGet("csrf")]
-    [AllowAnonymous]
+    [Authorize]
     [ProducesResponseType<CsrfTokenResponse>(StatusCodes.Status200OK)]
-    public Task<ActionResult<CsrfTokenResponse>> GetCsrfToken(CancellationToken cancellationToken) =>
-        NotImplementedYet<CsrfTokenResponse>();
+    public Task<ActionResult<CsrfTokenResponse>> GetCsrfToken(CancellationToken cancellationToken)
+    {
+        _ = cancellationToken;
+        return Task.FromResult<ActionResult<CsrfTokenResponse>>(
+            Ok(tokenTransport.IssueCsrf(CurrentSessionId)));
+    }
+
+    private async Task<ActionResult<LoginResponse>> LoginCoreAsync(
+        LoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await loginService.LoginAsync(request, cancellationToken);
+
+        return result.Challenge is not null
+            ? Accepted(result.Challenge)
+            : Ok(result.Login);
+    }
 }

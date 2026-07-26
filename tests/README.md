@@ -41,6 +41,6 @@ dotnet test tests/IntegrationTests/IntegrationTests.csproj \
 ```
 
 The shared fixture replaces `TimeProvider` with one `FakeTimeProvider`. Tests reset its
-timestamp and database state before changing either. Feature flows that depend on §12's
-current 501 actions are listed as blocked in `Documentation/Security/AttackCoverage.md`;
-they are not represented by skipped or placeholder-green tests.
+timestamp and database state before changing either. The real §12 feature flows include
+registration enumeration parity, login/refresh/replay, password-reset revocation, TOTP,
+lockout/admin unlock, and API-key permission-intersection coverage.

@@ -1,5 +1,7 @@
 using Api.Attributes;
 using Api.DTOs.Mfa;
+using Api.Models.Enums;
+using Api.Services.Mfa;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,15 +10,18 @@ namespace Api.Controllers;
 /// <summary>TOTP enrolment and recovery codes.</summary>
 [Route("api/v{version:apiVersion}/mfa")]
 [Authorize]
-public sealed class MfaController : ApiControllerBase
+public sealed class MfaController(
+    ITotpService totpService,
+    IRecoveryCodeService recoveryCodeService) : ApiControllerBase
 {
     /// <summary>Starts TOTP enrolment. Returns the shared secret — once, and only here.</summary>
     [HttpPost("totp/enroll")]
     [ProducesResponseType<TotpEnrollmentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public Task<ActionResult<TotpEnrollmentResponse>> Enroll(CancellationToken cancellationToken) =>
-        NotImplementedYet<TotpEnrollmentResponse>();
+    public async Task<ActionResult<TotpEnrollmentResponse>> Enroll(
+        CancellationToken cancellationToken) =>
+        Ok(await totpService.EnrollAsync(CurrentUserId, cancellationToken));
 
     /// <summary>Confirms enrolment with a code from the authenticator, and issues recovery codes.</summary>
     /// <remarks>
@@ -24,13 +29,14 @@ public sealed class MfaController : ApiControllerBase
     /// scan must not lock a user out of their own account.
     /// </remarks>
     [HttpPost("totp/confirm")]
+    [AuditEvent(AuditEventType.MfaEnrolled)]
     [ProducesResponseType<RecoveryCodesResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<RecoveryCodesResponse>> Confirm(
+    public async Task<ActionResult<RecoveryCodesResponse>> Confirm(
         [FromBody] ConfirmTotpRequest request,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<RecoveryCodesResponse>();
+        Ok(await totpService.ConfirmAsync(CurrentUserId, request.Code, cancellationToken));
 
     /// <summary>Disables TOTP. <b>Requires recent authentication.</b></summary>
     /// <remarks>
@@ -41,11 +47,15 @@ public sealed class MfaController : ApiControllerBase
     /// </remarks>
     [HttpDelete("totp")]
     [RequireRecentAuth]
+    [AuditEvent(AuditEventType.MfaDisabled)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
-    public Task<ActionResult> DisableTotp(CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+    public async Task<ActionResult> DisableTotp(CancellationToken cancellationToken)
+    {
+        await totpService.DisableAsync(CurrentUserId, cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Replaces the recovery-code batch. <b>Requires recent authentication.</b></summary>
     /// <remarks>
@@ -57,7 +67,7 @@ public sealed class MfaController : ApiControllerBase
     [ProducesResponseType<RecoveryCodesResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
-    public Task<ActionResult<RecoveryCodesResponse>> RegenerateRecoveryCodes(
+    public async Task<ActionResult<RecoveryCodesResponse>> RegenerateRecoveryCodes(
         CancellationToken cancellationToken) =>
-        NotImplementedYet<RecoveryCodesResponse>();
+        Ok(await recoveryCodeService.RegenerateAsync(CurrentUserId, cancellationToken));
 }

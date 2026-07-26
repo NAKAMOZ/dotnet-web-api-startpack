@@ -9,7 +9,8 @@ namespace Api.DTOs.Users;
 /// timestamp, and demanding both would mean re-authenticating in order to re-authenticate
 /// (Authentication.md §14).
 /// <para>
-/// Success bumps <c>SecurityStamp</c> and revokes every session, including the caller's.
+/// Success bumps <c>SecurityStamp</c>, updates the current session's snapshot, and revokes
+/// every sibling session.
 /// </para>
 /// </remarks>
 public sealed record ChangePasswordRequest

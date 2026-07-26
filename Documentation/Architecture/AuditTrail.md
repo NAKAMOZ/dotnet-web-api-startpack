@@ -55,7 +55,9 @@ The stored form is the enum member name (`LoginFailed`); the snake_case name is 
 | `admin_user_deleted` | `AdminUserDeleted` | **null** — see §4 | §12 users service |
 | `signing_key_rotated` | `SigningKeyRotated` | null (no subject) | `SigningKeyManager.RotateAsync` (operator command; future job reuses it) |
 
-As of §15 the two writers that exist are `AuditActionFilter` and `IAuditLogger` itself. Every row marked "§12 …" is a **call site that does not exist yet**; §12 adds them as each service lands, and §21 asserts each event appears after its triggering flow.
+The §12 feature services and `AuditActionFilter` now supply the producers in this table.
+Service-owned events are emitted at the domain transition; attribute-owned events are
+emitted only after a successful 2xx action.
 
 ---
 
@@ -63,7 +65,7 @@ As of §15 the two writers that exist are `AuditActionFilter` and `IAuditLogger`
 
 Two mechanisms, and the choice between them is not stylistic.
 
-**`AuditActionFilter` — for events that *are* the HTTP action.** Granting a role is exactly "this endpoint succeeded". The filter is registered globally and does nothing unless the action carries `[AuditEvent(AuditEventType.X)]`, so the mapping lives on the action rather than in a lookup table that a rename silently breaks. It records only on a 2xx, which is also what keeps §11's `501` placeholders out of the trail.
+**`AuditActionFilter` — for events that *are* the HTTP action.** Granting a role is exactly "this endpoint succeeded". The filter is registered globally and does nothing unless the action carries `[AuditEvent(AuditEventType.X)]`, so the mapping lives on the action rather than in a lookup table that a rename silently breaks. It records only on a successful 2xx action.
 
 **`IAuditLogger` called from the service — for everything else.** A failed login is not an endpoint outcome (the endpoint answers 401 either way, deliberately); a token-reuse detection happens three layers below the action; account lockout has no endpoint at all. These events know things the filter cannot see, and they must be recorded even when the request ends in an error.
 
@@ -108,7 +110,8 @@ The typed columns are `UserId`, `EventType`, `IpAddress`, `UserAgent`, `Correlat
 
 Ninety days covers the window an incident is realistically investigated in — a breach discovered in month two can still be traced to its origin — while bounding a table that grows with every login attempt in the system, successful or not.
 
-The deletion job is §12's cleanup background worker, alongside expired sessions, consumed refresh tokens and used verification tokens. It is **not implemented yet**; until it is, rows accumulate. This is the one open item in §15's Definition of Done.
+`ExpiredAuthArtifactCleanupService` enforces this retention in bounded batches alongside
+expired sessions, tokens and retired signing keys.
 
 Deletion is by `OccurredAt` and nothing else — there is no "keep this row" flag and no exemption for severe events. A per-event retention table would be a policy nobody can state in one sentence, and the trail's value depends on an administrator being able to state what it holds.
 
@@ -147,6 +150,4 @@ Every filter above is served by an index declared in `Data/Configurations/AuditL
 
 ## 8. Known gaps
 
-- **The retention job does not exist** (§12). Rows accumulate until it lands.
 - **No `admin_user_updated` event.** `PATCH /api/v1/admin/users/{userId}` changes an account without producing a row, because the catalog has no member for it. The catalog is the spec and is closed; adding one is a decision for the project owner, not a gap to fill silently.
-- **Every §12 call site is unwritten.** Twenty of the twenty-three events have no producer yet. §21 is where "the event fires" becomes verifiable.

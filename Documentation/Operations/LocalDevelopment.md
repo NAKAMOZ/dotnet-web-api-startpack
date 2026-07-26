@@ -38,9 +38,8 @@ Open [`../../http/Auth.http`](../../http/Auth.http), run Register, inspect Mailp
 verification token, run Confirm in `EmailVerification.http`, then run Login. Store returned
 tokens only in `http/http-client.private.env.json`, which is gitignored.
 
-At the current implementation milestone, feature actions still return 501. The health,
-JWKS, OpenAPI, validation, security-header, CSRF, authorization, and rate-limit pipelines
-are live; the request files deliberately expose which functional slices remain.
+The feature actions are live. The walkthrough exercises the SMTP queue through Mailpit,
+email verification, login, token transport, CSRF, authorization, and rate-limit pipelines.
 
 ## Tests and ports
 

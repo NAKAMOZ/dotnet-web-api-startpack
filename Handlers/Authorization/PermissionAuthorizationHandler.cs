@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Api.Handlers.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Handlers.Authorization;
@@ -24,7 +26,18 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
             return Task.CompletedTask;
         }
 
-        var roles = context.User.FindAll(RolesClaimType).Select(static c => c.Value);
+        if (context.User.HasClaim(claim => claim.Type == ApiKeyAuthenticationHandler.ApiKeyIdClaimType)
+            && !context.User.HasClaim(
+                ApiKeyAuthenticationHandler.ScopeClaimType,
+                requirement.Permission))
+        {
+            return Task.CompletedTask;
+        }
+
+        var roles = context.User
+            .FindAll(RolesClaimType)
+            .Concat(context.User.FindAll(ClaimTypes.Role))
+            .Select(static claim => claim.Value);
 
         if (RolePermissionMap.Grants(roles, requirement.Permission))
         {

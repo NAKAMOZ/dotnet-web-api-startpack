@@ -50,6 +50,7 @@ Every non-2xx response this API can produce, as RFC 9457 `application/problem+js
 | `step_up_required` | 403 | Authenticated and permitted, but not *recently* authenticated | Re-authenticate, then retry. **Distinct from `forbidden` so a client prompts rather than logging the user out** |
 | `csrf_validation_failed` | 403 | A cookie-authenticated state-changing request arrived without a valid, session-bound CSRF token (§14) | Fetch `GET /api/v1/auth/csrf`, echo the value in `X-CSRF-Token`, retry once |
 | `invalid_token` | 400 | A verification, reset, MFA or challenge token did not resolve | Request a new one |
+| `unsupported_provider` | 400 | The requested social login provider is unsupported or disabled | Use an enabled provider |
 
 > **`invalid_credentials` deliberately conflates four cases**: unknown email, wrong password, locked account, and an account with no password at all. They are identical in code, title, detail and — via the dummy-hash path in §12 — in timing. Splitting any of them apart creates an account-enumeration oracle. `account_locked` exists as an internal exception for the audit trail and **never reaches a client**.
 
@@ -101,7 +102,7 @@ Per-field codes are defined in `Validators/Common/ValidationErrorCodes.cs`:
 | Code | Status | Meaning |
 |---|---|---|
 | `rate_limited` | 429 | Rate limit exceeded (§17). Carries `Retry-After` |
-| `not_implemented` | 501 | The route exists and its contract is fixed; the service behind it is not written yet (§12). Transitional — no code should depend on it |
+| `not_implemented` | 501 | Reserved framework fallback; no inventory endpoint currently emits it |
 | `request_cancelled` | 499 | The client disconnected before the response. Not a real HTTP status — it is a log-facing value, and nothing is written to a socket nobody is holding |
 | `internal_error` | 500 | Unhandled fault |
 

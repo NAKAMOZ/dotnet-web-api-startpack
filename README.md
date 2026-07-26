@@ -42,10 +42,9 @@ are intentionally unavailable in Production.
 - Docker — required for integration tests (Testcontainers spins up a real PostgreSQL)
 - An IDE understanding `.slnx`: VS 2022 17.14+, Rider 2025.1+, or VS Code
 
-The registration and login actions still return 501 until §12's feature services land.
-The complete request sequence is already prepared in [`http/Auth.http`](http/Auth.http);
-when those services are enabled, retrieve the verification link from Mailpit and continue
-with the login request. See
+The registration and login services are live. The complete request sequence is prepared in
+[`http/Auth.http`](http/Auth.http); retrieve the verification link from Mailpit and
+continue with the login request. See
 [`Documentation/Operations/LocalDevelopment.md`](Documentation/Operations/LocalDevelopment.md)
 for the fast inner loop and troubleshooting.
 

@@ -4,7 +4,7 @@
 
 The complete token lifecycle — issuance, validation, rotation, reuse detection, revocation, key rotation, and transport. This document is the single source of truth for how authentication works; endpoint documentation (§19) links here rather than restating it.
 
-Decisions this document implements: [ADR-0001](../Decisions/ADR-0001-token-strategy.md) (token strategy), [ADR-0002](../Decisions/ADR-0002-session-lifetime-and-model.md) (session lifetime), [ADR-0003](../Decisions/ADR-0003-token-transport.md) (transport), [ADR-0004](../Decisions/ADR-0004-signing-key-management.md) (key ring), [ADR-0006](../Decisions/ADR-0006-password-hashing.md) (hashing), [ADR-0019](../Decisions/ADR-0019-social-login.md) (social), [ADR-0020](../Decisions/ADR-0020-signing-key-storage.md) (key storage).
+Decisions this document implements: [ADR-0001](../Decisions/ADR-0001-token-strategy.md) (token strategy), [ADR-0002](../Decisions/ADR-0002-session-lifetime-and-model.md) (session lifetime), [ADR-0003](../Decisions/ADR-0003-token-transport.md) (transport), [ADR-0004](../Decisions/ADR-0004-signing-key-management.md) (key ring), [ADR-0006](../Decisions/ADR-0006-password-hashing.md) (hashing), [ADR-0019](../Decisions/ADR-0019-social-login.md) (social), [ADR-0020](../Decisions/ADR-0020-signing-key-storage.md) (key storage), [ADR-0026](../Decisions/ADR-0026-preserve-current-session-on-password-change.md) (password-change revocation).
 
 ---
 
@@ -386,7 +386,8 @@ Both cases are §22 tests ("unknown `kid`", "retired-key `kid`"). The retired ca
 | Logout | Current session revoked |
 | Revoke one session | That session revoked |
 | Revoke all | All sessions except current |
-| Password change **or** reset | `SecurityStamp` bumped, **all** sessions revoked |
+| Deliberate password change | `SecurityStamp` bumped, current session updated, every sibling revoked |
+| Password reset | `SecurityStamp` bumped, **all** sessions revoked |
 | Token reuse detected | That session revoked, audited |
 | Admin revokes user sessions | All sessions for that user |
 

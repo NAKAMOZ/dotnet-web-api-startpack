@@ -34,7 +34,7 @@ public sealed class CsrfAttackTests(IntegrationTestFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, missing.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, wrong.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, crossSession.StatusCode);
-        Assert.Equal(HttpStatusCode.NotImplemented, accepted.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, accepted.StatusCode);
 
         var problem = await crossSession.Content.ReadFromJsonAsync<JsonElement>(
             TestContext.Current.CancellationToken);

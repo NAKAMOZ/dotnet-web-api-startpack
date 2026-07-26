@@ -106,7 +106,9 @@ Seeded development accounts (Development only, logged loudly at startup):
 | `admin@localhost.dev` | `Dev_Admin_Password_1!` | `Admin` |
 | `user@localhost.dev` | `Dev_User_Password_1!` | `User` |
 
-> Until §12 registers `Argon2PasswordHasher`, these accounts are seeded with **no password** and cannot be logged into. A placeholder hash was rejected deliberately: one that verifies against a known string is a backdoor, one that verifies against nothing is an undiagnosable login bug.
+`DevDataSeeder` hashes both passwords with the registered `Argon2PasswordHasher` and repairs
+older deterministic rows whose `PasswordHash` is null. Production seeds no user
+credentials.
 
 ---
 

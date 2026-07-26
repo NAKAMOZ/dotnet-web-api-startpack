@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Api.DTOs.Auth;
 using Api.DTOs.PasswordReset;
+using IntegrationTests.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -11,15 +12,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace IntegrationTests;
 
-public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection(IntegrationTestCollection.Name)]
+public class RateLimitingTests(IntegrationTestFactory factory)
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public RateLimitingTests(WebApplicationFactory<Program> factory) => _factory = factory;
-
     [Fact]
     public async Task AuthStrict_Exhausted_ReturnsProblemDetailsAndRetryAfter()
     {
+        await factory.ResetAsync();
         var client = CreateClient(new Dictionary<string, string?>
         {
             ["RateLimiting:AuthStrictPermitLimit"] = "2",
@@ -33,14 +32,14 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
         };
 
         Assert.Equal(
-            HttpStatusCode.NotImplemented,
+            HttpStatusCode.Unauthorized,
             (await client.PostAsJsonAsync(
                 "/api/v1/auth/login",
                 request,
                 TestContext.Current.CancellationToken)).StatusCode);
 
         Assert.Equal(
-            HttpStatusCode.NotImplemented,
+            HttpStatusCode.Unauthorized,
             (await client.PostAsJsonAsync(
                 "/api/v1/auth/login",
                 request,
@@ -70,7 +69,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
         otherIp.Headers.Add(TestRemoteIpStartupFilter.HeaderName, "203.0.113.20");
 
         Assert.Equal(
-            HttpStatusCode.NotImplemented,
+            HttpStatusCode.Unauthorized,
             (await client.SendAsync(
                 otherIp,
                 TestContext.Current.CancellationToken)).StatusCode);
@@ -79,6 +78,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task EmailSending_TargetAccountsHaveIndependentAllowances()
     {
+        await factory.ResetAsync();
         var client = CreateClient(new Dictionary<string, string?>
         {
             ["RateLimiting:EmailSendingIpPermitLimit"] = "10",
@@ -89,10 +89,10 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
         var firstTarget = new PasswordResetRequest { Email = "victim@example.com" };
 
         Assert.Equal(
-            HttpStatusCode.NotImplemented,
+            HttpStatusCode.Accepted,
             (await PostPasswordResetAsync(client, firstTarget, "198.51.100.1")).StatusCode);
         Assert.Equal(
-            HttpStatusCode.NotImplemented,
+            HttpStatusCode.Accepted,
             (await PostPasswordResetAsync(client, firstTarget, "198.51.100.2")).StatusCode);
 
         // One target, three IPs: rotating the source address does not rotate the victim's
@@ -108,12 +108,13 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
             new PasswordResetRequest { Email = "other@example.com" },
             "198.51.100.3");
 
-        Assert.Equal(HttpStatusCode.NotImplemented, independent.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, independent.StatusCode);
     }
 
     [Fact]
     public async Task Registration_UsesAnIndependentFixedWindowPolicy()
     {
+        await factory.ResetAsync();
         var client = CreateClient(new Dictionary<string, string?>
         {
             ["RateLimiting:RegistrationPermitLimit"] = "1",
@@ -128,7 +129,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
         };
 
         Assert.Equal(
-            HttpStatusCode.NotImplemented,
+            HttpStatusCode.Accepted,
             (await client.PostAsJsonAsync(
                 "/api/v1/auth/register",
                 request,
@@ -145,6 +146,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task EmailSending_ClientIpCapAppliesAcrossDifferentTargets()
     {
+        await factory.ResetAsync();
         var client = CreateClient(new Dictionary<string, string?>
         {
             ["RateLimiting:EmailSendingIpPermitLimit"] = "1",
@@ -152,7 +154,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
         });
 
         Assert.Equal(
-            HttpStatusCode.NotImplemented,
+            HttpStatusCode.Accepted,
             (await PostPasswordResetAsync(
                 client,
                 new PasswordResetRequest { Email = "first@example.com" },
@@ -169,6 +171,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GeneralPolicy_CoversEndpointsWithoutANamedPolicy()
     {
+        await factory.ResetAsync();
         var client = CreateClient(new Dictionary<string, string?>
         {
             ["RateLimiting:GeneralPermitLimit"] = "1",
@@ -183,7 +186,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
         };
 
         Assert.Equal(
-            HttpStatusCode.NotImplemented,
+            HttpStatusCode.Unauthorized,
             (await client.PostAsJsonAsync(
                 "/api/v1/auth/login",
                 login,
@@ -200,10 +203,8 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
         IReadOnlyDictionary<string, string?> overrides,
         bool overrideGeneralLimit = true)
     {
-        var factory = _factory.WithWebHostBuilder(builder =>
+        var configuredFactory = factory.WithWebHostBuilder(builder =>
         {
-            builder.UseProductionLikeHost("Production", "rate-limiting-tests");
-
             var settings = new Dictionary<string, string?>(overrides);
 
             if (overrideGeneralLimit)
@@ -217,7 +218,8 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
                 services.AddSingleton<IStartupFilter, TestRemoteIpStartupFilter>());
         });
 
-        return factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        return configuredFactory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
     }
 
     private static Task<HttpResponseMessage> PostPasswordResetAsync(

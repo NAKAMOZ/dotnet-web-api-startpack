@@ -175,7 +175,7 @@ singleton because its in-memory partitions must survive across requests.
 | Item | Owner | Reason |
 |---|---|---|
 | Feature-service audit producers | §12/§15 | Most catalog events have no service path yet |
-| Audit retention worker | §12/§15 | The 90-day period is approved; the shared cleanup worker does not exist |
+| Audit retention worker | §12/§15 | Implemented by the shared bounded cleanup worker with the approved 90-day period |
 
 Serilog request logging/enrichers, the rate limiter, `AuditActionFilter`, Scalar's
 self-hosted bundle/CSP relaxation, and `ForwardedHeadersMiddleware` with its validated

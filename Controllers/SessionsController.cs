@@ -1,4 +1,5 @@
 using Api.DTOs.Sessions;
+using Api.Services.Sessions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +12,7 @@ namespace Api.Controllers;
 /// </remarks>
 [Route("api/v{version:apiVersion}/sessions")]
 [Authorize]
-public sealed class SessionsController : ApiControllerBase
+public sealed class SessionsController(ISessionQueryService sessionQueryService) : ApiControllerBase
 {
     /// <summary>Lists live sessions, flagging the one making this request.</summary>
     /// <remarks>
@@ -21,8 +22,9 @@ public sealed class SessionsController : ApiControllerBase
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<SessionResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<IReadOnlyList<SessionResponse>>> List(CancellationToken cancellationToken) =>
-        NotImplementedYet<IReadOnlyList<SessionResponse>>();
+    public async Task<ActionResult<IReadOnlyList<SessionResponse>>> List(
+        CancellationToken cancellationToken) =>
+        Ok(await sessionQueryService.ListAsync(CurrentUserId, CurrentSessionId, cancellationToken));
 
     /// <summary>Revokes one session.</summary>
     /// <remarks>
@@ -34,13 +36,20 @@ public sealed class SessionsController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult> Revoke(Guid sessionId, CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+    public async Task<ActionResult> Revoke(Guid sessionId, CancellationToken cancellationToken)
+    {
+        await sessionQueryService.RevokeAsync(CurrentUserId, sessionId, cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Revokes every session except the one making the request.</summary>
     [HttpDelete]
     [ProducesResponseType<RevokeSessionsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<RevokeSessionsResponse>> RevokeAllOthers(CancellationToken cancellationToken) =>
-        NotImplementedYet<RevokeSessionsResponse>();
+    public async Task<ActionResult<RevokeSessionsResponse>> RevokeAllOthers(
+        CancellationToken cancellationToken) =>
+        Ok(await sessionQueryService.RevokeAllOthersAsync(
+            CurrentUserId,
+            CurrentSessionId,
+            cancellationToken));
 }

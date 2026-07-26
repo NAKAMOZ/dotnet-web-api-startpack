@@ -1,6 +1,6 @@
 # ADR-0002: Session Lifetime and Multi-Device Session Model
 
-- **Status:** Accepted
+- **Status:** Partially superseded by ADR-0026 — lifetime and session-model decisions stand
 - **Date:** 2026-07-22
 - **Deciders:** Project owner
 - **Source:** `ROADMAP/00-overview.md` approved-decisions table, rows *Session lifetime* and *Session model*; **resolves pending decision P1**
@@ -28,7 +28,9 @@ now < AbsoluteExpiresAt          (login time + 7 days)
 
 **Model: one `Session` row per login, per device.** Each row records `IpAddress`, `UserAgent`, `DeviceLabel`, `LastActiveAt`, `AbsoluteExpiresAt`, `RevokedAt`, and `RevocationReason`. Three endpoints operate on them: list own sessions, revoke one, revoke all except the current.
 
-**Password change revokes every session.** Both the deliberate change and the reset path bump `User.SecurityStamp` and revoke all sessions, on the reasoning that a password change is frequently a *response* to suspected compromise.
+**Original password-change decision:** both deliberate change and reset bumped
+`User.SecurityStamp` and revoked all sessions. ADR-0026 supersedes this paragraph for a
+deliberate authenticated change; password reset still revokes every session.
 
 ## Alternatives considered
 
@@ -45,6 +47,7 @@ now < AbsoluteExpiresAt          (login time + 7 days)
 - Users can enumerate and individually revoke their sessions, making unauthorised access visible to the person best placed to spot it.
 - Two expiry bounds mean two failure modes to test and to communicate: §22 must cover both, and the error responses must distinguish them so clients can tell "you were idle" from "your session aged out".
 - Session rows accumulate. Expired and revoked rows need a cleanup worker (`BackgroundServices/`, per P9) or the table grows without limit.
-- Revoking all sessions on password change is a visible, occasionally surprising behaviour — it must be documented in `Documentation/Users/ChangePassword.md` (§19).
+- ADR-0026 preserves the current session after a deliberate password change and revokes
+  its siblings; reset retains this ADR's revoke-every-session behaviour.
 - The 7-day cap is the outer bound on any single credential chain's usefulness. It should be revisited if session-hijack telemetry ever suggests it is too generous.
 - `AbsoluteExpiresAt` is written once at login and is immutable thereafter — implementations must not "helpfully" extend it on refresh, which would silently defeat the cap.

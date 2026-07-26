@@ -21,12 +21,14 @@ None.
 
 ## Tasks
 
-- [ ] Factory + fixtures (`IntegrationTests/Infrastructure/`): PostgreSQL 17 container lifecycle, migrations, Respawn, shared fake clock, and bearer/cookie transport helpers are implemented. `CapturingEmailSender` and `RegisterAndLoginAsync` wait for §12's email/auth service contracts.
+- [🔄] Factory + fixtures (`IntegrationTests/Infrastructure/`): PostgreSQL 17 container lifecycle, migrations, Respawn, shared fake clock and bearer helpers are implemented. A capturing email sender remains open.
 - [ ] Flow suites (each its own file):
   - Registration → verification email captured → confirm → `email_verified` claim true after next login.
   - Login/logout both transports; wrong password; lockout after 5; unlock by time advance.
   - Refresh rotation: happy chain; reuse of rotated token → 401 + session revoked + audit row; refresh after 6 h idle (time advance) → 401; refresh past absolute cap → 401.
-  - Sessions: list shows device metadata; revoke one (other device's refresh fails); revoke all-but-current; password change kills all sessions.
+  - Sessions: list shows device metadata; revoke one (other device's refresh fails);
+    revoke all-but-current; password change preserves current and revokes siblings; reset
+    revokes every session.
   - Password reset: request (existing + non-existing email — identical responses), token from captured email, confirm, old sessions dead, old token single-use.
   - MFA: enroll → confirm → login returns 202 ticket → complete with TOTP; recovery code path (single-use); disable requires recent auth.
   - Social: provider stubbed at the `Backchannel` level; callback creates user + account; second login links, not duplicates.
@@ -38,14 +40,15 @@ None.
 
 ### Implementation status (2026-07-26)
 
-- 72 integration tests are green against the real pipeline; the PostgreSQL collection uses
+- 86 integration tests are green against the real pipeline; the PostgreSQL collection uses
   one random-port Testcontainer and preserves migrations/reference roles across Respawn.
 - Refresh rotation/replay, idle/absolute bounds, signing-key/JWKS lifecycle, health
   up/down probes,
   OpenAPI/docs sync, rate limits, headers, and authorization/CSRF matrices are executable.
-- The listed registration, login, session-controller, reset, MFA, social, passkey, API-key,
-  and admin feature flows remain blocked by the §12 actions that intentionally return 501.
-  They are not represented by skipped or placeholder-green tests.
+- Registration parity, login/refresh/replay, password-reset revocation, TOTP enrollment,
+  enumeration/lockout and API-key scope intersection are executable over HTTP. Social
+  provider, complete passkey ceremony and the full admin matrix still need dedicated
+  provider/authenticator fixtures.
 
 ## Expected Deliverables
 

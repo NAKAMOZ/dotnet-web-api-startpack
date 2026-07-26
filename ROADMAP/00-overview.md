@@ -23,7 +23,7 @@
 | API style | RESTful, attribute-routed MVC controllers only; RFC 9457 Problem Details for all errors |
 | Token strategy | JWT access tokens, **15-minute TTL**, signed **ES256** + opaque rotating refresh tokens (SHA-256 hashed at rest, single-use, bound to a session row, reuse detection revokes the session) |
 | Session lifetime | **Sliding 6-hour inactivity window + 7-day absolute cap** (cap value approved 2026-07-22, P1 — ADR-0002) |
-| Session model | **Multi-device**: one session row per login with device metadata (IP, user agent, created, last-active); list / revoke-one / revoke-all endpoints; **password change revokes all sessions** |
+| Session model | **Multi-device**: one session row per login with device metadata (IP, user agent, created, last-active); list / revoke-one / revoke-all endpoints; password change preserves current and revokes siblings (ADR-0026) |
 | Token transport | **Both**: `httpOnly` `Secure` cookies (with CSRF defense) for browser clients and `Authorization: Bearer` for mobile/CLI/server clients |
 | Signing keys | ES256 with `kid`-based rotation and a public **JWKS** endpoint; rotation designed in from day one |
 | User store | **Custom entities** (Better Auth–style schema). No ASP.NET Core Identity. ASP.NET Core `JwtBearer` middleware, custom authentication handlers, and policy-based authorization on top |
@@ -50,8 +50,8 @@
 | ~~P5~~ | Caching | ✅ **Approved: `HybridCache` in-memory** — Redis deferred to §29 backlog — `ADR-0016` | ~~12, 17~~ resolved |
 | P6 | Rate-limiting store | Built-in ASP.NET Core `RateLimiter`, in-memory (single node); Redis-backed counters deferred with P5 | 17 |
 | P7 | Secret management (prod) | Env vars now; vault target (Azure Key Vault / AWS SM / HashiCorp) chosen with deployment target | 25, 27 |
-| P8 | Email provider (prod) | `IEmailSender` abstraction; Mailpit in dev; prod provider open | 12 |
-| P9 | Background jobs | Plain `BackgroundService` for expired session/token cleanup; **no** Hangfire/Quartz in v1 | 12 |
+| ~~P8~~ | Email provider (prod) | ✅ **Approved:** SMTP behind `IEmailSender`; Mailpit in dev — `ADR-0024` | ~~12~~ resolved |
+| ~~P9~~ | Background jobs | ✅ **Approved:** plain `BackgroundService`; no Hangfire/Quartz in v1 — `ADR-0025` | ~~12~~ resolved |
 | P10 | Observability backend | OpenTelemetry traces + metrics; export target open (OTLP-compatible) | 28 |
 | P11 | Message broker | **None in v1.** No async cross-service communication exists; adding a broker would be speculative complexity | — |
 | ~~P12~~ | Initial social providers | ✅ **Approved: Google + GitHub** — `ADR-0019` | ~~4, 12~~ resolved |
@@ -216,7 +216,7 @@ Drives the controller split (§11) and the `Documentation/` file list (§19). Al
 | GET | `/api/v1/users/me` | 🔐 | `UsersController` |
 | PATCH | `/api/v1/users/me` | 🔐 | `UsersController` |
 | DELETE | `/api/v1/users/me` | 🔐 (recent auth) | `UsersController` |
-| PUT | `/api/v1/users/me/password` | 🔐 | `UsersController` (revokes all sessions) |
+| PUT | `/api/v1/users/me/password` | 🔐 | `UsersController` (preserves current, revokes siblings) |
 | GET | `/api/v1/users/me/accounts` | 🔐 | `UsersController` |
 | DELETE | `/api/v1/users/me/accounts/{accountId}` | 🔐 | `UsersController` |
 | GET | `/api/v1/admin/users` | 👑 | `AdminUsersController` (paged/filter/sort) |

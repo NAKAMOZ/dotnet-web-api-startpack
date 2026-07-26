@@ -36,4 +36,7 @@ public enum VerificationTokenType
     /// known.
     /// </summary>
     PasskeyAuthenticationChallenge,
+
+    /// <summary>Single-use OAuth state for a social authorization callback.</summary>
+    SocialAuthorizationState,
 }

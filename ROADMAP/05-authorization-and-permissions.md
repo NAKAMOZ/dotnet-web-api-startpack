@@ -56,13 +56,13 @@ Fallback policy active; all endpoint inventory rows mapped to a permission or `[
 
 - [x] Permission catalog, role map, attributes, policy provider and both handlers written; build clean, 21 tests green.
 - [x] Every 👑 row in the endpoint inventory has a named permission (`Documentation/Architecture/Authorization.md` §3).
-- [ ] **Fallback policy *active*** — blocked on §12. Defined as `AuthorizationPolicies.DenyByDefault` and unit-tested; assignment is one marked line in `ServiceCollectionExtensions.Authorization.cs`.
-- [ ] **All inventory rows carry an attribute** — blocked on §11; controllers do not exist yet.
-- [ ] **Matrix test green** — blocked on §11 and §21.
+- [x] **Fallback policy active** — `AuthorizationPolicies.DenyByDefault` is assigned and tested.
+- [x] **All inventory rows carry an attribute** — controller authorization posture is guarded by architecture tests.
+- [x] **Matrix test green** — role and API-key scope intersection is covered over HTTP.
 
 ### Discovered dependency: §5 → §12 (not in the original Dependencies)
 
-Deny-by-default cannot be switched on until an authentication scheme exists.
+Deny-by-default was switched on when the real authentication schemes landed in §12.
 
 `AddAuthorization` causes minimal hosting to insert the authorization middleware automatically, and that middleware applies the fallback policy to **every** request, including ones matching no endpoint. With no scheme registered there is nothing to challenge with, so setting `FallbackPolicy` today turns every request — 404s included — into a 500. The §3 composition-root smoke test caught it immediately.
 

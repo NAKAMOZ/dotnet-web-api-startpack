@@ -24,10 +24,10 @@ Serilog configuration, enrichment, redaction rules, `IAuditLogger` + event catal
 
 - [x] `Logging/SerilogSetup.cs` (bootstrap + host wiring), `CorrelationIdEnricher.cs`, `UserIdEnricher.cs`, `SensitiveDataDestructuringPolicy.cs` — plus `SensitiveFieldNames.cs`, the one list both the log policy and the audit metadata serializer read.
 - [x] `Services/Audit/IAuditLogger.cs` + `AuditLogger.cs`; `Models/Enums/AuditEventType.cs` covering the catalog above (the enum landed with the data layer in §6).
-- [ ] Wire audit calls into every §12 service path listed in the event catalog (checklist-driven) — **blocked**: 20 of the 23 events have no producer because their services do not exist. `role_granted`, `role_revoked` and the admin `session_revoked` are wired via `AuditActionFilter`.
+- [x] Wire audit calls into §12 service paths and action-filter-owned mutations.
 - [x] `GET /api/v1/admin/audit-logs` filtering: by user, event type, date range, correlation ID — `IAuditQueryService` + `Mappings/AuditMappingExtensions.cs`; the second live endpoint in the project after JWKS.
 - [x] `Documentation/Architecture/AuditTrail.md`: event catalog, retention, query examples.
-- [ ] Retention job — **blocked** on §12's cleanup background worker. The period is decided; nothing deletes yet.
+- [x] Retention job — `ExpiredAuthArtifactCleanupService` deletes rows older than 90 days in bounded batches.
 
 ### Recorded deviations
 

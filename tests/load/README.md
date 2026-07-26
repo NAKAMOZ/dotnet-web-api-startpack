@@ -27,9 +27,9 @@ Override `BASE_URL`, `TEST_EMAIL`, `TEST_PASSWORD`, `DURATION`, or the per-scrip
 variables for staging. Never point these scripts at production without an approved test
 window. k6 exits non-zero when a latency, failure-rate, or check threshold is breached.
 
-The current feature actions return 501, so the scenario checks intentionally fail until
-§12 supplies login, refresh, and profile services. This is a visible dependency, not a
-reason to weaken the checks.
+The login, refresh, and profile actions are service-backed. The scenario checks therefore
+measure real flows; a non-success response fails the run instead of being treated as a
+latency sample.
 
 The default authentication policies permit 10 login or refresh attempts per minute per IP,
 which is intentionally below these single-source profiles. For a controlled load

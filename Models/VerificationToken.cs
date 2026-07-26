@@ -13,12 +13,12 @@ public sealed class VerificationToken : IAuditableEntity
 
     /// <summary>
     /// Owner, or null for a <see cref="VerificationTokenType.PasskeyAuthenticationChallenge"/>
-    /// — that ceremony begins before any user is identified.
+    /// or <see cref="VerificationTokenType.SocialAuthorizationState"/> — both begin before
+    /// any user is identified.
     /// </summary>
     /// <remarks>
-    /// Nullable for exactly that one type. Every other type must set it, and §7 does not
-    /// relax the foreign key: a token with no owner can authorise nothing but the ceremony
-    /// that produced it.
+    /// Every user-bound type must set it, and §7 does not relax the foreign key: an
+    /// ownerless token can authorise only the anonymous ceremony that produced it.
     /// </remarks>
     public Guid? UserId { get; set; }
 

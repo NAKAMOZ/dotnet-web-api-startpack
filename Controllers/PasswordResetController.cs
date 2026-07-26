@@ -1,5 +1,6 @@
 using Api.Configuration;
 using Api.DTOs.PasswordReset;
+using Api.Services.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -9,7 +10,8 @@ namespace Api.Controllers;
 /// <summary>The forgotten-password flow. Both endpoints are anonymous by necessity.</summary>
 [Route("api/v{version:apiVersion}/password-reset")]
 [AllowAnonymous]
-public sealed class PasswordResetController : ApiControllerBase
+public sealed class PasswordResetController(IPasswordResetService passwordResetService)
+    : ApiControllerBase
 {
     /// <summary>Requests a reset email.</summary>
     /// <remarks>
@@ -24,10 +26,13 @@ public sealed class PasswordResetController : ApiControllerBase
     // Named RequestReset, not Request: an action called Request hides ControllerBase.Request
     // (the HttpRequest accessor), which is a compile error here and would be a subtle bug in
     // any controller that used both.
-    public Task<ActionResult> RequestReset(
+    public async Task<ActionResult> RequestReset(
         [FromBody] PasswordResetRequest request,
-        CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+        CancellationToken cancellationToken)
+    {
+        await passwordResetService.RequestAsync(request, cancellationToken);
+        return Accepted();
+    }
 
     /// <summary>Sets a new password using the emailed token.</summary>
     /// <remarks>
@@ -37,8 +42,11 @@ public sealed class PasswordResetController : ApiControllerBase
     [HttpPost("confirm")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
-    public Task<ActionResult> Confirm(
+    public async Task<ActionResult> Confirm(
         [FromBody] PasswordResetConfirmRequest request,
-        CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+        CancellationToken cancellationToken)
+    {
+        await passwordResetService.ConfirmAsync(request, cancellationToken);
+        return NoContent();
+    }
 }

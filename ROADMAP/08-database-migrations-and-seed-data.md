@@ -22,13 +22,13 @@ None.
 
 - [x] `dotnet ef migrations add InitialCreate` after §7; review generated SQL line-by-line (citext extension creation, indexes, cascades).
 - [x] `Data/Seeding/RoleSeed.cs` (`HasData`: Admin, User with fixed GUIDs).
-- [🔄] `Data/Seeding/DevDataSeeder.cs` + `IDataSeeder` interface: one admin + one regular dev user, logged loudly at startup. **Passwords pending §12** — see Deviations.
+- [x] `Data/Seeding/DevDataSeeder.cs` + `IDataSeeder` interface: one admin + one regular dev user, logged loudly at startup; legacy rows with null password hashes are repaired idempotently.
 - [x] `Extensions/ApplicationBuilderExtensions.Database.cs`: dev-only migrate+seed call.
 - [x] `Documentation/Operations/Migrations.md`: add/apply/rollback runbook, bundle usage, "never edit an applied migration" rule.
 
 ## Deviations and decisions taken here
 
-1. **Dev seed passwords are blocked on §12.** `Argon2PasswordHasher` belongs to §12, and hashing is the one thing this workstream cannot do for itself. `Services/Crypto/IPasswordHasher.cs` — the **contract only** — landed here so the seeder can take it as an optional dependency; the accounts are seeded with `PasswordHash = null` and a startup warning until §12 registers an implementation, at which point they gain working passwords with no code change. A placeholder hash was rejected: one that verifies against a known string is a backdoor, one that verifies against nothing is an undiagnosable login bug, and `null` is a state ADR-0006 already sanctions.
+1. **Dev seed password dependency is closed.** `Argon2PasswordHasher` is registered by §12. The seeder both hashes new rows and repairs the two deterministic legacy rows when their `PasswordHash` is null.
 
 2. **All tables moved to an `auth` schema** (`AppDbContext.Schema`, `HasDefaultSchema`), including `__EFMigrationsHistory`. The API shares its database with other things; a dedicated schema keeps its thirteen tables identifiable as one unit and makes the runtime grant scopeable to `auth` alone. Decided during §8 because it changes the initial migration — retrofitting it later would mean moving every table.
 

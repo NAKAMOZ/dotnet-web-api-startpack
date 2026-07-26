@@ -74,6 +74,10 @@ public sealed class ApiKeyAuthenticationHandler(
             return AuthenticateResult.Fail("Invalid API key.");
         }
 
+        await dbContext.ApiKeys
+            .Where(candidate => candidate.Id == key.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(candidate => candidate.LastUsedAt, now));
+
         var roles = await dbContext.UserRoles
             .AsNoTracking()
             .Where(userRole => userRole.UserId == key.UserId)

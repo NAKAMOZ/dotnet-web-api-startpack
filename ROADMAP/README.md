@@ -8,9 +8,9 @@ This folder contains the implementation roadmap for the Better Auth–inspired a
 |---|---|
 | **Planning** | ✅ Complete — all 29 workstreams specified |
 | **Technology consultation** | ✅ Complete — core stack approved by the project owner (see the approved-decisions table in the overview) |
-| **Decision record** | ✅ 23 ADRs + the authentication and authorization architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
-| **Open decisions** | ⏳ 8 items (P6–P11, P14, P16); **P1–P5, P12, P13, P15, P17 resolved 2026-07-22**; **P18 resolved 2026-07-23** |
-| **Implementation** | 🔄 **Phase A–D done; cross-cutting, documentation, tests and local operations advanced** — 274 tests green (202 unit, 72 integration; 47 security-tagged). Real PostgreSQL migrations/Respawn, typed startup validation, k6 budgets, a non-root Docker/Compose stack, health failure probes, backend-neutral OpenTelemetry/auth metrics, production runbooks and the CI workflow are present. All 43 operations route, validate, authorize, carry rate-limit coverage, appear in transformed OpenAPI, have synced Markdown, and have mechanically synced `.http` examples. Feature services are still missing, so 41 of 43 actions return 501. Next: registration → login → refresh services, then the rest of §12. |
+| **Decision record** | ✅ 26 ADRs + the authentication, authorization and service architecture documents written in [`Documentation/Decisions/`](../Documentation/Decisions/README.md) — the durable record; this roadmap is archived at v1 close (§29) |
+| **Open decisions** | ⏳ 6 items (P6, P7, P10, P11, P14, P16); P8/P9 resolved by ADR-0024/0025 |
+| **Implementation** | 🔄 **Phase A–D done; feature services complete; cross-cutting, documentation, tests and local operations advanced** — 296 tests green (210 unit, 86 integration; 50 security-tagged). All 43 operations are backed by real services; registration/login/MFA/refresh/reset/session/user/social/passkey/API-key/admin flows, SMTP queue, cleanup worker and HybridCache key resolution are wired. Owner reviews, external secret/KMS choices, formal approvals, load baselines and GitHub controls remain. |
 
 ## How to use this board
 
@@ -43,7 +43,7 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 |---|---|---|
 | 6 | [Domain and Entity Modeling](06-domain-and-entity-modeling.md) | 🔄 19 entity/enum files landed, builds clean, entity table + ER diagram synced; awaiting owner sign-off on the three recorded deviations |
 | 7 | [Entity Framework Core Configuration](07-entity-framework-core-configuration.md) | ✅ `AppDbContext` + 13 configurations + interceptor; generated SQL reviewed against the design; 10 model-shape tests green |
-| 8 | [Database Migrations and Seed Data](08-database-migrations-and-seed-data.md) | 🔄 `InitialCreate` applied to a real database, `auth` schema + roles + dev seeder verified; dev-account **passwords** wait on §12's `Argon2PasswordHasher` |
+| 8 | [Database Migrations and Seed Data](08-database-migrations-and-seed-data.md) | ✅ `InitialCreate` applied to PostgreSQL; roles and dev users seed idempotently, including repair of legacy null password hashes |
 
 ### Phase D — API Plumbing
 
@@ -51,17 +51,17 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 |---|---|---|
 | 9 | [DTO Organization](09-dto-organization.md) | ✅ 47 records across 12 feature namespaces; 5 reflection guard tests green |
 | 10 | [Validation](10-validation.md) | ✅ 20 validators + shared rules + filter; RFC 9457 400 with `errorCodes` verified over HTTP once §11 landed |
-| 11 | [Controller Architecture](11-controller-architecture.md) | ✅ 14 controllers; all 43 inventory operations live in the OpenAPI document; 501 for anonymous stubs, 401 for protected; 6 architecture tests green |
-| 12 | [Service and Handler Architecture](12-service-and-handler-architecture.md) | 🔄 token pipeline complete — crypto, ES256 key ring, rotation + reuse detection, real auth schemes, deny-by-default **on**. Feature services (auth, MFA, passkeys, social, API keys, email, cleanup) not started; 41 of 43 actions still 501 |
-| 13 | [API Response and Error Standards](13-api-response-and-error-standards.md) | ✅ one RFC 9457 envelope everywhere, `Documentation/Errors.md` catalogue + 9 guard tests; 403/404/409/500 bodies await §12's services |
+| 11 | [Controller Architecture](11-controller-architecture.md) | ✅ 14 thin controllers; all 43 inventory operations live in OpenAPI and all 41 former stubs call real services |
+| 12 | [Service and Handler Architecture](12-service-and-handler-architecture.md) | ✅ token pipeline and all feature services complete; every inventory action is live; SMTP queue, cleanup worker and HybridCache resolution wired |
+| 13 | [API Response and Error Standards](13-api-response-and-error-standards.md) | ✅ one RFC 9457 envelope everywhere, typed feature errors included, `Documentation/Errors.md` catalogue + guard tests |
 | 14 | [Middleware and Filters](14-middleware-and-filters.md) | ✅ pipeline assembled in order: correlation id, request logging, exception handler, security headers, rate limiting, CORS, authentication/authorization, CSRF filter + session-bound token service; `Pipeline.md` written. `AuditActionFilter` landed with §15; rate limiting with §17. Forwarded headers (§27) remains reserved ahead of IP-sensitive stages |
 
 ### Phase E — Cross-Cutting Concerns
 
 | # | Workstream | Status |
 |---|---|---|
-| 15 | [Logging and Audit Trails](15-logging-and-audit-trails.md) | 🔄 Serilog wired (two-stage init, correlation + user enrichers, redaction policy, JSON in non-dev); `IAuditLogger` writing on its own scope, `IAuditQueryService` behind a live `GET /admin/audit-logs`; `AuditTrail.md` + catalog guard test; P18 resolved at 90 days. Blocked on §12 for the 20 events whose services do not exist, and for the retention job |
-| 16 | [Security Hardening](16-security-hardening.md) | 🔄 Data Protection key ring persisted to the database (ADR-0021); lockout's 5-failure/15-minute fixed-window transition implemented and boundary-tested; anti-enumeration registration contract corrected to 202; `Documentation/Security/` populated; Dependabot configured. Blocked on §12 for login wiring and on P14 for encrypting the key ring at rest |
+| 15 | [Logging and Audit Trails](15-logging-and-audit-trails.md) | 🔄 Serilog, durable audit producers/querying and 90-day cleanup are wired; `admin_user_updated` remains an owner catalog decision |
+| 16 | [Security Hardening](16-security-hardening.md) | 🔄 lockout and anti-enumeration are wired through real login/registration/reset paths; P14 still blocks external key-ring protection |
 | 17 | [Rate Limiting and Abuse Prevention](17-rate-limiting-and-abuse-prevention.md) | 🔄 all four policies, 429 envelope, account/IP partitioning, documentation and matrix tests implemented; awaiting formal P6 approval and an owner decision on expanding the closed audit catalog for rate-limit events |
 
 ### Phase F — Documentation
@@ -75,20 +75,20 @@ Legend: ⬜ not started · 🔄 in progress · ✅ done (DoD met) · ⏳ blocked
 
 | # | Workstream | Status |
 |---|---|---|
-| 20 | [Unit Testing](20-unit-testing.md) | 🔄 202 tests: crypto, JWT issuance/signature/rotation race, lockout, authorization, audit mapping, options/proxy validation, auth metrics, Argon2 tuning, all-validator happy paths and architecture guards. Remaining per-rule validator rejection suites and §12-owned TOTP behavior are open |
-| 21 | [Integration Testing](21-integration-testing.md) | 🔄 72 PostgreSQL-backed tests; supported token/cross-cutting/health-failure flows green; feature flows wait on §12 |
-| 22 | [Security Testing](22-security-testing.md) | 🔄 47 attack cases + traceability; enumeration/API-key/full-flow cases wait on §12 |
-| 23 | [Performance and Load Testing](23-performance-and-load-testing.md) | 🔄 k6 + Argon2 harness ready; endpoint baselines wait on §12/P14 |
+| 20 | [Unit Testing](20-unit-testing.md) | 🔄 206 tests; remaining per-rule validator rejection and dedicated TOTP replay suites are open |
+| 21 | [Integration Testing](21-integration-testing.md) | 🔄 86 PostgreSQL-backed tests including registration parity/race, login/refresh/replay, reset/change revocation, sessions, TOTP, API keys, passkey/social contracts, admin flows and cleanup |
+| 22 | [Security Testing](22-security-testing.md) | 🔄 attack suite and feature-flow coverage are live; oversized-body and captured-log scanning remain |
+| 23 | [Performance and Load Testing](23-performance-and-load-testing.md) | 🔄 k6 + Argon2 harness ready; production-like endpoint baselines wait on P14 |
 
 ### Phase H — Operations
 
 | # | Workstream | Status |
 |---|---|---|
-| 24 | [Docker and Local Development](24-docker-and-local-development.md) | 🔄 image/Compose/HTTP/health verified; register/login walkthrough waits on §12 |
+| 24 | [Docker and Local Development](24-docker-and-local-development.md) | ✅ image/Compose/HTTP/health and register→Mailpit→login workflow are service-backed |
 | 25 | [Configuration and Secret Management](25-configuration-and-secret-management.md) | 🔄 typed validation + reference + secret gate complete; formal P7 decision open |
 | 26 | [CI/CD](26-ci-cd.md) | 🔄 workflow and local gates verified; GitHub run/branch protection require owner push |
 | 27 | [Deployment and Production Readiness](27-deployment-and-production-readiness.md) | 🔄 target-neutral checklist/runbooks/proxy trust done; P7/P14 block platform deploy and key-ring protector |
-| 28 | [Monitoring, Metrics, Tracing, and Health Checks](28-monitoring-metrics-tracing-and-health-checks.md) | 🔄 health/OTel/auth metrics/alerts done; §12 call sites and P10 backend acceptance remain |
+| 28 | [Monitoring, Metrics, Tracing, and Health Checks](28-monitoring-metrics-tracing-and-health-checks.md) | 🔄 health/OTel/auth metrics/alerts and login/MFA call sites done; P10 backend acceptance remains |
 
 ### Phase I — Longevity
 

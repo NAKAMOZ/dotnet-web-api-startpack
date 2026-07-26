@@ -7,7 +7,7 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "displayName": "Laptop passkey"
+  "label": "Laptop passkey"
 }
 
 ### Complete registration (replace values with WebAuthn client output)
@@ -17,8 +17,8 @@ X-CSRF-Token: {{csrfToken}}
 Content-Type: application/json
 
 {
-  "challengeId": "{{passkeyChallengeId}}",
-  "credential": "{{passkeyRegistrationCredential}}"
+  "attestationResponse": {{passkeyRegistrationCredential}},
+  "label": "Laptop passkey"
 }
 
 ### Authentication options
@@ -32,8 +32,7 @@ POST {{api}}/passkeys/authentication/complete
 Content-Type: application/json
 
 {
-  "challengeId": "{{passkeyChallengeId}}",
-  "credential": "{{passkeyAuthenticationCredential}}"
+  "assertionResponse": {{passkeyAuthenticationCredential}}
 }
 
 ### List passkeys

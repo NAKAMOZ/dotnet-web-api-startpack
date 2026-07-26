@@ -48,7 +48,8 @@ Scoped programmatic credentials with prefix-based lookup, authenticated by a ded
 `POST /api/v1/api-keys` · `GET /api-keys` · `DELETE /api-keys/{keyId}`
 
 ### User self-service
-Profile read and update, account deletion, password change (revokes all sessions), linked-account management.
+Profile read and update, account deletion, password change (preserves current and revokes
+sibling sessions), linked-account management.
 `GET /api/v1/users/me` · `PATCH /users/me` · `DELETE /users/me` · `PUT /users/me/password`
 
 ### Administration

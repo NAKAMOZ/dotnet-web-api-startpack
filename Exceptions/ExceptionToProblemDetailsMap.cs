@@ -44,11 +44,21 @@ public static class ExceptionToProblemDetailsMap
             StatusCodes.Status401Unauthorized, new InvalidCredentialsException().ErrorCode, "Authentication failed."),
 
         // A revoked session, not a client error to correct. 401 so the client re-authenticates.
-        TokenReuseDetectedException domain => (
-            StatusCodes.Status401Unauthorized, domain.ErrorCode, "The session has been revoked."),
+        // Kept precise internally for incident handling, deliberately collapsed on the
+        // wire so refresh-token replay is not an oracle.
+        TokenReuseDetectedException => (
+            StatusCodes.Status401Unauthorized,
+            new InvalidCredentialsException().ErrorCode,
+            "Authentication failed."),
 
         InvalidTokenException domain => (
             StatusCodes.Status400BadRequest, domain.ErrorCode, "The token is invalid."),
+
+        ForbiddenOperationException domain => (
+            StatusCodes.Status403Forbidden, domain.ErrorCode, "Forbidden."),
+
+        UnsupportedProviderException domain => (
+            StatusCodes.Status400BadRequest, domain.ErrorCode, "Unsupported provider."),
 
         // ── Resource state ───────────────────────────────────────────────────────────
         //

@@ -1,5 +1,6 @@
 using Api.Attributes;
 using Api.DTOs.Users;
+using Api.Services.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,24 +12,25 @@ namespace Api.Controllers;
 /// </summary>
 [Route("api/v{version:apiVersion}/users/me")]
 [Authorize]
-public sealed class UsersController : ApiControllerBase
+public sealed class UsersController(IUserService userService) : ApiControllerBase
 {
     /// <summary>The caller's own profile.</summary>
     [HttpGet]
     [ProducesResponseType<UserProfileResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<UserProfileResponse>> GetProfile(CancellationToken cancellationToken) =>
-        NotImplementedYet<UserProfileResponse>();
+    public async Task<ActionResult<UserProfileResponse>> GetProfile(
+        CancellationToken cancellationToken) =>
+        Ok(await userService.GetProfileAsync(CurrentUserId, cancellationToken));
 
     /// <summary>Updates the display name — the only mutable profile field.</summary>
     [HttpPatch]
     [ProducesResponseType<UserProfileResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<UserProfileResponse>> UpdateProfile(
+    public async Task<ActionResult<UserProfileResponse>> UpdateProfile(
         [FromBody] UpdateProfileRequest request,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<UserProfileResponse>();
+        Ok(await userService.UpdateProfileAsync(CurrentUserId, request, cancellationToken));
 
     /// <summary>Deletes the account irreversibly. <b>Requires recent authentication.</b></summary>
     /// <remarks>
@@ -40,8 +42,11 @@ public sealed class UsersController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
-    public Task<ActionResult> DeleteAccount(CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+    public async Task<ActionResult> DeleteAccount(CancellationToken cancellationToken)
+    {
+        await userService.DeleteAccountAsync(CurrentUserId, cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Changes the password, then revokes every session including this one.</summary>
     /// <remarks>
@@ -53,18 +58,25 @@ public sealed class UsersController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult> ChangePassword(
+    public async Task<ActionResult> ChangePassword(
         [FromBody] ChangePasswordRequest request,
-        CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+        CancellationToken cancellationToken)
+    {
+        await userService.ChangePasswordAsync(
+            CurrentUserId,
+            CurrentSessionId,
+            request,
+            cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Lists linked social accounts.</summary>
     [HttpGet("accounts")]
     [ProducesResponseType<IReadOnlyList<LinkedAccountResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<IReadOnlyList<LinkedAccountResponse>>> ListAccounts(
+    public async Task<ActionResult<IReadOnlyList<LinkedAccountResponse>>> ListAccounts(
         CancellationToken cancellationToken) =>
-        NotImplementedYet<IReadOnlyList<LinkedAccountResponse>>();
+        Ok(await userService.ListAccountsAsync(CurrentUserId, cancellationToken));
 
     /// <summary>Unlinks a social account.</summary>
     /// <remarks>
@@ -76,6 +88,11 @@ public sealed class UsersController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public Task<ActionResult> UnlinkAccount(Guid accountId, CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+    public async Task<ActionResult> UnlinkAccount(
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        await userService.UnlinkAccountAsync(CurrentUserId, accountId, cancellationToken);
+        return NoContent();
+    }
 }

@@ -1,3 +1,4 @@
+using Api.BackgroundServices;
 using Api.Data;
 using Api.Models;
 using Api.Models.Enums;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 using Respawn;
 using Respawn.Graph;
@@ -148,9 +150,9 @@ public sealed class IntegrationTestFactory : WebApplicationFactory<Program>, IAs
     }
 
     /// <summary>
-    /// Issues a real access token for an arbitrary subject, bypassing the login flow §12
-    /// has not built yet. The token is signed by the host's own key ring, so it exercises
-    /// the same validation path a genuine one would.
+    /// Issues a real access token for an arbitrary subject without running a full login.
+    /// The token is signed by the host's own key ring, so isolated endpoint scenarios still
+    /// exercise the same validation path as a genuine login.
     /// </summary>
     public async Task<string> IssueAccessTokenAsync(
         Guid userId,
@@ -178,11 +180,26 @@ public sealed class IntegrationTestFactory : WebApplicationFactory<Program>, IAs
     {
         ApplyTestingSettings(builder, _postgres.GetConnectionString());
         builder.UseSetting("RateLimiting:GeneralPermitLimit", "100000");
+        builder.UseSetting("RateLimiting:AuthStrictPermitLimit", "10000");
+        builder.UseSetting("RateLimiting:EmailSendingIpPermitLimit", "10000");
+        builder.UseSetting("RateLimiting:EmailSendingAccountPermitLimit", "10000");
+        builder.UseSetting("RateLimiting:RegistrationPermitLimit", "10000");
 
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+
+            // A shared FakeTimeProvider is advanced by expiry tests. Letting the real
+            // periodic cleanup worker observe those jumps makes it delete another test's
+            // deliberately expired token in the background. Keep the same concrete worker
+            // available for its explicit integration test, but do not schedule it in the
+            // Testing host.
+            var cleanupRegistration = services.Single(descriptor =>
+                descriptor.ServiceType == typeof(IHostedService)
+                && descriptor.ImplementationType == typeof(ExpiredAuthArtifactCleanupService));
+            services.Remove(cleanupRegistration);
+            services.AddSingleton<ExpiredAuthArtifactCleanupService>();
         });
     }
 }

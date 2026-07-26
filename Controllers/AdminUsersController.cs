@@ -2,6 +2,7 @@ using Api.Attributes;
 using Api.DTOs.Admin;
 using Api.DTOs.Common;
 using Api.Handlers.Authorization;
+using Api.Services.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -13,7 +14,7 @@ namespace Api.Controllers;
 /// operations ends up carrying the union of their permissions.
 /// </remarks>
 [Route("api/v{version:apiVersion}/admin/users")]
-public sealed class AdminUsersController : ApiControllerBase
+public sealed class AdminUsersController(IAdminUserService adminUserService) : ApiControllerBase
 {
     /// <summary>Lists users, paged and filterable.</summary>
     /// <remarks>Sort fields come from an allow-list — an unrestricted sort orders by columns the caller cannot read.</remarks>
@@ -23,10 +24,10 @@ public sealed class AdminUsersController : ApiControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
-    public Task<ActionResult<PagedResponse<AdminUserResponse>>> List(
+    public async Task<ActionResult<PagedResponse<AdminUserResponse>>> List(
         [FromQuery] AdminUserListQuery query,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<PagedResponse<AdminUserResponse>>();
+        Ok(await adminUserService.ListAsync(query, cancellationToken));
 
     /// <summary>One user in full, including lockout state and live sessions.</summary>
     [HttpGet("{userId:guid}")]
@@ -35,8 +36,10 @@ public sealed class AdminUsersController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult<AdminUserDetailResponse>> Get(Guid userId, CancellationToken cancellationToken) =>
-        NotImplementedYet<AdminUserDetailResponse>();
+    public async Task<ActionResult<AdminUserDetailResponse>> Get(
+        Guid userId,
+        CancellationToken cancellationToken) =>
+        Ok(await adminUserService.GetAsync(userId, cancellationToken));
 
     /// <summary>Updates verification state, display name, or clears a lockout.</summary>
     /// <remarks>
@@ -51,11 +54,11 @@ public sealed class AdminUsersController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult<AdminUserDetailResponse>> Update(
+    public async Task<ActionResult<AdminUserDetailResponse>> Update(
         Guid userId,
         [FromBody] AdminUpdateUserRequest request,
         CancellationToken cancellationToken) =>
-        NotImplementedYet<AdminUserDetailResponse>();
+        Ok(await adminUserService.UpdateAsync(userId, request, cancellationToken));
 
     /// <summary>Deletes a user and every credential they hold. The audit trail survives.</summary>
     /// <remarks>
@@ -73,6 +76,9 @@ public sealed class AdminUsersController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult> Delete(Guid userId, CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+    public async Task<ActionResult> Delete(Guid userId, CancellationToken cancellationToken)
+    {
+        await adminUserService.DeleteAsync(userId, cancellationToken);
+        return NoContent();
+    }
 }

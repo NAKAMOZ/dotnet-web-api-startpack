@@ -32,8 +32,9 @@ public sealed class SessionService(
             DeviceLabel = request.DeviceLabel,
             AuthenticationMethods = [.. request.AuthenticationMethods],
 
-            // Captured at login. Refresh compares the user's current stamp against this one,
-            // which is what makes a password change kill every existing session.
+            // Captured at login. Refresh compares the user's current stamp against this one.
+            // Password reset invalidates every snapshot; a deliberate password change
+            // updates only the current session's snapshot and revokes its siblings.
             SecurityStamp = securityStamp,
 
             AuthenticatedAt = now,

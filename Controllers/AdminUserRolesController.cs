@@ -2,6 +2,7 @@ using Api.Attributes;
 using Api.DTOs.Admin;
 using Api.Handlers.Authorization;
 using Api.Models.Enums;
+using Api.Services.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -13,7 +14,7 @@ namespace Api.Controllers;
 /// from each other, so that revoking can be delegated without granting.
 /// </remarks>
 [Route("api/v{version:apiVersion}/admin/users/{userId:guid}/roles")]
-public sealed class AdminUserRolesController : ApiControllerBase
+public sealed class AdminUserRolesController(IAdminRoleService adminRoleService) : ApiControllerBase
 {
     /// <summary>Grants a role.</summary>
     /// <remarks>
@@ -29,11 +30,14 @@ public sealed class AdminUserRolesController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult> Grant(
+    public async Task<ActionResult> Grant(
         Guid userId,
         [FromBody] AssignRoleRequest request,
-        CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+        CancellationToken cancellationToken)
+    {
+        await adminRoleService.GrantAsync(userId, request.RoleId, cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Revokes a role.</summary>
     [HttpDelete("{roleId:guid}")]
@@ -43,6 +47,12 @@ public sealed class AdminUserRolesController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<ActionResult> Revoke(Guid userId, Guid roleId, CancellationToken cancellationToken) =>
-        NotImplementedYetResult();
+    public async Task<ActionResult> Revoke(
+        Guid userId,
+        Guid roleId,
+        CancellationToken cancellationToken)
+    {
+        await adminRoleService.RevokeAsync(userId, roleId, cancellationToken);
+        return NoContent();
+    }
 }

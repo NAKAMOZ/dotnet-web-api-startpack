@@ -71,11 +71,6 @@ public sealed class AuditActionFilter(IAuditLogger auditLogger) : IAsyncActionFi
     /// into a response: the operation did not happen. A result with no status code of its own
     /// — an action that wrote to the response directly — is treated as 200, which is what MVC
     /// itself defaults to.
-    /// <para>
-    /// This is also what keeps §11's <c>501</c> placeholders out of the trail: they are
-    /// <c>ObjectResult</c>s carrying 501, so nothing is recorded until the service behind the
-    /// action is real.
-    /// </para>
     /// </remarks>
     private static bool Succeeded(ActionExecutedContext executed)
     {

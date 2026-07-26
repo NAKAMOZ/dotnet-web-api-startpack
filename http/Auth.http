@@ -52,3 +52,4 @@ Authorization: Bearer {{accessToken}}
 
 ### Issue CSRF token (cookie mode)
 GET {{api}}/auth/csrf
+Authorization: Bearer {{accessToken}}

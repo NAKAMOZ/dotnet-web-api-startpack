@@ -7,7 +7,7 @@ auth: required
 # Change password
 
 ## Purpose
-Replaces the caller's password and revokes all sessions.
+Replaces the caller's password, preserves the current session, and revokes every sibling session.
 ## HTTP method
 `PUT`
 ## Route
@@ -43,6 +43,8 @@ Content-Type: application/json
 HTTP/1.1 204 No Content
 ```
 ## Security considerations
-Both password fields are excluded from logs. Success rotates the security stamp and revokes even the current session.
+Both password fields are excluded from logs. Success rotates the security stamp, copies
+the new value to the current session, and revokes every sibling session. Password reset
+still revokes every session.
 ## Related endpoints
 [`Password reset`](../PasswordReset/Request.md), [`Login`](../Auth/Login.md).

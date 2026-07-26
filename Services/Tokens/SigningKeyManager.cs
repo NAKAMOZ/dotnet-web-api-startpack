@@ -6,6 +6,7 @@ using Api.Models.Enums;
 using Api.Services.Audit;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -17,6 +18,7 @@ public sealed class SigningKeyManager(
     IDataProtectionProvider dataProtectionProvider,
     IOptions<JwtOptions> jwtOptions,
     TimeProvider timeProvider,
+    HybridCache cache,
     ILogger<SigningKeyManager> logger,
     IAuditLogger auditLogger) : ISigningKeyManager
 {
@@ -124,6 +126,14 @@ public sealed class SigningKeyManager(
         if (elapsed.Count > 0)
         {
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            // Invalidate only after the status commit. Removing first leaves a race where
+            // a resolver can repopulate the still-retiring key between removal and save.
+            foreach (var key in elapsed)
+            {
+                await cache.RemoveAsync(CacheKey(key.KeyId), cancellationToken);
+            }
+
             logger.LogInformation("Retired {Count} signing key(s) past the grace period.", elapsed.Count);
         }
 
@@ -145,24 +155,34 @@ public sealed class SigningKeyManager(
     /// </remarks>
     public async Task<ECDsa?> ResolveValidationKeyAsync(string keyId, CancellationToken cancellationToken)
     {
-        var key = await dbContext.SigningKeys
-            .AsNoTracking()
-            .SingleOrDefaultAsync(
-                candidate => candidate.KeyId == keyId
-                             && (candidate.Status == SigningKeyStatus.Active
-                                 || candidate.Status == SigningKeyStatus.Retiring),
-                cancellationToken);
+        var publicKey = await cache.GetOrCreateAsync(
+            CacheKey(keyId),
+            async token =>
+            {
+                var encoded = await dbContext.SigningKeys
+                    .AsNoTracking()
+                    .Where(candidate => candidate.KeyId == keyId
+                                        && (candidate.Status == SigningKeyStatus.Active
+                                            || candidate.Status == SigningKeyStatus.Retiring))
+                    .Select(candidate => candidate.PublicKey)
+                    .SingleOrDefaultAsync(token);
 
-        if (key is null)
+                return encoded is null ? [] : Convert.FromBase64String(encoded);
+            },
+            cancellationToken: cancellationToken);
+
+        if (publicKey.Length == 0)
         {
             return null;
         }
 
         var ecdsa = ECDsa.Create();
-        ecdsa.ImportSubjectPublicKeyInfo(Convert.FromBase64String(key.PublicKey), out _);
+        ecdsa.ImportSubjectPublicKeyInfo(publicKey, out _);
 
         return ecdsa;
     }
+
+    private static string CacheKey(string keyId) => $"signing-key:{keyId}";
 
     private async Task<SigningKey> GetOrCreateActiveKeyAsync(CancellationToken cancellationToken)
     {

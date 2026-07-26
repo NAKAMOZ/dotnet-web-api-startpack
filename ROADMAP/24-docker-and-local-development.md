@@ -31,8 +31,8 @@ None (Docker approved).
 **Verified 2026-07-26:** the image built, ran as UID 1654, and the full stack reported
 `/health/ready` healthy against PostgreSQL. The local machine already owned port 5432, so
 Compose now defaults its host-side mapping to 55432 while PostgreSQL remains on 5432 inside
-the network; Testcontainers independently uses a random host port. Register/login
-completion remains blocked by §12's 501 actions.
+the network; Testcontainers independently uses a random host port. The §12 registration,
+Mailpit verification and login services complete the documented walkthrough.
 
 ## Expected Deliverables
 

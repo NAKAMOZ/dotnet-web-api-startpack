@@ -56,7 +56,9 @@ public sealed class AuditLogger(
             // The explicit subject wins. Falling back to the caller matters for self-service
             // events; for admin actions the two differ, and the row records the target while
             // the metadata records the actor.
-            UserId = userId ?? CurrentUserId(httpContext),
+            UserId = eventType == AuditEventType.AdminUserDeleted
+                ? userId
+                : userId ?? CurrentUserId(httpContext),
             EventType = eventType,
             IpAddress = Truncate(httpContext?.Connection.RemoteIpAddress?.ToString(), MaxIpAddressLength),
             UserAgent = Truncate(httpContext?.Request.Headers.UserAgent.ToString(), MaxUserAgentLength),

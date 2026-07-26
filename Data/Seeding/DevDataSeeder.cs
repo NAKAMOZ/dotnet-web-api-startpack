@@ -97,8 +97,17 @@ public sealed class DevDataSeeder(
     {
         // Idempotent by id, not by email: the development loop restarts the app constantly
         // and only occasionally drops the database.
-        if (await dbContext.Users.AnyAsync(user => user.Id == userId, cancellationToken))
+        var existing = await dbContext.Users.SingleOrDefaultAsync(
+            user => user.Id == userId,
+            cancellationToken);
+
+        if (existing is not null)
         {
+            if (existing.PasswordHash is null && passwordHasher is not null)
+            {
+                existing.PasswordHash = passwordHasher.Hash(password);
+            }
+
             return;
         }
 

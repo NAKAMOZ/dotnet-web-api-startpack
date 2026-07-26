@@ -23,9 +23,9 @@ None.
 ## Query parameters
 None.
 ## Request body
-Optional account hint used only to choose allow-credentials behavior.
+An empty JSON object. Account hints are intentionally not accepted; only discoverable credentials are supported.
 ## Validation rules
-Any hint must be a structurally valid bounded email address.
+No fields are accepted.
 ## Success response
 `200 OK` with challenge and assertion options.
 ## Error responses
@@ -35,7 +35,7 @@ Any hint must be a structurally valid bounded email address.
 POST /api/v1/passkeys/authentication/options
 Content-Type: application/json
 
-{"email":"user@example.com"}
+{}
 ```
 ## Example response
 ```http
@@ -45,6 +45,6 @@ Content-Type: application/json
 {"challenge":"<base64url>","rpId":"example.com"}
 ```
 ## Security considerations
-Existing and absent account hints must produce indistinguishable responses; otherwise this becomes an account-enumeration endpoint.
+`allowCredentials` is always empty, so neither account existence nor authenticator count is disclosed.
 ## Related endpoints
 [`Complete passkey authentication`](AuthenticationComplete.md), [`Login`](../Auth/Login.md).

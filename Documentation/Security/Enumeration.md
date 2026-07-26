@@ -2,7 +2,9 @@
 
 Source of truth for what an **anonymous** caller may learn about which accounts exist (§16).
 
-This document is written **ahead of** the services that implement it. §12's feature services do not exist yet, so nothing below is enforced by code today — the parity table is the specification each service is built against, and §22 turns each row into a test. Where a row and an implementation disagree, the row wins until this document is deliberately changed.
+The §12 feature services implement this contract and §22 exercises the security-critical
+pairs. Where a row and an implementation disagree, the row wins until this document is
+deliberately changed.
 
 ---
 
@@ -35,7 +37,7 @@ Every anonymous (🔓) operation in the inventory. "Exists" and "Absent" describ
 
 | | |
 |---|---|
-| **Absent** | `202`, empty body. Verification email sent. |
+| **Absent** | `202`, constant acknowledgement body. Verification email sent. |
 | **Exists** | `202`, **byte-identical** body. Email sent to the same address, with different copy: *"someone tried to register an account with this address — you already have one"*, plus a password-reset link. |
 | **Timing** | Both paths hash the submitted password. The existing-account path must not skip the Argon2 call as an optimisation; that alone is a ~100 ms oracle. |
 
@@ -93,11 +95,12 @@ The subtlest one on the list, because the leak is in the shape of a success resp
 
 | | |
 |---|---|
-| **`email` omitted** | `200`, challenge with an empty `allowCredentials` — the discoverable-credential path |
-| **`email` names an absent account** | `200`, challenge, `allowCredentials` **empty** |
-| **`email` names an account with passkeys** | `200`, challenge, `allowCredentials` **empty** |
+| **Any request** | `200`, challenge with an empty `allowCredentials` — the discoverable-credential path |
 
-`allowCredentials` is empty in every case, so the response carries no account signal at all. Populating it for a known account would disclose both existence *and* the number of registered authenticators. The cost is that non-discoverable credentials are unsupported; `PasskeyAuthenticationOptionsRequest.Email` documents this already, and the honest resolution is to drop the field in §12 rather than accept it and ignore it.
+`allowCredentials` is empty in every case, so the response carries no account signal at
+all. Populating it for a known account would disclose both existence and the number of
+registered authenticators. The cost is that non-discoverable credentials are unsupported;
+`PasskeyAuthenticationOptionsRequest` therefore has no email field.
 
 ### `POST /api/v1/passkeys/authentication/complete`
 
@@ -110,7 +113,7 @@ The subtlest one on the list, because the leak is in the shape of a success resp
 | | |
 |---|---|
 | **Unknown provider** | `400`, `unsupported_provider` — a provider name is public information, not an account |
-| **Callback: address already registered to a local account** | Linked and signed in, per Authentication.md §9. No distinguishable response — the caller has already proven control of the address at the identity provider. |
+| **Callback: address already registered to a local account** | Not auto-linked: ADR-0019 matches only `(provider, providerAccountId)`. A separate provider-scoped account is created with a non-routable local address and the success response keeps the same shape. |
 | **Callback: provider asserts an unverified address** | Same response shape as success; the account is created unverified. Never reveals whether the address was already known. |
 
 ### `POST /api/v1/auth/refresh`, `GET /api/v1/auth/csrf`, `GET /.well-known/jwks.json`

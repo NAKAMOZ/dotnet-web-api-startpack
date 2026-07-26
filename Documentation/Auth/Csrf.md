@@ -1,7 +1,7 @@
 ---
 method: GET
 route: /api/v1/auth/csrf
-auth: anonymous
+auth: required
 ---
 
 # Get a CSRF token
@@ -13,9 +13,9 @@ Issues the readable cookie and token needed for cookie-authenticated state chang
 ## Route
 `/api/v1/auth/csrf`
 ## Authentication requirements
-Anonymous so a browser can bootstrap cookie mode.
+A valid access token, supplied as a bearer token or access cookie.
 ## Authorization requirements
-None.
+The token is bound to the authenticated session.
 ## Request headers
 No special headers.
 ## Route parameters
@@ -29,10 +29,11 @@ None.
 ## Success response
 `200 OK` with the token and a `__Host-` CSRF cookie.
 ## Error responses
-`429 rate_limited`.
+`401 unauthorized`; `429 rate_limited`.
 ## Example request
 ```http
 GET /api/v1/auth/csrf
+Authorization: Bearer <access-token>
 ```
 ## Example response
 ```http
@@ -43,6 +44,6 @@ Content-Type: application/json
 {"csrfToken":"<token>"}
 ```
 ## Security considerations
-The token is bound to a session when one exists and is intentionally readable by same-origin JavaScript; it is not an authentication credential.
+The token is bound to the authenticated session and is intentionally readable by same-origin JavaScript; it is not an authentication credential.
 ## Related endpoints
 [`Login`](Login.md), [`Refresh`](Refresh.md), [`Logout`](Logout.md).

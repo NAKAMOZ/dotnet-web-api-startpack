@@ -21,7 +21,7 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 
 | Req | Requirement | Status | Evidence |
 |---|---|---|---|
-| 1.1.x | Secure SDLC, documented decisions | ✅ | `Documentation/Decisions/` — 23 ADRs, one per decision, superseded rather than edited |
+| 1.1.x | Secure SDLC, documented decisions | ✅ | `Documentation/Decisions/` — 26 ADRs, one per decision, superseded rather than deleted |
 | 1.2.2 | Components communicate with least-privilege accounts | 🔄 | Single `auth` schema makes a scoped grant expressible (`AppDbContext.Schema`); the grant itself is §27's deploy step |
 | 1.4.1 | Access control enforced at a trusted layer | ✅ | Deny-by-default fallback policy, §5/§12 — `Extensions/ServiceCollectionExtensions.Authorization.cs` |
 | 1.4.4 | One access-control mechanism, not several | ✅ | `[RequirePermission]` only; scheme-agnostic behind the `Composite` policy scheme |
@@ -40,12 +40,12 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 | 2.1.10 | No periodic rotation requirement | ✅ | Not implemented, by decision |
 | 2.2.1 | Anti-automation on credential endpoints | 🔄 | Lockout is §16 (`Services/Security/LockoutPolicy.cs`, options bound); **per-IP limiting is §17 and is the half that stops password spraying** |
 | 2.2.2 | No SMS/voice as a default MFA factor | ✅ | TOTP and WebAuthn only — `Documentation/Scope.md` |
-| 2.2.3 | Notification on credential change | 🔄 | Designed; requires the email service (§12, blocked on P8) |
+| 2.2.3 | Notification on credential change | 🔄 | SMTP delivery and templates are live; adding notifications to every credential-change path remains separate scope |
 | 2.3.1 | Activation/reset tokens random and short-lived | ✅ | CSPRNG via `ITokenGenerator`; lifetimes in `AuthSessionOptions` |
 | 2.4.1 | Passwords stored with an approved one-way KDF | ✅ | Argon2id — ADR-0006, `Services/Crypto/Argon2PasswordHasher.cs` |
 | 2.4.x | KDF parameters at or above recommended cost | ✅ | `PasswordHashingOptions`, validated at startup. **Two profiles**: `Hash` for passwords, `HashSecret` for high-entropy machine secrets — separate methods, never a parameter, so the cheap profile cannot default its way onto the password path |
 | 2.5.1 | System-generated secrets not sent in cleartext where avoidable | ⏸️ | Reset and verification links travel by email, which is the medium. Bounded by short lifetimes, single use, and hashing at rest |
-| 2.5.4 | No shared or default accounts | 🔄 | Dev seeder creates named accounts; §8 note — seeded passwords wait on §12. Production seeds nothing |
+| 2.5.4 | No shared or default accounts | ✅ | Development-only named accounts receive Argon2 hashes; Production seeds no users |
 | 2.5.6 | Reset uses a random, short-lived, single-use token | ✅ | `VerificationToken` — hashed at rest, `ConsumedAt` enforces single use |
 | 2.5.7 | Reset does not reveal account existence | ✅ | `Documentation/Security/Enumeration.md` §3 |
 | 2.7.x | Out-of-band verifier (email links) | 🔄 | Entity and token pipeline exist; delivery is §12 |
@@ -179,7 +179,8 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 | 4 | ⏸️ TLS cipher/version policy | V9.1.2 | Project owner | §27 |
 | 5 | ⏸️ API keys as static secrets | V3.5.2 | Accepted for v1 | — |
 | 6 | ⏸️ Authorization decisions not audited | V7.2.2 | Accepted for v1 | — |
-| 7 | 🔄 Everything blocked on §12 feature services | V2, V3, V7 | — | §12 |
-| 8 | 🔄 Per-IP anti-automation | V2.2.1, V11.1.4 | — | §17 |
+| 7 | 🔄 Credential-change notifications on every path | V2.2.3 | Project owner | Post-v1 scope |
 
-**Item 8 is the one to watch.** Per-account lockout and per-IP limiting look redundant and are not: lockout bounds guessing against *one* account, and does nothing about one password tried against ten thousand accounts, because no single account ever reaches the threshold. §16 is not complete as a control until §17 lands.
+Per-account lockout and per-IP limiting look redundant and are not: lockout bounds
+guessing against *one* account, and does nothing about one password tried against ten
+thousand accounts, because no single account ever reaches the threshold. Both are active.

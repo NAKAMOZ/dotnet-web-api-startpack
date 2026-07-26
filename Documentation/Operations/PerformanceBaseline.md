@@ -8,9 +8,9 @@ login p95 < 500 ms at 50 RPS, refresh p95 < 100 ms at 200 RPS, and profile reads
 
 ## Current result
 
-Endpoint baselines are **not yet claimable**: the three measured actions intentionally
-return 501 until §12's feature services land. The k6 scripts are executable and fail on
-that response, preventing a placeholder result from being mistaken for a baseline.
+Endpoint baselines are **not yet claimable** because a controlled compose/staging run and
+production-class hardware profile have not been recorded. The three measured actions are
+service-backed and the k6 scripts are ready to capture those measurements.
 
 The Argon2 tuning harness measures the production `Argon2PasswordHasher` defaults
 (64 MiB, 3 iterations, parallelism 1) and enforces the 50 ms security floor. A local
@@ -22,7 +22,7 @@ parameters before production hardware is selected through P14.
 |---|---|---|---|---|---|
 | 2026-07-26 | Local Apple Silicon arm64 (memory not captured) | arm64 | .NET SDK 10.0.302 / runtime 10.0.10 | Argon2 verify median, 7 samples | 177.0 ms |
 | Pending | Production-class (P14) | Pending | .NET 10 | Argon2 verify median | Pending |
-| Pending | Compose/staging | Pending | .NET 10 | login / refresh / me / mixed | Blocked by §12 |
+| Pending | Compose/staging | Pending | .NET 10 | login / refresh / me / mixed | Awaiting controlled load run |
 
 ## Rate-limit interaction
 

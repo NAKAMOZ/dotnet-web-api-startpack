@@ -17,10 +17,10 @@ internal sealed class VerificationTokenConfiguration : IEntityTypeConfiguration<
 
         builder.HasIndex(token => token.TokenHash).IsUnique();
 
-        // Optional FK — a passkey authentication challenge is issued before any user is
-        // known (§6). Cascade rather than the default ClientSetNull for an optional
-        // relationship: deleting an account must take its pending reset and verification
-        // tokens with it, not orphan them into ownerless credentials.
+        // Optional FK — passkey authentication challenges and social OAuth state are
+        // issued before any user is known. Cascade rather than the default ClientSetNull
+        // for an optional relationship: deleting an account must take its pending reset
+        // and verification tokens with it, not orphan them into ownerless credentials.
         builder.HasOne(token => token.User)
             .WithMany()
             .HasForeignKey(token => token.UserId)

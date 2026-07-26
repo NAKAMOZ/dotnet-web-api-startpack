@@ -1,19 +1,14 @@
 namespace Api.DTOs.Auth;
 
 /// <summary>
-/// Result of a successful registration.
+/// Enumeration-safe acknowledgement of a registration request.
 /// </summary>
 /// <remarks>
-/// Registration does <b>not</b> return tokens. The account exists but has not proven its
-/// email address, and issuing a session here would make the verification step optional in
-/// practice. The client logs in as a separate, explicit step.
+/// The body is deliberately constant for a new and an existing address. Returning a user
+/// id, the normalized email, or account state would turn registration into an account
+/// enumeration endpoint.
 /// </remarks>
 public sealed record RegisterResponse
 {
-    public required Guid UserId { get; init; }
-
-    public required string Email { get; init; }
-
-    /// <summary>Always <see langword="false"/> here — a verification email has been sent.</summary>
-    public required bool EmailVerified { get; init; }
+    public required string Message { get; init; }
 }

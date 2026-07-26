@@ -15,11 +15,13 @@ Feature services, token/crypto services, auth-scheme handlers, email abstraction
 - Handlers in `Handlers/Authentication/`: `ApiKeyAuthenticationHandler` (scheme `ApiKey`), the policy scheme selector from §5. JwtBearer configured (not hand-rolled) in `Extensions/ServiceCollectionExtensions.Auth.cs`, including cookie-token extraction (`OnMessageReceived` reads `__Host-auth.access` when no bearer header).
 - Argon2id parameters in `Configuration/PasswordHashingOptions.cs` (recommend start: 64 MB memory, iterations tuned to ~100 ms on prod hardware in §23); hash string embeds algorithm+version+params; `IPasswordHasher.NeedsRehash` drives re-hash-on-login.
 - Refresh rotation runs in a serializable-scoped transaction: mark used → create successor → slide session; concurrent replay of the same token loses on the unique `TokenHash` + `UsedAt` check → reuse path.
-- `BackgroundServices/ExpiredAuthArtifactCleanupService.cs` (P9): hourly, deletes expired/used refresh tokens, expired sessions, consumed verification tokens past retention.
+- `BackgroundServices/ExpiredAuthArtifactCleanupService.cs` (P9): hourly, deletes expired
+  refresh tokens (spent rows stay until expiry for replay detection), expired sessions,
+  consumed/expired verification tokens and audit rows past retention.
 
 ## Technology Decisions Requiring Approval
 
-P8 (email provider), P9 (background jobs) — recommendations stand.
+P8 and P9 are approved in ADR-0024 and ADR-0025.
 
 ## Tasks
 
@@ -29,29 +31,29 @@ P8 (email provider), P9 (background jobs) — recommendations stand.
 - [x] `Handlers/Authentication/ApiKeyAuthenticationHandler.cs` (prefix lookup → hash verify → claims principal with key scopes).
 - [x] `Exceptions/` — 8 domain exception types.
 - [x] `Extensions/ServiceCollectionExtensions.Services.cs` + real `ServiceCollectionExtensions.Auth.cs` (policy scheme → JwtBearer / ApiKey).
-- [ ] Feature services: `Services/Auth`, `Users`, `Mfa`, `Passkeys`, `SocialAuth`, `ApiKeys`, `Audit`.
-- [ ] `Services/Email/` with templated messages (embedded resources).
-- [ ] `BackgroundServices/ExpiredAuthArtifactCleanupService.cs` + options.
-- [ ] Wire the remaining 42 controller actions to their services (only JWKS is live).
-- [ ] `Documentation/Architecture/Services.md`.
+- [x] Feature services: `Services/Auth`, `Users`, `Mfa`, `Passkeys`, `SocialAuth`, `ApiKeys`, `Audit`.
+- [x] `Services/Email/` with templated messages (embedded resources).
+- [x] `BackgroundServices/ExpiredAuthArtifactCleanupService.cs` + options.
+- [x] Wire every inventory controller action to its service.
+- [x] `Documentation/Architecture/Services.md`.
 
-## Progress — this pass built the token pipeline, not the features
+## Progress
 
 The workstream is split deliberately: everything below is what every feature service depends on, so it lands first and lands complete.
 
-| Landed | Still open |
+| Landed | Notes |
 |---|---|
-| Deny-by-default active; §5 closed | Registration / login / logout services |
-| Argon2id hasher, two profiles, re-hash detection | MFA, passkeys, social, API-key, user, admin services |
-| CSPRNG token generator, constant-time compare | Email sender + templates (P8 still open) |
-| ES256 key ring: generate, rotate, retire, JWKS | Cleanup background worker (P9) |
-| Access-token issuance with the full §2 claim set | 42 of 43 controller actions still return 501 |
-| Refresh rotation + reuse detection, transactional | `Services.md` catalog |
+| Deny-by-default active; §5 closed | Every controller action is service-backed |
+| Argon2id hasher, two profiles, re-hash detection | Login uses one process-wide dummy hash |
+| CSPRNG token generator, constant-time compare | SMTP queue and embedded templates |
+| ES256 key ring: generate, rotate, retire, JWKS | Exact-`kid` resolution uses HybridCache |
+| Access-token issuance with the full §2 claim set | Body/cookie transport is exclusive |
+| Refresh rotation + reuse detection, transactional | Replay remains generic on the wire |
 | Session lifetime service (both bounds) | |
 | MFA ticket issue/consume, atomic | |
 | JwtBearer with the ES256 pin + cookie extraction | |
 | API-key scheme + composite policy scheme | |
-| 8 domain exceptions | |
+| Feature services, cleanup and `Services.md` | |
 
 ## Decisions taken here
 
@@ -92,18 +94,20 @@ The workstream is split deliberately: everything below is what every feature ser
 
 All inventory endpoints backed by real services; §4 sequence diagrams match implementation; unit suites green.
 
-**Status: not met — the token pipeline half is done, the feature half is not.** What is verified today:
+**Status: met.** Every inventory action is backed by a real service; build, unit and
+PostgreSQL integration suites are green.
 
 - `GET /.well-known/jwks.json` serves a real ES256 key generated on first request:
   `{"kty":"EC","use":"sig","alg":"ES256","kid":"3-b1sPZ9…","crv":"P-256","x":"…","y":"…"}` — public components only, no `d`.
 - The key row exists in `auth."SigningKeys"` with a 368-character Data-Protection-wrapped private key and a 124-character public SPKI. Private material never leaves `SigningKeyManager`.
 - Deny-by-default is live: `/api/v1/sessions` → 401, `/api/v1/admin/users` → 401, unknown path → 401, `/openapi/v1.json` → 200.
-- 93 tests green, including hasher round-trip, re-hash-on-cost-increase, corrupt-hash rejection, profile separation, and token entropy/uniqueness/URL-safety.
+- 296 tests green (210 unit + 86 integration), including hasher round-trip,
+  re-hash-on-cost-increase, corrupt-hash rejection, profile separation, token
+  entropy/uniqueness/URL-safety, and the composed feature flows.
 
-Not yet demonstrable: a full login → refresh → revoke round trip, because the login service does not exist. Token *validation* against the real ES256 ring is therefore also unexercised end to end — §21's Testcontainers harness is where that becomes testable.
+The integration suite demonstrates registration parity, login → refresh → replay,
+password-reset revocation and TOTP enrollment against PostgreSQL.
 
 ## Questions for the Project Owner
 
-1. **P8 (email provider) and P9 (background jobs)** — approve the standing recommendations? Both block the remaining half: `IEmailSender` gates registration and password reset, and the cleanup worker is P9.
-2. Should "new login" notification emails be sent on every new-device login (recommended) or opt-in?
-3. Still open from §11: **does `POST /auth/register` return `409` on a duplicate email, or always `202`?** The registration service is the next thing to be written and this decides its shape.
+1. Should "new login" notification emails be sent on every new-device login (recommended) or opt-in?

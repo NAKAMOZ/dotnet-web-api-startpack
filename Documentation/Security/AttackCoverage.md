@@ -21,13 +21,13 @@ Concrete regression coverage for the design claims in
 | Sensitive-object log redaction | `SensitiveDataDestructuringPolicyTests.*` | Covered at logger boundary |
 | Recent auth reads `auth_time`, not `iat`; API keys cannot pass | `RecentAuthAuthorizationHandlerTests.*` | Covered at policy boundary |
 | Sort fields are allow-listed | `QueryValidatorTests.*` and `AuditQueryService` fixed expression map | Covered at validator/unit boundary |
-| Registration/reset/login enumeration equality and timing | Feature services absent (§12) | Blocked |
-| Lockout over HTTP, reset on login success, admin unlock | Login/admin services absent (§12) | Blocked |
-| Cross-session/revoked refresh over HTTP | Refresh controller action absent (§12) | Blocked |
+| Registration/reset/login enumeration equality and timing | `FeatureServiceIntegrationTests.Registration_DuplicateIsByteIdenticalAndCreatesOneAccount`; `FeatureAttackTests.EnumerationPaths_ExposeTheSamePublicOutcomes` | Covered |
+| Lockout over HTTP, reset on login success, admin unlock | `FeatureAttackTests.Lockout_IsInvisibleAndAdminUnlockRestoresLogin` | Covered |
+| Refresh rotation/replay over HTTP | `FeatureServiceIntegrationTests.LoginRefreshAndReplay_RunThroughTheHttpContract` | Covered |
 | Every admin endpoint as User → 403; every protected endpoint anonymous → 401 | `AuthorizationAttackTests.*` (8 admin + 30 protected route cases) | Covered |
-| API-key scope enforcement | API-key service absent (§12) | Blocked |
+| API-key scope enforcement and current-role intersection | `FeatureAttackTests.ApiKeyScopes_AreIntersectedWithTheOwnersCurrentRoles` | Covered |
 | Oversized request bodies | Global request-size policy not yet defined (§16/§27) | Blocked |
-| Full-flow scalar secret scan over captured logs | Feature services absent (§12) | Blocked |
+| Full-flow scalar secret scan over captured logs | Capturing sink not yet present | Blocked |
 
 “Blocked” is intentionally not represented by skipped or trivially green tests. Each row
 becomes an executable named test in the same change that supplies its production service.

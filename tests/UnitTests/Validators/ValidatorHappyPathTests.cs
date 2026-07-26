@@ -64,7 +64,7 @@ public class ValidatorHappyPathTests
                     AttestationResponse = jsonObject,
                     Label = "Laptop",
                 },
-                new PasskeyAuthenticationOptionsRequest { Email = "user@example.com" },
+                new PasskeyAuthenticationOptionsRequest(),
                 new PasskeyAuthenticationRequest { AssertionResponse = jsonObject },
                 new CreateApiKeyRequest
                 {
