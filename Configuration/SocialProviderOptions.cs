@@ -5,6 +5,12 @@ public sealed class SocialProviderOptions
 {
     public const string SectionName = "SocialProviders";
 
+    /// <summary>
+    /// Uses deterministic local identities instead of making OAuth HTTP calls.
+    /// Honoured only while the host environment is Development.
+    /// </summary>
+    public bool DemoMode { get; init; }
+
     public Provider Google { get; init; } = new();
 
     public Provider GitHub { get; init; } = new();

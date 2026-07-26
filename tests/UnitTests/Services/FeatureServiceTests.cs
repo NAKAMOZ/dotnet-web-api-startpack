@@ -75,6 +75,48 @@ public sealed class FeatureServiceTests
     }
 
     [Fact]
+    public void AuthTokenTransport_ExistingRefreshCookieDoesNotOverrideBodyLogin()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers.Cookie = "__Secure-auth.refresh=old-refresh-value";
+        var transport = CreateTransport(context);
+
+        var delivered = transport.DeliverLogin(
+            Login(),
+            Guid.CreateVersion7(),
+            "access-value",
+            "refresh-value");
+
+        Assert.Equal("access-value", delivered.AccessToken);
+        Assert.Equal("refresh-value", delivered.RefreshToken);
+        Assert.Equal(0, context.Response.Headers.SetCookie.Count);
+    }
+
+    [Fact]
+    public void AuthTokenTransport_CookieRefreshKeepsRotatedTokensInCookies()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers.Cookie = "__Secure-auth.refresh=old-refresh-value";
+        var csrf = Substitute.For<ICsrfTokenService>();
+        csrf.Issue(Arg.Any<Guid>()).Returns("csrf-value");
+        var transport = CreateTransport(context, csrf);
+
+        var delivered = transport.DeliverRefresh(
+            new TokenPairResponse
+            {
+                TokenType = "Bearer",
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(15),
+            },
+            Guid.CreateVersion7(),
+            "access-value",
+            "refresh-value");
+
+        Assert.Null(delivered.AccessToken);
+        Assert.Null(delivered.RefreshToken);
+        Assert.Equal(3, context.Response.Headers.SetCookie.Count);
+    }
+
+    [Fact]
     public void AuthTokenTransport_ConflictingBodyAndCookieRefreshTokensAreRejected()
     {
         var context = new DefaultHttpContext();

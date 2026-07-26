@@ -18,7 +18,7 @@ public sealed class AuthTokenTransport(
         string accessToken,
         string refreshToken)
     {
-        if (!UseCookies())
+        if (!CookieTransportRequested())
         {
             return response with { AccessToken = accessToken, RefreshToken = refreshToken };
         }
@@ -33,7 +33,7 @@ public sealed class AuthTokenTransport(
         string accessToken,
         string refreshToken)
     {
-        if (!UseCookies())
+        if (!RefreshUsesCookies())
         {
             return response with { AccessToken = accessToken, RefreshToken = refreshToken };
         }
@@ -80,11 +80,14 @@ public sealed class AuthTokenTransport(
         httpContextAccessor.HttpContext
         ?? throw new InvalidOperationException("Authentication transport requires an active HTTP request.");
 
-    private bool UseCookies() =>
+    private bool CookieTransportRequested() =>
         string.Equals(
             Context.Request.Headers[_cookies.TransportHeaderName].ToString(),
             "cookie",
-            StringComparison.OrdinalIgnoreCase)
+            StringComparison.OrdinalIgnoreCase);
+
+    private bool RefreshUsesCookies() =>
+        CookieTransportRequested()
         || Context.Request.Cookies.ContainsKey(_cookies.RefreshCookieName);
 
     private void WriteAuthCookies(

@@ -85,11 +85,13 @@ procedure before changing either.
 | `Email:UseTls` | bool / `false` | No | `Email__UseTls` |
 | `Email:Username` | nullable string | Usually | `Email__Username` |
 | `Email:Password` | nullable string | **Yes** | `Email__Password` |
+| `SocialProviders:DemoMode` | bool / `false` (Development only) | No | `SocialProviders__DemoMode` |
 | `SocialProviders:{Google|GitHub}:Enabled` | bool / `false` | No | `SocialProviders__Google__Enabled`, `SocialProviders__GitHub__Enabled` |
 | `SocialProviders:{Google|GitHub}:ClientId` | nullable string | Treat as sensitive | `SocialProviders__Google__ClientId`, `SocialProviders__GitHub__ClientId` |
 | `SocialProviders:{Google|GitHub}:ClientSecret` | nullable string | **Yes** | `SocialProviders__Google__ClientSecret`, `SocialProviders__GitHub__ClientSecret` |
 
-Enabling a social provider without both credentials fails startup.
+Enabling a social provider without both credentials fails startup. Demo mode never makes
+provider HTTP calls and is ignored unless the host environment is Development.
 
 ## CORS, cleanup, proxy trust, and telemetry
 

@@ -26,6 +26,9 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
     /// </remarks>
     public const string DocumentationPathPrefix = "/scalar";
 
+    /// <summary>Path prefix for the self-hosted development endpoint workbench.</summary>
+    public const string PlaygroundPathPrefix = "/playground";
+
     /// <summary>
     /// The API policy: this origin loads nothing at all.
     /// </summary>
@@ -98,7 +101,7 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
             // which is the remaining read path Spectre-class attacks use.
             headers["Cross-Origin-Resource-Policy"] = "same-origin";
 
-            headers.ContentSecurityPolicy = IsDocumentationRequest(http.Request)
+            headers.ContentSecurityPolicy = IsInteractiveSiteRequest(http.Request)
                 ? DocumentationContentSecurityPolicy
                 : ApiContentSecurityPolicy;
 
@@ -113,6 +116,7 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
         return next(context);
     }
 
-    private static bool IsDocumentationRequest(HttpRequest request) =>
-        request.Path.StartsWithSegments(DocumentationPathPrefix, StringComparison.OrdinalIgnoreCase);
+    private static bool IsInteractiveSiteRequest(HttpRequest request) =>
+        request.Path.StartsWithSegments(DocumentationPathPrefix, StringComparison.OrdinalIgnoreCase)
+        || request.Path.StartsWithSegments(PlaygroundPathPrefix, StringComparison.OrdinalIgnoreCase);
 }

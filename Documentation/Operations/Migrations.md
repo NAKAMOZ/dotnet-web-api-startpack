@@ -89,7 +89,7 @@ dotnet ef migrations bundle --self-contained -r linux-x64 -o efbundle
 
 Two mechanisms, separated on purpose:
 
-| | `HasData` (roles) | `IDataSeeder` (dev users) |
+| | `HasData` (roles) | `IDataSeeder` (dev fixtures) |
 |---|---|---|
 | Lives in | The migration | Runtime code |
 | Reaches | Every environment | Development only |
@@ -105,6 +105,19 @@ Seeded development accounts (Development only, logged loudly at startup):
 |---|---|---|
 | `admin@localhost.dev` | `Dev_Admin_Password_1!` | `Admin` |
 | `user@localhost.dev` | `Dev_User_Password_1!` | `User` |
+
+The same seeder adds two recognisable sessions for the ordinary user, a linked GitHub
+fixture, three audit events, and the following admin-owned API key with every currently
+defined scope:
+
+```text
+ak_demoAdmin01_Dev_Demo_Api_Key_Only_Local_2026
+```
+
+Their fixed IDs and credentials are repeated in `/playground/`, next to the requests that
+consume them. Real provider credentials are not required in Development:
+`SocialProviders:DemoMode` maps Google and GitHub authorize/callback requests to
+deterministic local identities and is ignored outside Development.
 
 `DevDataSeeder` hashes both passwords with the registered `Argon2PasswordHasher` and repairs
 older deterministic rows whose `PasswordHash` is null. Production seeds no user
@@ -157,6 +170,11 @@ From §21 onward the integration harness applies these same migrations to a Test
 **Applies once, to any environment that already holds signing keys.** This is not an ordinary schema migration — it changes where the Data Protection key ring lives *and* the discriminator payloads are protected under, so every `SigningKey.PrivateKeyProtected` value written before it becomes unreadable.
 
 **It does not fail loudly.** `/.well-known/jwks.json` keeps answering `200`, because JWKS projects the public key and never unprotects. The failure surfaces only when the API first tries to *sign* an access token.
+
+Development repairs this case on first signing use by rotating the unreadable active key;
+the workbench can therefore reuse an older local database volume without a manual wipe.
+That recovery is deliberately disabled outside Development, where changing the issuer key
+must remain an announced operational action.
 
 Run as part of the same deploy, after `dotnet ef database update`:
 

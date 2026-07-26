@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#101917">
+    <meta name="description" content="dotnet-web-api-startpack için yerel endpoint test tezgâhı">
+    <title>Startpack / API Workbench</title>
+    <link rel="stylesheet" href="/playground/styles.css">
+    <script src="/playground/app.js" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#endpoint-list">Endpoint listesine geç</a>
+
+    <div class="app-shell">
+        <header class="topbar">
+            <a class="brand" href="/playground/" aria-label="API Workbench ana sayfa">
+                <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span>
+                    <strong>STARTPACK</strong>
+                    <small>API WORKBENCH</small>
+                </span>
+            </a>
+
+            <div class="environment-pill" title="Bu araç sadece Development ve Staging ortamlarında sunulur">
+                <span class="pulse-dot"></span>
+                <span>LOCAL / DEVELOPMENT</span>
+            </div>
+
+            <label class="base-url">
+                <span>API ORIGIN</span>
+                <input id="api-base" type="url" inputmode="url" autocomplete="url" aria-label="API adresi">
+            </label>
+
+            <div class="topbar-actions">
+                <a class="ghost-button compact" href="/scalar/v1" target="_blank" rel="noreferrer">
+                    Scalar
+                    <span aria-hidden="true">↗</span>
+                </a>
+                <button class="icon-button mobile-only" id="open-vault" type="button" aria-label="Kimlik kasasını aç">
+                    <span aria-hidden="true">⌁</span>
+                </button>
+            </div>
+        </header>
+
+        <aside class="left-rail" id="left-rail">
+            <div class="rail-scroll">
+                <section class="rail-section intro-card">
+                    <p class="eyebrow">CANLI İSTEK KONSOLU</p>
+                    <h1>API’nin tamamı,<br><em>tek tezgahta.</em></h1>
+                    <p>43 sözleşme endpoint’i, iki sağlık kontrolü ve tüm kimlik akışları aynı origin üzerinden çalışır.</p>
+                    <div class="coverage">
+                        <div>
+                            <strong id="coverage-count">43/43</strong>
+                            <span>OpenAPI</span>
+                        </div>
+                        <div>
+                            <strong>45</strong>
+                            <span>toplam işlem</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rail-section auth-vault" id="auth-vault">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">KİMLİK KASASI</p>
+                            <h2>Aktif taşıma</h2>
+                        </div>
+                        <button class="icon-button mobile-only" id="close-vault" type="button" aria-label="Kimlik kasasını kapat">×</button>
+                    </div>
+
+                    <div class="segmented" id="auth-mode" role="radiogroup" aria-label="Kimlik doğrulama taşıması">
+                        <button type="button" data-mode="bearer" class="active" aria-pressed="true">Bearer</button>
+                        <button type="button" data-mode="cookie" aria-pressed="false">Cookie</button>
+                        <button type="button" data-mode="apiKey" aria-pressed="false">API Key</button>
+                    </div>
+
+                    <div class="vault-status">
+                        <span class="status-orb idle" id="vault-orb"></span>
+                        <div>
+                            <strong id="vault-title">Oturum bekleniyor</strong>
+                            <span id="vault-subtitle">Demo hesaplardan biriyle giriş yapın.</span>
+                        </div>
+                    </div>
+
+                    <details class="token-details">
+                        <summary>Token alanları</summary>
+                        <label>
+                            <span>Access token</span>
+                            <textarea id="access-token" rows="2" spellcheck="false" autocomplete="off" placeholder="eyJ…"></textarea>
+                        </label>
+                        <label>
+                            <span>Refresh token</span>
+                            <textarea id="refresh-token" rows="2" spellcheck="false" autocomplete="off" placeholder="Yalnızca bu sekmede saklanır"></textarea>
+                        </label>
+                        <label>
+                            <span>API key</span>
+                            <textarea id="api-key" rows="2" spellcheck="false" autocomplete="off" placeholder="ak_…"></textarea>
+                        </label>
+                        <label>
+                            <span>CSRF token</span>
+                            <textarea id="csrf-token" rows="2" spellcheck="false" autocomplete="off" placeholder="Cookie modunda otomatik alınır"></textarea>
+                        </label>
+                        <button class="text-button danger-text" id="clear-vault" type="button">Kasayı temizle</button>
+                    </details>
+                </section>
+
+                <section class="rail-section demo-data">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">HAZIR DEMO VERİSİ</p>
+                            <h2>Tek tıkla başla</h2>
+                        </div>
+                        <span class="fixture-badge">DEV ONLY</span>
+                    </div>
+
+                    <article class="account-card admin">
+                        <div class="account-avatar">DA</div>
+                        <div class="account-copy">
+                            <strong>Dev Admin</strong>
+                            <span>admin@localhost.dev</span>
+                        </div>
+                        <button class="round-action" type="button" data-demo-login="admin" aria-label="Dev Admin ile giriş yap">→</button>
+                    </article>
+                    <article class="account-card user">
+                        <div class="account-avatar">DU</div>
+                        <div class="account-copy">
+                            <strong>Dev User</strong>
+                            <span>user@localhost.dev</span>
+                        </div>
+                        <button class="round-action" type="button" data-demo-login="user" aria-label="Dev User ile giriş yap">→</button>
+                    </article>
+
+                    <div class="demo-actions">
+                        <button class="soft-button" id="prepare-sessions" type="button">
+                            <span aria-hidden="true">◫</span>
+                            Oturum senaryosu
+                        </button>
+                        <button class="soft-button" id="use-demo-api-key" type="button">
+                            <span aria-hidden="true">⌘</span>
+                            Demo API key
+                        </button>
+                    </div>
+
+                    <details class="fixture-details">
+                        <summary>Sabit fixture değerleri</summary>
+                        <dl>
+                            <div>
+                                <dt>Admin ID</dt>
+                                <dd><button type="button" data-copy="0198f3a0-0000-7000-8001-000000000001">…0001</button></dd>
+                            </div>
+                            <div>
+                                <dt>User ID</dt>
+                                <dd><button type="button" data-copy="0198f3a0-0000-7000-8001-000000000002">…0002</button></dd>
+                            </div>
+                            <div>
+                                <dt>Admin role</dt>
+                                <dd><button type="button" data-copy="0198f3a0-0000-7000-8000-000000000001">…0001</button></dd>
+                            </div>
+                            <div>
+                                <dt>Linked account</dt>
+                                <dd><button type="button" data-copy="0198f3a0-0000-7000-8001-000000000401">…0401</button></dd>
+                            </div>
+                        </dl>
+                    </details>
+                </section>
+
+                <section class="rail-section local-services">
+                    <p class="eyebrow">YEREL SERVİSLER</p>
+                    <a id="mailpit-link" href="http://localhost:8025" target="_blank" rel="noreferrer">
+                        <span class="service-icon mail">M</span>
+                        <span>
+                            <strong>Mailpit inbox</strong>
+                            <small>Doğrulama ve parola sıfırlama</small>
+                        </span>
+                        <span aria-hidden="true">↗</span>
+                    </a>
+                    <button id="demo-google" type="button">
+                        <span class="service-icon google">G</span>
+                        <span>
+                            <strong>Google demo OAuth</strong>
+                            <small>Gerçek sağlayıcıya çıkmaz</small>
+                        </span>
+                        <span aria-hidden="true">→</span>
+                    </button>
+                    <button id="demo-github" type="button">
+                        <span class="service-icon github">GH</span>
+                        <span>
+                            <strong>GitHub demo OAuth</strong>
+                            <small>Gerçek sağlayıcıya çıkmaz</small>
+                        </span>
+                        <span aria-hidden="true">→</span>
+                    </button>
+                </section>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <section class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">DOTNET 10 · AUTHENTICATION STARTPACK</p>
+                    <h2>İsteği seç.<br><span>Gönder. Gör.</span></h2>
+                    <p>Örnek gövdeler, otomatik token yakalama, TOTP üretimi, WebAuthn törenleri ve yerel OAuth fixture’ları hazır.</p>
+                </div>
+                <div class="hero-signal" aria-hidden="true">
+                    <div class="orbit orbit-one"></div>
+                    <div class="orbit orbit-two"></div>
+                    <div class="signal-core">
+                        <span>API</span>
+                        <strong>v1</strong>
+                    </div>
+                    <div class="signal-tag tag-one">JWT</div>
+                    <div class="signal-tag tag-two">TOTP</div>
+                    <div class="signal-tag tag-three">FIDO2</div>
+                </div>
+            </section>
+
+            <section class="health-strip" aria-label="Servis durumu">
+                <button class="health-item" type="button" data-health-path="/health/live">
+                    <span class="health-dot checking"></span>
+                    <span>
+                        <small>LIVENESS</small>
+                        <strong>Kontrol ediliyor</strong>
+                    </span>
+                    <code>/health/live</code>
+                </button>
+                <button class="health-item" type="button" data-health-path="/health/ready">
+                    <span class="health-dot checking"></span>
+                    <span>
+                        <small>POSTGRESQL</small>
+                        <strong>Kontrol ediliyor</strong>
+                    </span>
+                    <code>/health/ready</code>
+                </button>
+                <button class="health-item" type="button" data-health-path="/openapi/v1.json">
+                    <span class="health-dot checking"></span>
+                    <span>
+                        <small>OPENAPI</small>
+                        <strong>Şema yükleniyor</strong>
+                    </span>
+                    <code>43 işlem</code>
+                </button>
+            </section>
+
+            <section class="catalog-toolbar" aria-label="Endpoint filtreleri">
+                <div class="search-box">
+                    <span aria-hidden="true">⌕</span>
+                    <input id="endpoint-search" type="search" placeholder="Endpoint, yöntem veya açıklama ara…" autocomplete="off">
+                    <kbd>/</kbd>
+                </div>
+                <div class="view-switch" role="group" aria-label="Görünüm">
+                    <button type="button" data-view="comfortable" class="active" aria-label="Rahat görünüm" aria-pressed="true">▦</button>
+                    <button type="button" data-view="compact" aria-label="Sıkışık görünüm" aria-pressed="false">☷</button>
+                </div>
+            </section>
+
+            <nav class="category-tabs" id="category-tabs" aria-label="Endpoint kategorileri"></nav>
+
+            <section class="endpoint-catalog">
+                <div class="catalog-heading">
+                    <div>
+                        <p class="eyebrow">ENDPOINT KATALOĞU</p>
+                        <h2 id="catalog-title">Tüm işlemler</h2>
+                    </div>
+                    <span id="visible-count">45 endpoint</span>
+                </div>
+                <div class="endpoint-list" id="endpoint-list" aria-live="polite"></div>
+                <div class="empty-state" id="empty-state" hidden>
+                    <span>∅</span>
+                    <h3>Eşleşme bulunamadı</h3>
+                    <p>Arama metnini veya kategori filtresini değiştirin.</p>
+                </div>
+            </section>
+        </main>
+
+        <aside class="request-panel" id="request-panel" aria-label="İstek oluşturucu">
+            <div class="panel-empty" id="panel-empty">
+                <div class="empty-glyph">↗</div>
+                <p class="eyebrow">REQUEST BUILDER</p>
+                <h2>Bir endpoint seçin</h2>
+                <p>Parametreler, örnek gövde ve kimlik başlıkları burada hazırlanacak.</p>
+                <span>⌘ K ile arayın · Enter ile açın</span>
+            </div>
+
+            <div class="panel-content" id="panel-content" hidden>
+                <div class="panel-header">
+                    <div>
+                        <div class="method-line">
+                            <span class="method-badge" id="panel-method">GET</span>
+                            <span class="auth-badge" id="panel-auth">PUBLIC</span>
+                        </div>
+                        <h2 id="panel-title">Endpoint</h2>
+                    </div>
+                    <button class="icon-button" id="close-panel" type="button" aria-label="İstek panelini kapat">×</button>
+                </div>
+
+                <div class="request-tabs" role="tablist" aria-label="İstek ve yanıt sekmeleri">
+                    <button type="button" role="tab" aria-selected="true" data-panel-tab="request">İstek</button>
+                    <button type="button" role="tab" aria-selected="false" data-panel-tab="response">
+                        Yanıt
+                        <span id="response-tab-status"></span>
+                    </button>
+                </div>
+
+                <div class="panel-tab active" id="request-tab" role="tabpanel">
+                    <p class="endpoint-description" id="panel-description"></p>
+
+                    <label class="request-url">
+                        <span>REQUEST URL</span>
+                        <div>
+                            <code id="request-origin"></code>
+                            <input id="request-path" type="text" spellcheck="false" aria-label="İstek yolu">
+                        </div>
+                    </label>
+
+                    <div id="parameter-fields"></div>
+
+                    <label class="editor-field" id="body-field">
+                        <span>
+                            <b>JSON BODY</b>
+                            <button type="button" id="format-json">Biçimlendir</button>
+                        </span>
+                        <textarea id="request-body" rows="11" spellcheck="false" autocomplete="off"></textarea>
+                    </label>
+
+                    <details class="headers-preview">
+                        <summary>Otomatik başlıklar</summary>
+                        <pre id="request-headers"></pre>
+                    </details>
+
+                    <div class="special-actions" id="special-actions"></div>
+
+                    <div class="send-row">
+                        <button class="send-button" id="send-request" type="button">
+                            <span>İsteği gönder</span>
+                            <kbd>⌘ ↵</kbd>
+                        </button>
+                        <button class="icon-button copy-curl" id="copy-curl" type="button" aria-label="cURL komutunu kopyala" title="cURL olarak kopyala">⌘</button>
+                    </div>
+                    <p class="destructive-note" id="destructive-note" hidden>
+                        Bu işlem demo verisini değiştirir. Göndermeden önce onay istenir.
+                    </p>
+                </div>
+
+                <div class="panel-tab" id="response-tab" role="tabpanel" hidden>
+                    <div class="response-summary">
+                        <div>
+                            <span class="response-code idle" id="response-code">—</span>
+                            <div>
+                                <strong id="response-label">Henüz yanıt yok</strong>
+                                <span id="response-meta">İsteği gönderdiğinizde burada görünür.</span>
+                            </div>
+                        </div>
+                        <button class="ghost-button compact" id="copy-response" type="button">Yanıtı kopyala</button>
+                    </div>
+                    <div class="response-notice" id="response-notice" hidden></div>
+                    <pre class="response-viewer" id="response-viewer">{
+  "message": "Bir istek gönderin."
+}</pre>
+                    <dl class="response-headers" id="response-headers"></dl>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div class="panel-backdrop" id="panel-backdrop" hidden></div>
+
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

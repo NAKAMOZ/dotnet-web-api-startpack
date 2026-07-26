@@ -121,6 +121,15 @@ public static partial class ApplicationBuilderExtensions
         // ── 6. Security headers ──────────────────────────────────────────────────────
         app.UseMiddleware<SecurityHeadersMiddleware>();
 
+        // The endpoint workbench is a development aid, not an application surface. Keep
+        // the files in wwwroot so the API can serve a completely self-contained client,
+        // but never expose the request runner or its published fixtures in Production.
+        if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+        {
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+        }
+
         // The general limiter covers every route. Credential and email endpoints carry named
         // policies that add tighter caps. This stays before authentication so rejected login
         // attempts never pay for a database lookup or Argon2 verification.

@@ -23,18 +23,19 @@ public sealed class SocialAuthService(
     IHttpClientFactory httpClientFactory,
     IHttpContextAccessor httpContextAccessor,
     IOptions<SocialProviderOptions> providerOptions,
+    IHostEnvironment environment,
     IAuditLogger auditLogger,
     TimeProvider timeProvider) : ISocialAuthService
 {
     private static readonly TimeSpan StateLifetime = TimeSpan.FromMinutes(10);
     private readonly SocialProviderOptions _providers = providerOptions.Value;
+    private readonly bool _demoMode = environment.IsDevelopment() && providerOptions.Value.DemoMode;
 
     public async Task<SocialAuthorizeResponse> AuthorizeAsync(
         string provider,
         CancellationToken cancellationToken)
     {
         var normalized = NormalizeProvider(provider);
-        var configuration = Provider(normalized);
         var state = tokenGenerator.NewOpaqueToken();
         var expiresAt = timeProvider.GetUtcNow() + StateLifetime;
         dbContext.VerificationTokens.Add(new VerificationToken
@@ -46,17 +47,30 @@ public sealed class SocialAuthService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var callback = CallbackUri(normalized);
-        var authorizationUrl = normalized == "google"
-            ? "https://accounts.google.com/o/oauth2/v2/auth"
-              + $"?client_id={Uri.EscapeDataString(configuration.ClientId!)}"
-              + $"&redirect_uri={Uri.EscapeDataString(callback)}"
-              + "&response_type=code&scope=openid%20email%20profile"
-              + $"&state={Uri.EscapeDataString(state)}"
-            : "https://github.com/login/oauth/authorize"
-              + $"?client_id={Uri.EscapeDataString(configuration.ClientId!)}"
-              + $"&redirect_uri={Uri.EscapeDataString(callback)}"
-              + "&scope=read%3Auser%20user%3Aemail"
-              + $"&state={Uri.EscapeDataString(state)}";
+        string authorizationUrl;
+
+        if (_demoMode)
+        {
+            var code = normalized == "google" ? "demo-google-ada" : "demo-github-linus";
+            authorizationUrl = callback
+                               + $"?code={Uri.EscapeDataString(code)}"
+                               + $"&state={Uri.EscapeDataString(state)}";
+        }
+        else
+        {
+            var configuration = Provider(normalized);
+            authorizationUrl = normalized == "google"
+                ? "https://accounts.google.com/o/oauth2/v2/auth"
+                  + $"?client_id={Uri.EscapeDataString(configuration.ClientId!)}"
+                  + $"&redirect_uri={Uri.EscapeDataString(callback)}"
+                  + "&response_type=code&scope=openid%20email%20profile"
+                  + $"&state={Uri.EscapeDataString(state)}"
+                : "https://github.com/login/oauth/authorize"
+                  + $"?client_id={Uri.EscapeDataString(configuration.ClientId!)}"
+                  + $"&redirect_uri={Uri.EscapeDataString(callback)}"
+                  + "&scope=read%3Auser%20user%3Aemail"
+                  + $"&state={Uri.EscapeDataString(state)}";
+        }
 
         return new SocialAuthorizeResponse { AuthorizationUrl = authorizationUrl, ExpiresAt = expiresAt };
     }
@@ -76,9 +90,11 @@ public sealed class SocialAuthService(
         }
 
         await ConsumeStateAsync(query.State, cancellationToken);
-        var identity = normalized == "google"
-            ? await GetGoogleIdentityAsync(query.Code, cancellationToken)
-            : await GetGitHubIdentityAsync(query.Code, cancellationToken);
+        var identity = _demoMode
+            ? DemoIdentity(normalized, query.Code)
+            : normalized == "google"
+                ? await GetGoogleIdentityAsync(query.Code, cancellationToken)
+                : await GetGitHubIdentityAsync(query.Code, cancellationToken);
         var account = await dbContext.Accounts
             .Include(candidate => candidate.User)
             .SingleOrDefaultAsync(
@@ -255,6 +271,22 @@ public sealed class SocialAuthService(
 
         return selected;
     }
+
+    private static SocialIdentity DemoIdentity(string provider, string code) =>
+        (provider, code) switch
+        {
+            ("google", "demo-google-ada") => new SocialIdentity(
+                "development-google-ada",
+                "ada.google@demo.local",
+                true,
+                "Ada Google"),
+            ("github", "demo-github-linus") => new SocialIdentity(
+                "development-github-linus",
+                "linus.github@demo.local",
+                true,
+                "Linus GitHub"),
+            _ => throw new InvalidTokenException(),
+        };
 
     private static string NormalizeProvider(string provider) =>
         provider.Trim().ToLowerInvariant() is var normalized

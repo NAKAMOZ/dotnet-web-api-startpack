@@ -6,8 +6,8 @@ using Api.Models.Enums;
 using Api.Services.Audit;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace Api.Services.Tokens;
@@ -20,7 +20,8 @@ public sealed class SigningKeyManager(
     TimeProvider timeProvider,
     HybridCache cache,
     ILogger<SigningKeyManager> logger,
-    IAuditLogger auditLogger) : ISigningKeyManager
+    IAuditLogger auditLogger,
+    IHostEnvironment environment) : ISigningKeyManager
 {
     /// <summary>
     /// Data Protection purpose string. Changing it makes every stored key undecryptable —
@@ -30,22 +31,34 @@ public sealed class SigningKeyManager(
 
     private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector(ProtectorPurpose);
     private readonly JwtOptions _jwt = jwtOptions.Value;
+    private readonly bool _repairOrphanedDevelopmentKeys = environment.IsDevelopment();
 
     public async Task<SignatureResult> SignAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
         var key = await GetOrCreateActiveKeyAsync(cancellationToken);
 
-        using var ecdsa = ImportPrivateKey(key);
+        try
+        {
+            return Sign(key, payload.Span);
+        }
+        catch (CryptographicException exception) when (_repairOrphanedDevelopmentKeys)
+        {
+            // AddDataProtectionKeys is a one-way transition for rows protected by the old,
+            // process-local ring. Production requires the explicit migration runbook because
+            // silently changing an issuer key invalidates live access tokens. Development has
+            // only published fixture credentials, so repair the local ring on first use and
+            // keep the workbench usable after an existing database volume is upgraded.
+            logger.LogWarning(
+                exception,
+                "Active signing key {KeyId} cannot be unprotected in Development. " +
+                "Rotating to a key protected by the current Data Protection ring.",
+                key.KeyId);
 
-        // IeeeP1363FixedFieldConcatenation produces the raw R‖S form JWS requires. The
-        // default here is DER, which validators reject — and the failure looks like a bad
-        // key rather than a bad encoding, which is why it is spelled out.
-        var signature = ecdsa.SignData(
-            payload.Span,
-            HashAlgorithmName.SHA256,
-            DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
+            await RotateAsync(cancellationToken);
+            var replacement = await GetOrCreateActiveKeyAsync(cancellationToken);
 
-        return new SignatureResult(key.KeyId, signature);
+            return Sign(replacement, payload.Span);
+        }
     }
 
     public async Task<string> GetActiveKeyIdAsync(CancellationToken cancellationToken) =>
@@ -240,6 +253,21 @@ public sealed class SigningKeyManager(
         var ecdsa = ECDsa.Create();
         ecdsa.ImportPkcs8PrivateKey(Convert.FromBase64String(_protector.Unprotect(key.PrivateKeyProtected)), out _);
         return ecdsa;
+    }
+
+    private SignatureResult Sign(SigningKey key, ReadOnlySpan<byte> payload)
+    {
+        using var ecdsa = ImportPrivateKey(key);
+
+        // IeeeP1363FixedFieldConcatenation produces the raw R‖S form JWS requires. The
+        // default here is DER, which validators reject — and the failure looks like a bad
+        // key rather than a bad encoding, which is why it is spelled out.
+        var signature = ecdsa.SignData(
+            payload,
+            HashAlgorithmName.SHA256,
+            DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
+
+        return new SignatureResult(key.KeyId, signature);
     }
 
     private static PublicSigningKey ToPublicKey(SigningKey key)
