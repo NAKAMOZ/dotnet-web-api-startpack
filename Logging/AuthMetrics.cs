@@ -33,10 +33,9 @@ public sealed class AuthMetrics
         ObserveActiveSessions,
         unit: "{session}");
 
-    private static long _activeSessionCount;
-    private static int _hasActiveSessionSample;
-
-    public bool HasActiveSessionSample => Volatile.Read(ref _hasActiveSessionSample) == 1;
+    // -1 means "never sampled". A separate has-a-sample flag would be a second piece of
+    // state that can disagree with this one; the sentinel cannot.
+    private static long _activeSessionCount = -1;
 
     public void RecordLogin(string result) =>
         Logins.Add(1, new KeyValuePair<string, object?>("result", result));
@@ -56,17 +55,18 @@ public sealed class AuthMetrics
             duration.TotalMilliseconds,
             new KeyValuePair<string, object?>("operation", operation));
 
-    public void SetActiveSessions(long count)
-    {
+    public void SetActiveSessions(long count) =>
         Interlocked.Exchange(ref _activeSessionCount, Math.Max(0, count));
-        Volatile.Write(ref _hasActiveSessionSample, 1);
-    }
 
     private static IEnumerable<Measurement<long>> ObserveActiveSessions()
     {
-        if (Volatile.Read(ref _hasActiveSessionSample) == 1)
+        // Emit nothing until the first sample lands. Reporting zero would be indistinguishable
+        // from "nobody is logged in", which is a different and alarming claim.
+        var current = Interlocked.Read(ref _activeSessionCount);
+
+        if (current >= 0)
         {
-            yield return new Measurement<long>(Interlocked.Read(ref _activeSessionCount));
+            yield return new Measurement<long>(current);
         }
     }
 }

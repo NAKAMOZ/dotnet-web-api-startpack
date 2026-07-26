@@ -86,11 +86,7 @@ public class DocumentationSyncTests : IClassFixture<WebApplicationFactory<Progra
         var client = _factory
             .WithWebHostBuilder(builder =>
             {
-                builder.UseEnvironment("Staging");
-                builder.UseTrustedTestProxy();
-                builder.UseSetting(
-                    "ConnectionStrings:Postgres",
-                    "Host=localhost;Database=documentation-sync-tests");
+                builder.UseProductionLikeHost("Staging", "documentation-sync-tests");
             })
             .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
@@ -121,7 +117,7 @@ public class DocumentationSyncTests : IClassFixture<WebApplicationFactory<Progra
 
     private static Dictionary<string, EndpointContract> LoadMarkdownOperations()
     {
-        var documentationRoot = Path.Combine(FindRepositoryRoot(), "Documentation");
+        var documentationRoot = Path.Combine(RepositoryPaths.Root, "Documentation");
         var operations = new Dictionary<string, EndpointContract>(StringComparer.Ordinal);
 
         foreach (var file in Directory.EnumerateFiles(
@@ -166,23 +162,6 @@ public class DocumentationSyncTests : IClassFixture<WebApplicationFactory<Progra
         }
 
         return operations;
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "dotnet-web-api-startpack.csproj")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException("Could not locate the repository root.");
     }
 
     private static string Key(string method, string route) => method + " " + route;

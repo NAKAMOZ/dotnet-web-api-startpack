@@ -1,9 +1,7 @@
 using Api.Data;
 using IntegrationTests.Infrastructure;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using Testcontainers.PostgreSql;
 
 namespace IntegrationTests;
 
@@ -34,22 +32,14 @@ public sealed class PostgresInfrastructureTests(IntegrationTestFactory factory)
     public async Task DependencyFailure_FailsReadinessWithoutFailingLivenessOrLeakingDetails()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        await using var postgres = new PostgreSqlBuilder("postgres:17-alpine")
-            .WithDatabase("health_failure_tests")
-            .WithUsername("postgres")
-            .WithPassword("postgres")
-            .Build();
+        await using var postgres = IntegrationTestFactory.CreateContainer("health_failure_tests");
         await postgres.StartAsync(cancellationToken);
 
         using var isolatedFactory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
-            {
-                builder.UseEnvironment("Testing");
-                builder.UseSetting(
-                    "ConnectionStrings:Postgres",
-                    postgres.GetConnectionString());
-                builder.UseSetting("AuthCookies:RequireSecure", "false");
-            });
+                IntegrationTestFactory.ApplyTestingSettings(
+                    builder,
+                    postgres.GetConnectionString()));
         var client = isolatedFactory.CreateClient();
 
         await using (var scope = isolatedFactory.Services.CreateAsyncScope())

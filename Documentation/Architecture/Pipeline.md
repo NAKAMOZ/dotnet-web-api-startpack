@@ -13,11 +13,13 @@ The pipeline is assembled in exactly one place: `Extensions/ApplicationBuilderEx
 ```text
    ┌─ request ──────────────────────────────────────────────────────────────┐
    │                                                                        │
- 1 │  ForwardedHeaders            (§27, production only)                    │
+ 1 │  ForwardedHeaders            when ReverseProxy:Enabled (§27)           │
  2 │  CorrelationIdMiddleware     adopt or mint X-Correlation-Id            │
  3 │  Serilog request logging     (§15)                                     │
  4 │  UseExceptionHandler         → ExceptionHandlingMiddleware (§13 map)   │
    │  UseStatusCodePages          bodies for bare status codes (§13)        │
+   │  MapOpenApi / Scalar         .AllowAnonymous() (§18)                   │
+   │  /health/live, /health/ready plain text, anonymous (§28)               │
  5 │  UseHsts / UseHttpsRedirection                                         │
  6 │  SecurityHeadersMiddleware   response-starting callbacks               │
  7 │  Rate limiter                (§17)                                     │
@@ -30,7 +32,7 @@ The pipeline is assembled in exactly one place: `Extensions/ApplicationBuilderEx
 
 | # | Stage | Why here |
 |---|---|---|
-| 1 | Forwarded headers | Everything below that reads a scheme or a client IP — HTTPS redirection, rate limiting, audit rows — reads the proxy's values otherwise |
+| 1 | Forwarded headers | Everything below that reads a scheme or a client IP — HTTPS redirection, rate limiting, audit rows — reads the proxy's values otherwise. Runs when `ReverseProxy:Enabled`, which `ReverseProxyOptionsValidator` requires outside Development and Testing |
 | 2 | Correlation id | Above the exception handler, so a failure anywhere below still carries an id |
 | 3 | Request logging | After the id so the log line carries it; above the handler so 500s are logged too |
 | 4 | Exception handling | Everything below is covered; the two stages above are the two that cannot meaningfully throw |
@@ -40,6 +42,17 @@ The pipeline is assembled in exactly one place: `Extensions/ApplicationBuilderEx
 | 8 | CORS | **Before authentication**: a preflight `OPTIONS` carries no credentials by design and would answer 401 behind deny-by-default — which a browser reports as an opaque CORS failure |
 | 9 | Authentication → authorization | Identity is established before it is judged. Reversed, every check runs against an anonymous principal and denies everything |
 | 10 | Endpoints | The CSRF filter runs as an MVC **authorization filter**, after authentication, because it must know which scheme the request used |
+
+The documentation and health endpoints are mapped between stages 4 and 5 rather than with
+`MapControllers`. They are not controllers, so deny-by-default covers them and each needs
+an explicit `.AllowAnonymous()`; mapping them above HSTS keeps an orchestrator's plain-HTTP
+probe from being answered with a redirect.
+
+**The health probes are the one recorded exemption from RFC 9457.** `/health/live` and
+`/health/ready` answer `text/plain` — `Healthy` or `Unhealthy` — because that is what
+orchestrator probes read, and a probe is not an API client. Nothing else in the surface may
+answer a non-2xx without a Problem Details body and a stable `errorCode`; see
+`Documentation/Errors.md` §1.
 
 ---
 
@@ -161,9 +174,9 @@ singleton because its in-memory partitions must survive across requests.
 
 | Item | Owner | Reason |
 |---|---|---|
-| `ForwardedHeadersMiddleware` | §27 | Needs the deployment's proxy allowlist |
 | Feature-service audit producers | §12/§15 | Most catalog events have no service path yet |
 | Audit retention worker | §12/§15 | The 90-day period is approved; the shared cleanup worker does not exist |
 
-Serilog request logging/enrichers, the rate limiter, `AuditActionFilter`, and Scalar's
-self-hosted bundle/CSP relaxation have now landed in their owning workstreams.
+Serilog request logging/enrichers, the rate limiter, `AuditActionFilter`, Scalar's
+self-hosted bundle/CSP relaxation, and `ForwardedHeadersMiddleware` with its validated
+proxy allowlist have now landed in their owning workstreams.

@@ -10,39 +10,36 @@ public sealed class ReverseProxyOptionsValidator(IHostEnvironment environment)
     public ValidateOptionsResult Validate(string? name, ReverseProxyOptions options)
     {
         var failures = new List<string>();
-        var productionLike = !environment.IsDevelopment() && !environment.IsEnvironment("Testing");
 
-        if (productionLike && !options.Enabled)
+        if (environment.IsProductionLike() && !options.Enabled)
         {
             failures.Add("ReverseProxy:Enabled must be true outside Development and Testing.");
         }
 
-        if (!options.Enabled)
+        // The allowlist rules describe the trust boundary. With the middleware off there is
+        // no boundary to describe, so an empty or malformed one is not yet a misconfiguration.
+        if (options.Enabled)
         {
-            return failures.Count == 0
-                ? ValidateOptionsResult.Success
-                : ValidateOptionsResult.Fail(failures);
-        }
-
-        if (options.KnownProxies.Length == 0 && options.KnownNetworks.Length == 0)
-        {
-            failures.Add(
-                "At least one ReverseProxy:KnownProxies or ReverseProxy:KnownNetworks entry is required.");
-        }
-
-        foreach (var proxy in options.KnownProxies)
-        {
-            if (!IPAddress.TryParse(proxy, out _))
+            if (options.KnownProxies.Length == 0 && options.KnownNetworks.Length == 0)
             {
-                failures.Add($"ReverseProxy:KnownProxies contains invalid IP address '{proxy}'.");
+                failures.Add(
+                    "At least one ReverseProxy:KnownProxies or ReverseProxy:KnownNetworks entry is required.");
             }
-        }
 
-        foreach (var network in options.KnownNetworks)
-        {
-            if (!IPNetwork.TryParse(network, out _))
+            foreach (var proxy in options.KnownProxies)
             {
-                failures.Add($"ReverseProxy:KnownNetworks contains invalid CIDR '{network}'.");
+                if (!IPAddress.TryParse(proxy, out _))
+                {
+                    failures.Add($"ReverseProxy:KnownProxies contains invalid IP address '{proxy}'.");
+                }
+            }
+
+            foreach (var network in options.KnownNetworks)
+            {
+                if (!IPNetwork.TryParse(network, out _))
+                {
+                    failures.Add($"ReverseProxy:KnownNetworks contains invalid CIDR '{network}'.");
+                }
             }
         }
 

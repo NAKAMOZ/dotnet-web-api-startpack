@@ -26,7 +26,6 @@ public sealed class ConfigureJwtBearerOptions(
 {
     private readonly JwtOptions _jwt = jwtOptions.Value;
     private readonly AuthCookieOptions _cookies = cookieOptions.Value;
-    private readonly TimeProvider _timeProvider = timeProvider;
 
     public void Configure(string? name, JwtBearerOptions options)
     {
@@ -146,7 +145,7 @@ public sealed class ConfigureJwtBearerOptions(
             return false;
         }
 
-        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
 
         return (notBefore is null || notBefore <= now + parameters.ClockSkew)
                && expires >= now - parameters.ClockSkew;

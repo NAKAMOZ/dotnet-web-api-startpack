@@ -16,18 +16,25 @@ public static partial class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddTelemetryServices(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
+        // Read at registration time, because whether the exporter is registered at all is a
+        // registration-time decision. AddValidatedOptions binds and validates the same
+        // section for everything that resolves it later; a bad endpoint here still fails the
+        // host at ValidateOnStart rather than exporting to nowhere.
         var configured = configuration
             .GetSection(TelemetryOptions.SectionName)
             .Get<TelemetryOptions>() ?? new TelemetryOptions();
-        var assembly = typeof(ServiceCollectionExtensions).Assembly;
-        var version = assembly
+        var otlpEndpoint = configured is { OtlpExporterEnabled: true, OtlpEndpoint: { } endpoint }
+            ? endpoint
+            : null;
+        var version = typeof(ServiceCollectionExtensions).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion;
 
         services.AddSingleton<AuthMetrics>();
-        services.AddHostedService<ActiveSessionMetricsInitializer>();
+        services.AddHostedService<ActiveSessionMetricsCollector>();
 
         var telemetry = services
             .AddOpenTelemetry()
@@ -38,10 +45,7 @@ public static partial class ServiceCollectionExtensions
                     serviceInstanceId: Environment.MachineName)
                 .AddAttributes(
                 [
-                    new("deployment.environment.name",
-                        configuration[HostDefaults.EnvironmentKey]
-                        ?? configuration["ASPNETCORE_ENVIRONMENT"]
-                        ?? Environments.Production),
+                    new("deployment.environment.name", environment.EnvironmentName),
                 ]));
 
         telemetry.WithTracing(tracing =>
@@ -51,9 +55,9 @@ public static partial class ServiceCollectionExtensions
                 .AddHttpClientInstrumentation()
                 .AddNpgsql();
 
-            if (configured is { OtlpExporterEnabled: true, OtlpEndpoint: not null })
+            if (otlpEndpoint is not null)
             {
-                tracing.AddOtlpExporter(exporter => exporter.Endpoint = configured.OtlpEndpoint);
+                tracing.AddOtlpExporter(exporter => exporter.Endpoint = otlpEndpoint);
             }
         });
 
@@ -66,9 +70,9 @@ public static partial class ServiceCollectionExtensions
                 .AddMeter(AuthMetrics.MeterName)
                 .AddMeter("Npgsql");
 
-            if (configured is { OtlpExporterEnabled: true, OtlpEndpoint: not null })
+            if (otlpEndpoint is not null)
             {
-                metrics.AddOtlpExporter(exporter => exporter.Endpoint = configured.OtlpEndpoint);
+                metrics.AddOtlpExporter(exporter => exporter.Endpoint = otlpEndpoint);
             }
         });
 

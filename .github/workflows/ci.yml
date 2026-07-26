@@ -19,14 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-      - uses: actions/cache@v5
-        with:
-          path: ${{ env.NUGET_PACKAGES }}
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '.config/dotnet-tools.json') }}
-          restore-keys: nuget-${{ runner.os }}-
+      - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
       - run: dotnet format dotnet-web-api-startpack.slnx --verify-no-changes --no-restore
       - run: dotnet build --configuration Release --no-restore
@@ -40,14 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-      - uses: actions/cache@v5
-        with:
-          path: ${{ env.NUGET_PACKAGES }}
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '.config/dotnet-tools.json') }}
-          restore-keys: nuget-${{ runner.os }}-
+      - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
       - name: Unit tests with scoped 85% line gate
         run: >-
@@ -83,30 +69,17 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-      - uses: actions/cache@v5
-        with:
-          path: ${{ env.NUGET_PACKAGES }}
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '.config/dotnet-tools.json') }}
-          restore-keys: nuget-${{ runner.os }}-
+      - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
-      - name: Integration tests
+      # One run, not one per Category. The suite shares a single non-parallel collection
+      # fixture, so splitting it by filter starts the Postgres container and replays the
+      # whole migration chain twice for a distinction the .trx already records as a trait.
+      - name: Integration and security tests
         run: >-
           dotnet test tests/IntegrationTests/IntegrationTests.csproj
           --configuration Release
           --no-restore
-          --filter "Category!=Security"
           --logger "trx;LogFileName=integration.trx"
-          --results-directory TestResults/integration
-      - name: Security attack tests
-        run: >-
-          dotnet test tests/IntegrationTests/IntegrationTests.csproj
-          --configuration Release
-          --no-restore
-          --filter "Category=Security"
-          --logger "trx;LogFileName=security.trx"
           --results-directory TestResults/integration
       - uses: actions/upload-artifact@v7
         if: always()
@@ -152,14 +125,7 @@ jobs:
       ConnectionStrings__Postgres: Host=localhost;Database=bundle;Username=bundle;Password=bundle
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-      - uses: actions/cache@v5
-        with:
-          path: ${{ env.NUGET_PACKAGES }}
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '.config/dotnet-tools.json') }}
-          restore-keys: nuget-${{ runner.os }}-
+      - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore --runtime linux-x64
       - run: dotnet tool restore
       - run: mkdir -p artifacts
@@ -174,10 +140,5 @@ jobs:
           name: ef-migration-bundle-linux-x64
           path: artifacts/efbundle
 
-  cd:
-    name: CD (pending deployment decision P14)
-    if: ${{ false }}
-    needs: [image, migration-bundle]
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Enable only after P14 defines the target and environment approvals."
+# No CD job until P14 settles the deployment target and environment approvals. A job gated
+# on `if: false` is not a placeholder — it is a permanently skipped check on every PR.

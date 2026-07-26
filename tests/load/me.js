@@ -1,14 +1,6 @@
 import http from 'k6/http';
 import { check } from 'k6';
-import {
-  baseUrl,
-  defaultHeaders,
-  loginBody,
-  parseTokens,
-  thresholds,
-} from './config.js';
-
-let accessToken;
+import { checkFloor, currentTokens, routes, thresholds, url } from './config.js';
 
 export const options = {
   scenarios: {
@@ -23,30 +15,17 @@ export const options = {
   },
   thresholds: {
     ...thresholds.me,
-    checks: ['rate>0.99'],
+    ...checkFloor,
   },
 };
 
 export default function () {
-  if (!accessToken) {
-    const login = http.post(
-      `${baseUrl}/api/v1/auth/login`,
-      loginBody(),
-      { headers: defaultHeaders, tags: { operation: 'setup' } },
-    );
-    const tokens = parseTokens(login);
-    accessToken = tokens && tokens.accessToken;
-  }
-
-  const response = http.get(
-    `${baseUrl}/api/v1/users/me`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      tags: { operation: 'me' },
+  const response = http.get(url(routes.me), {
+    headers: {
+      Authorization: `Bearer ${currentTokens().accessToken}`,
     },
-  );
+    tags: { operation: 'me' },
+  });
 
   check(response, {
     'profile returned': (result) => result.status === 200,

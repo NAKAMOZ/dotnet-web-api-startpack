@@ -82,7 +82,6 @@ public sealed class RefreshTokenService(
                     new { session.Id },
                     cancellationToken);
                 metrics.RecordReuseDetection();
-                await EnsureActiveSessionGaugeAsync(cancellationToken);
 
                 return Failure(RefreshOutcome.ReuseDetected, session.Id);
             }
@@ -168,7 +167,6 @@ public sealed class RefreshTokenService(
                 new { session.Id },
                 cancellationToken);
             metrics.RecordRefresh("success");
-            await EnsureActiveSessionGaugeAsync(cancellationToken);
 
             return RefreshResult.Success(session.Id, accessToken, issuedRefresh);
         });
@@ -208,20 +206,6 @@ public sealed class RefreshTokenService(
     {
         metrics.RecordRefresh(ToMetricResult(outcome));
         return RefreshResult.Failure(outcome, sessionId);
-    }
-
-    private async Task EnsureActiveSessionGaugeAsync(CancellationToken cancellationToken)
-    {
-        if (metrics.HasActiveSessionSample)
-        {
-            return;
-        }
-
-        var now = timeProvider.GetUtcNow();
-        var count = await dbContext.Sessions.CountAsync(
-            session => session.RevokedAt == null && session.AbsoluteExpiresAt > now,
-            cancellationToken);
-        metrics.SetActiveSessions(count);
     }
 
     private static string ToMetricResult(RefreshOutcome outcome) => outcome switch

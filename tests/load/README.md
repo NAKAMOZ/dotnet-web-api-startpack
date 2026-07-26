@@ -18,6 +18,11 @@ k6 run tests/load/me.js
 k6 run tests/load/mixed.js
 ```
 
+`config.js` owns everything the scenarios share: routes, the login request, the per-VU
+token cache behind `currentTokens()`, the per-operation thresholds, and the check floor.
+A scenario file should hold its `options` block and its request, nothing else — the
+bootstrap login is tagged `setup` so it never lands in the `login` scenario's thresholds.
+
 Override `BASE_URL`, `TEST_EMAIL`, `TEST_PASSWORD`, `DURATION`, or the per-script RPS
 variables for staging. Never point these scripts at production without an approved test
 window. k6 exits non-zero when a latency, failure-rate, or check threshold is breached.

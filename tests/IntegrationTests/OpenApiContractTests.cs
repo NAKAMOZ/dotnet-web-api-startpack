@@ -61,7 +61,9 @@ public class OpenApiContractTests : IClassFixture<WebApplicationFactory<Program>
             TestContext.Current.CancellationToken);
 
         var paths = document.GetProperty("paths");
-        Assert.Equal(43, paths.EnumerateObject().Sum(path => CountOperations(path.Value)));
+        Assert.Equal(
+            ApiInventory.OperationCount,
+            paths.EnumerateObject().Sum(path => CountOperations(path.Value)));
 
         var schemes = document
             .GetProperty("components")
@@ -90,11 +92,7 @@ public class OpenApiContractTests : IClassFixture<WebApplicationFactory<Program>
         _factory
             .WithWebHostBuilder(builder =>
             {
-                builder.UseEnvironment(environment);
-                builder.UseTrustedTestProxy();
-                builder.UseSetting(
-                    "ConnectionStrings:Postgres",
-                    "Host=localhost;Database=openapi-contract-tests");
+                builder.UseProductionLikeHost(environment, "openapi-contract-tests");
             })
             .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 

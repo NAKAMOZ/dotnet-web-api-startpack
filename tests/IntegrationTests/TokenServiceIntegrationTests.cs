@@ -1,5 +1,4 @@
 using Api.Data;
-using Api.Models;
 using Api.Models.Enums;
 using Api.Services.Tokens;
 using IntegrationTests.Infrastructure;
@@ -13,8 +12,7 @@ public sealed class TokenServiceIntegrationTests(IntegrationTestFactory factory)
     [Fact]
     public async Task RefreshRotation_ReplayRevokesSessionAndAuditsBothEvents()
     {
-        await factory.ResetDatabaseAsync();
-        factory.Clock.Advance(TimeSpan.FromTicks(1));
+        await factory.ResetAsync();
         var seeded = await SeedSessionAndTokenAsync();
 
         var rotated = await factory.InScopeAsync(services =>
@@ -61,8 +59,7 @@ public sealed class TokenServiceIntegrationTests(IntegrationTestFactory factory)
     [Fact]
     public async Task RefreshRotation_EnforcesIdleAndAbsoluteSessionBounds()
     {
-        await factory.ResetDatabaseAsync();
-        factory.Clock.Advance(TimeSpan.FromTicks(1));
+        await factory.ResetAsync();
         var idleSession = await SeedSessionAndTokenAsync();
 
         factory.Clock.Advance(TimeSpan.FromHours(6));
@@ -74,8 +71,7 @@ public sealed class TokenServiceIntegrationTests(IntegrationTestFactory factory)
 
         Assert.Equal(RefreshOutcome.SessionIdle, idle.Outcome);
 
-        await factory.ResetDatabaseAsync();
-        factory.Clock.Advance(TimeSpan.FromTicks(1));
+        await factory.ResetAsync();
         var expiredSession = await SeedSessionAndTokenAsync();
 
         factory.Clock.Advance(TimeSpan.FromDays(7));
@@ -90,19 +86,7 @@ public sealed class TokenServiceIntegrationTests(IntegrationTestFactory factory)
 
     private async Task<SeededSession> SeedSessionAndTokenAsync()
     {
-        var userId = Guid.CreateVersion7();
-
-        await factory.InScopeAsync(async services =>
-        {
-            var database = services.GetRequiredService<AppDbContext>();
-            database.Users.Add(new User
-            {
-                Id = userId,
-                Email = $"{userId:N}@example.com",
-                EmailVerified = true,
-            });
-            await database.SaveChangesAsync(TestContext.Current.CancellationToken);
-        });
+        var userId = await factory.SeedUserAsync(TestContext.Current.CancellationToken);
 
         var sessionId = await factory.InScopeAsync(services =>
             services.GetRequiredService<ISessionService>().CreateAsync(

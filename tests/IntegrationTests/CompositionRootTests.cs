@@ -26,14 +26,7 @@ public class CompositionRootTests : IClassFixture<WebApplicationFactory<Program>
             // mean every unit-test run needed a live PostgreSQL. Overriding the environment
             // turns UseDatabaseSetupAsync into the no-op it is everywhere but Development.
             // §21 covers the migrate-and-seed path against a Testcontainers instance.
-            builder.UseEnvironment("Production");
-            builder.UseTrustedTestProxy();
-
-            // Still required: §7 fails the boot when no connection string is configured, and
-            // no committed file carries one. Nothing ever connects through it here.
-            builder.UseSetting(
-                "ConnectionStrings:Postgres",
-                "Host=localhost;Database=composition-root-smoke-test");
+            builder.UseProductionLikeHost("Production", "composition-root-smoke-test");
         });
 
         var client = factory.CreateClient();

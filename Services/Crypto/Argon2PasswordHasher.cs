@@ -92,12 +92,12 @@ public sealed class Argon2PasswordHasher(
     /// </remarks>
     public bool NeedsRehash(string hash)
     {
-        var parameters = ParseParameters(hash);
-
-        if (parameters is not var (memory, iterations, parallelism))
+        if (ParseParameters(hash) is not { } parsed)
         {
             return true;
         }
+
+        var (memory, iterations, parallelism) = parsed;
 
         return memory < _options.PasswordMemoryKib
                || iterations < _options.PasswordIterations

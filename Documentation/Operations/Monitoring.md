@@ -55,11 +55,19 @@ Meter: `Api.Authentication`.
 | `auth.reuse_detections` | counter | detections | none | refresh replay path |
 | `auth.lockouts` | counter | lockouts | none | `LockoutPolicy` threshold transition |
 | `auth.mfa_challenges` | counter | challenges | `result` | API available; MFA call site waits on §12 |
-| `auth.active_sessions` | observable gauge | sessions | none | one post-start DB sample, then exact updates after session mutation |
+| `auth.active_sessions` | observable gauge | sessions | none | `ActiveSessionMetricsCollector`, one DB sample per minute |
 | `auth.password_hash_duration` | histogram | milliseconds | `operation=hash|verify` | password Argon2 path |
 
 Tags are deliberately low-cardinality. User ids, emails, session ids, IPs and correlation ids
 must never become metric labels.
+
+`auth.active_sessions` is sampled on a timer rather than updated by the code that creates and
+revokes sessions. Session mutation is the wrong hook for it in both directions: an observable
+gauge is read at scrape time, so counting per mutation scales the cost with write traffic and
+puts a `COUNT` over live sessions on the login and refresh hot paths — and a session that
+simply reaches `AbsoluteExpiresAt` mutates no row, so a push-maintained gauge only ever drifts
+upward. Expect the value to lag reality by up to the sample interval; it emits nothing at all
+until the first sample lands, so a gap immediately after start-up is expected and not an outage.
 
 Npgsql 10 also emits its `Npgsql` meter, including `db.client.operation.duration`,
 connection-count and pool signals. ASP.NET Core, HttpClient and .NET runtime instrumentation

@@ -123,11 +123,7 @@ public class PipelineTests : IClassFixture<WebApplicationFactory<Program>>
                 // the environment the leak guards apply in, and it turns the migrate-and-seed
                 // startup step into the no-op it is outside Development. Nothing here ever
                 // connects, so the connection string only has to exist.
-                builder.UseEnvironment("Production");
-                builder.UseTrustedTestProxy();
-                builder.UseSetting(
-                    "ConnectionStrings:Postgres",
-                    "Host=localhost;Database=pipeline-tests");
+                builder.UseProductionLikeHost("Production", "pipeline-tests");
 
                 if (configureServices is not null)
                 {

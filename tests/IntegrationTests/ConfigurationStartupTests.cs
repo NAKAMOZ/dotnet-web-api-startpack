@@ -13,6 +13,8 @@ public sealed class ConfigurationStartupTests
         using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                // Deliberately not UseProductionLikeHost: the missing proxy configuration is
+                // what this test asserts on.
                 builder.UseEnvironment("Production");
                 builder.UseSetting(
                     "ConnectionStrings:Postgres",
@@ -32,11 +34,7 @@ public sealed class ConfigurationStartupTests
         using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
-                builder.UseEnvironment("Production");
-                builder.UseTrustedTestProxy();
-                builder.UseSetting(
-                    "ConnectionStrings:Postgres",
-                    "Host=localhost;Database=configuration-startup-tests");
+                builder.UseProductionLikeHost("Production", "configuration-startup-tests");
                 builder.ConfigureAppConfiguration(configuration =>
                     configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {

@@ -1,9 +1,9 @@
 using System.Net.Http.Json;
 using System.Text.Json;
-using Api.Models.Enums;
+using Api.Configuration;
 using Api.Services.Security;
-using Api.Services.Tokens;
 using IntegrationTests.Infrastructure;
+using Microsoft.Extensions.Options;
 
 namespace IntegrationTests.Security;
 
@@ -14,8 +14,7 @@ public sealed class CsrfAttackTests(IntegrationTestFactory factory)
     [Fact]
     public async Task CookieStateChange_RequiresMatchingTokenBoundToAuthenticatedSession()
     {
-        await factory.ResetDatabaseAsync();
-        factory.Clock.Advance(TimeSpan.FromTicks(1));
+        await factory.ResetAsync();
         var firstSession = Guid.CreateVersion7();
         var secondSession = Guid.CreateVersion7();
         var accessToken = await IssueTokenAsync(firstSession);
@@ -47,34 +46,25 @@ public sealed class CsrfAttackTests(IntegrationTestFactory factory)
         string csrfCookie,
         string? header)
     {
+        // Read from the same options the server reads. A literal here is the third copy of a
+        // name AuthCookieDefaults exists to keep singular.
+        var cookies = factory.Services.GetRequiredService<IOptions<AuthCookieOptions>>().Value;
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/logout");
         request.Headers.Add(
             "Cookie",
-            $"__Host-auth.access={accessToken}; __Host-auth.csrf={csrfCookie}");
+            $"{cookies.AccessCookieName}={accessToken}; {cookies.CsrfCookieName}={csrfCookie}");
 
         if (header is not null)
         {
-            request.Headers.Add("X-CSRF-Token", header);
+            request.Headers.Add(cookies.CsrfHeaderName, header);
         }
 
         return factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
     }
 
-    private async Task<string> IssueTokenAsync(Guid sessionId)
-    {
-        var issued = await factory.InScopeAsync(services =>
-            services.GetRequiredService<IAccessTokenIssuer>().IssueAsync(
-                new AccessTokenRequest
-                {
-                    UserId = Guid.CreateVersion7(),
-                    SessionId = sessionId,
-                    EmailVerified = true,
-                    Roles = ["User"],
-                    AuthenticationMethods = [AuthenticationMethod.Password],
-                    AuthenticatedAt = factory.Clock.GetUtcNow(),
-                },
-                TestContext.Current.CancellationToken));
-
-        return issued.Value;
-    }
+    private Task<string> IssueTokenAsync(Guid sessionId) =>
+        factory.IssueAccessTokenAsync(
+            Guid.CreateVersion7(),
+            sessionId,
+            TestContext.Current.CancellationToken);
 }

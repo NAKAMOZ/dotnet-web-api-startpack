@@ -17,11 +17,7 @@ public sealed partial class HttpRequestSyncTests : IClassFixture<WebApplicationF
         var client = _factory
             .WithWebHostBuilder(builder =>
             {
-                builder.UseEnvironment("Staging");
-                builder.UseTrustedTestProxy();
-                builder.UseSetting(
-                    "ConnectionStrings:Postgres",
-                    "Host=localhost;Database=http-request-sync-tests");
+                builder.UseProductionLikeHost("Staging", "http-request-sync-tests");
             })
             .CreateClient();
 
@@ -32,13 +28,13 @@ public sealed partial class HttpRequestSyncTests : IClassFixture<WebApplicationF
             cancellationToken: TestContext.Current.CancellationToken);
 
         var documented = OpenApiOperations(openApi.RootElement);
-        var requests = HttpFileOperations(FindRepositoryRoot());
+        var requests = HttpFileOperations(RepositoryPaths.Root);
 
         Assert.True(
             documented.SetEquals(requests),
             $"Missing HTTP requests: [{string.Join(", ", documented.Except(requests))}]. " +
             $"Unknown HTTP requests: [{string.Join(", ", requests.Except(documented))}].");
-        Assert.Equal(43, requests.Count);
+        Assert.Equal(ApiInventory.OperationCount, requests.Count);
     }
 
     private static SortedSet<string> OpenApiOperations(JsonElement document)
@@ -80,20 +76,6 @@ public sealed partial class HttpRequestSyncTests : IClassFixture<WebApplicationF
         }
 
         return operations;
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null
-               && !File.Exists(Path.Combine(directory.FullName, "dotnet-web-api-startpack.csproj")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-               ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
     }
 
     [GeneratedRegex(

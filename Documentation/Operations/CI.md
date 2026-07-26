@@ -9,14 +9,24 @@ the workflow token read-only repository access and uses no deployment secrets.
 |---|---|
 | `quality` | restore, format verification, Release build with warnings as errors, transitive vulnerability audit, known-secret pattern scan |
 | `unit` | xUnit unit suite, Cobertura artifact, scoped 85% crypto/validator line threshold |
-| `integration` | real PostgreSQL migrations, Respawn-backed integration suite, separately reported `Category=Security` attack suite, docs/OpenAPI synchronization |
+| `integration` | real PostgreSQL migrations, Respawn-backed integration suite including the `Category=Security` attack tests, docs/OpenAPI synchronization |
 | `image` | multi-stage non-root image build with BuildKit cache, full Compose startup, `/health/ready` smoke |
 | `migration-bundle` | self-contained Linux x64 EF migration bundle artifact |
-| `cd` | disabled skeleton; P14 must define a target and GitHub Environment reviewers |
+
+There is no `cd` job. P14 has to define a deployment target and GitHub Environment
+reviewers first, and a job gated on `if: false` would ship a permanently skipped check on
+every pull request rather than reserving a place for one.
+
+The integration suite runs as a single `dotnet test` invocation. Its tests share one
+non-parallel collection fixture, so filtering `Category=Security` into a second run would
+start the Testcontainers PostgreSQL image and replay the migration chain twice; the trait
+is already recorded per test in the `.trx`.
 
 GitHub Actions and Docker actions use the current Node 24 major lines and Dependabot
 tracks them weekly. NuGet packages are restored from the centrally pinned manifest and
-cached by the manifest/project hash.
+cached by the manifest/project hash. SDK installation and that cache live in the composite
+action at `.github/actions/dotnet-setup`, which every job uses — a .NET version bump is one
+edit rather than four.
 
 The current 85% gate covers crypto and validators. ADR-0022 records why the whole
 `Services/Tokens` threshold remains open until all EF-backed token paths are exercised by

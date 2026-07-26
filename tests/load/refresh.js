@@ -1,14 +1,14 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import {
-  baseUrl,
+  adoptTokens,
+  checkFloor,
+  currentTokens,
   defaultHeaders,
-  loginBody,
-  parseTokens,
+  routes,
   thresholds,
+  url,
 } from './config.js';
-
-let refreshToken;
 
 export const options = {
   scenarios: {
@@ -23,33 +23,23 @@ export const options = {
   },
   thresholds: {
     ...thresholds.refresh,
-    checks: ['rate>0.99'],
+    ...checkFloor,
   },
 };
 
 export default function () {
-  if (!refreshToken) {
-    const login = http.post(
-      `${baseUrl}/api/v1/auth/login`,
-      loginBody(),
-      { headers: defaultHeaders, tags: { operation: 'setup' } },
-    );
-    const tokens = parseTokens(login);
-    refreshToken = tokens && tokens.refreshToken;
-  }
-
   const response = http.post(
-    `${baseUrl}/api/v1/auth/refresh`,
-    JSON.stringify({ refreshToken }),
+    url(routes.refresh),
+    JSON.stringify({ refreshToken: currentTokens().refreshToken }),
     {
       headers: defaultHeaders,
       tags: { operation: 'refresh' },
     },
   );
 
-  if (response.status === 200) {
-    refreshToken = response.json().refreshToken;
-  }
+  // Rotation invalidates the presented token, so the successor has to replace it or the
+  // next iteration replays a burnt one and trips reuse detection.
+  adoptTokens(response);
 
   check(response, {
     'refresh rotated': (result) => result.status === 200,

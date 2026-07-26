@@ -6,14 +6,12 @@ public sealed class SocialProviderOptionsValidator : IValidateOptions<SocialProv
 {
     public ValidateOptionsResult Validate(string? name, SocialProviderOptions options)
     {
-        var google = ValidateProvider("Google", options.Google);
-        if (google is not null)
-        {
-            return ValidateOptionsResult.Fail(google);
-        }
+        var failure = ValidateProvider("Google", options.Google)
+                      ?? ValidateProvider("GitHub", options.GitHub);
 
-        var github = ValidateProvider("GitHub", options.GitHub);
-        return github is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(github);
+        return failure is null
+            ? ValidateOptionsResult.Success
+            : ValidateOptionsResult.Fail(failure);
     }
 
     private static string? ValidateProvider(string name, SocialProviderOptions.Provider provider)

@@ -1,6 +1,5 @@
-import http from 'k6/http';
 import { check } from 'k6';
-import { baseUrl, defaultHeaders, loginBody, thresholds } from './config.js';
+import { checkFloor, login, thresholds } from './config.js';
 
 export const options = {
   scenarios: {
@@ -15,19 +14,12 @@ export const options = {
   },
   thresholds: {
     ...thresholds.login,
-    checks: ['rate>0.99'],
+    ...checkFloor,
   },
 };
 
 export default function () {
-  const response = http.post(
-    `${baseUrl}/api/v1/auth/login`,
-    loginBody(),
-    {
-      headers: defaultHeaders,
-      tags: { operation: 'login' },
-    },
-  );
+  const response = login('login');
 
   check(response, {
     'login completed': (result) => result.status === 200,

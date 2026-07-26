@@ -4,9 +4,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Api.Data;
-using Api.Models;
-using Api.Models.Enums;
 using Api.Services.Tokens;
 using IntegrationTests.Infrastructure;
 using Microsoft.AspNetCore.WebUtilities;
@@ -26,8 +23,7 @@ public sealed class JwtAttackTests(IntegrationTestFactory factory)
     [InlineData("unknown-kid")]
     public async Task JwtAttack_IsRejected(string attack)
     {
-        await factory.ResetDatabaseAsync();
-        factory.Clock.Advance(TimeSpan.FromTicks(1));
+        await factory.ResetAsync();
         var token = await IssueTokenAsync();
         var malicious = await ApplyAttackAsync(token, attack);
 
@@ -39,8 +35,7 @@ public sealed class JwtAttackTests(IntegrationTestFactory factory)
     [Fact]
     public async Task ExpiredToken_IsRejectedAfterAdvancingTheSharedClock()
     {
-        await factory.ResetDatabaseAsync();
-        factory.Clock.Advance(TimeSpan.FromTicks(1));
+        await factory.ResetAsync();
         var token = await IssueTokenAsync();
 
         factory.Clock.Advance(TimeSpan.FromMinutes(16));
@@ -52,8 +47,7 @@ public sealed class JwtAttackTests(IntegrationTestFactory factory)
     [Fact]
     public async Task RetiringKey_ValidatesUntilGraceThenRetiredKidIsRejected()
     {
-        await factory.ResetDatabaseAsync();
-        factory.Clock.Advance(TimeSpan.FromTicks(1));
+        await factory.ResetAsync();
         var oldToken = await IssueTokenAsync();
 
         await factory.InScopeAsync(async services =>
@@ -83,33 +77,12 @@ public sealed class JwtAttackTests(IntegrationTestFactory factory)
 
     private async Task<string> IssueTokenAsync()
     {
-        var userId = Guid.CreateVersion7();
-        var sessionId = Guid.CreateVersion7();
+        var userId = await factory.SeedUserAsync(TestContext.Current.CancellationToken);
 
-        await factory.InScopeAsync(async services =>
-        {
-            var database = services.GetRequiredService<AppDbContext>();
-            database.Users.Add(new User
-            {
-                Id = userId,
-                Email = $"{userId:N}@example.com",
-                EmailVerified = true,
-            });
-            await database.SaveChangesAsync(TestContext.Current.CancellationToken);
-        });
-
-        return (await factory.InScopeAsync(services =>
-            services.GetRequiredService<IAccessTokenIssuer>().IssueAsync(
-                new AccessTokenRequest
-                {
-                    UserId = userId,
-                    SessionId = sessionId,
-                    EmailVerified = true,
-                    Roles = ["User"],
-                    AuthenticationMethods = [AuthenticationMethod.Password],
-                    AuthenticatedAt = factory.Clock.GetUtcNow(),
-                },
-                TestContext.Current.CancellationToken))).Value;
+        return await factory.IssueAccessTokenAsync(
+            userId,
+            Guid.CreateVersion7(),
+            TestContext.Current.CancellationToken);
     }
 
     private async Task<string> ApplyAttackAsync(string token, string attack)

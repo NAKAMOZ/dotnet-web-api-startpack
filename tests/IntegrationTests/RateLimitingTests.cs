@@ -202,11 +202,7 @@ public class RateLimitingTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var factory = _factory.WithWebHostBuilder(builder =>
         {
-            builder.UseEnvironment("Production");
-            builder.UseTrustedTestProxy();
-            builder.UseSetting(
-                "ConnectionStrings:Postgres",
-                "Host=localhost;Database=rate-limiting-tests");
+            builder.UseProductionLikeHost("Production", "rate-limiting-tests");
 
             var settings = new Dictionary<string, string?>(overrides);
 

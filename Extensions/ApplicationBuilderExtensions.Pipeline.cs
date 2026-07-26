@@ -68,7 +68,9 @@ public static partial class ApplicationBuilderExtensions
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
         // ── 1. Forwarded headers ──────────────────────────────────────────────────────
-        // Disabled in local Development; mandatory in production-like environments.
+        // Runs only when ReverseProxy:Enabled is set — which ReverseProxyOptionsValidator
+        // requires outside Development and Testing, so "off" means local development in
+        // practice rather than by construction.
         // The middleware accepts values only from the exact proxies/networks validated at
         // startup — never from a caller merely because it sent an X-Forwarded-* header.
         app.UseTrustedForwardedHeaders();

@@ -2,10 +2,20 @@ using Microsoft.Extensions.Options;
 
 namespace Api.Configuration.Validation;
 
-public sealed class AuthCookieOptionsValidator : IValidateOptions<AuthCookieOptions>
+public sealed class AuthCookieOptionsValidator(IHostEnvironment environment)
+    : IValidateOptions<AuthCookieOptions>
 {
     public ValidateOptionsResult Validate(string? name, AuthCookieOptions options)
     {
+        // Every rule for this options type lives here. Expressing one of them as an inline
+        // .Validate lambda at the registration instead would put half the contract somewhere
+        // no test of this class can reach.
+        if (!options.RequireSecure && environment.IsProductionLike())
+        {
+            return ValidateOptionsResult.Fail(
+                "AuthCookies:RequireSecure must be true outside Development and Testing.");
+        }
+
         if (!options.AccessCookieName.StartsWith("__Host-", StringComparison.Ordinal)
             || !options.CsrfCookieName.StartsWith("__Host-", StringComparison.Ordinal))
         {

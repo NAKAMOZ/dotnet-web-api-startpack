@@ -65,7 +65,7 @@ Both counts must be zero. Then:
 - `/health/ready` remains `200 Healthy`;
 - a known pre-incident refresh token is rejected;
 - a new login can create a new session once §12 is implemented;
-- `auth.active_sessions` converges to zero after the next session/refresh observation;
+- `auth.active_sessions` converges to zero within one sample interval (one minute);
 - the incident audit row and database command log are preserved.
 
 ## Recovery and communication

@@ -17,7 +17,7 @@ builder.Services
     .AddAuthorizationServices()
     .AddDomainServices()
     .AddValidationServices()
-    .AddObservabilityServices(builder.Configuration);
+    .AddObservabilityServices(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 

@@ -22,7 +22,7 @@ public sealed class OptionsValidationTests
                 KeyRetirementGrace = TimeSpan.FromMinutes(15),
             });
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
         Assert.Contains("KeyRetirementGrace", result.FailureMessage);
     }
 
@@ -38,7 +38,7 @@ public sealed class OptionsValidationTests
                 Algorithm = "HS256",
             });
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
         Assert.Contains("ES256", result.FailureMessage);
     }
 
@@ -53,7 +53,7 @@ public sealed class OptionsValidationTests
                 AbsoluteLifetime = TimeSpan.FromDays(7),
             });
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
         Assert.Contains("InactivityWindow", result.FailureMessage);
     }
 
@@ -67,14 +67,14 @@ public sealed class OptionsValidationTests
                 InactivityWindow = TimeSpan.FromMinutes(15),
             });
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
         Assert.Contains("AccessTokenLifetime", result.FailureMessage);
     }
 
     [Fact]
     public void Cookie_UnsafeNamesAndRootScopedRefresh_AreRejected()
     {
-        var result = new AuthCookieOptionsValidator().Validate(
+        var result = new AuthCookieOptionsValidator(Environment(Environments.Development)).Validate(
             null,
             new AuthCookieOptions
             {
@@ -82,7 +82,31 @@ public sealed class OptionsValidationTests
                 RefreshCookiePath = "/",
             });
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public void Cookie_InsecureOutsideDevelopmentAndTesting_IsRejected(string environmentName)
+    {
+        var result = new AuthCookieOptionsValidator(Environment(environmentName)).Validate(
+            null,
+            new AuthCookieOptions { RequireSecure = false });
+
+        OptionsAssert.Failed(result);
+        Assert.Contains("RequireSecure", result.FailureMessage);
+    }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Testing")]
+    public void Cookie_InsecureInDevelopmentOrTesting_IsAccepted(string environmentName)
+    {
+        OptionsAssert.Succeeded(
+            new AuthCookieOptionsValidator(Environment(environmentName)).Validate(
+                null,
+                new AuthCookieOptions { RequireSecure = false }));
     }
 
     [Fact]
@@ -90,10 +114,10 @@ public sealed class OptionsValidationTests
     {
         var validator = new ApiCorsOptionsValidator();
 
-        Assert.Failed(validator.Validate(
+        OptionsAssert.Failed(validator.Validate(
             null,
             new ApiCorsOptions { AllowedOrigins = ["*"] }));
-        Assert.Failed(validator.Validate(
+        OptionsAssert.Failed(validator.Validate(
             null,
             new ApiCorsOptions { AllowedOrigins = ["https://app.example/path"] }));
     }
@@ -112,31 +136,25 @@ public sealed class OptionsValidationTests
                 },
             });
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
         Assert.Contains("ClientSecret", result.FailureMessage);
     }
 
     [Fact]
     public void ReverseProxy_ProductionWithoutExplicitTrustBoundary_IsRejected()
     {
-        var environment = Substitute.For<IHostEnvironment>();
-        environment.EnvironmentName.Returns(Environments.Production);
-
-        var result = new ReverseProxyOptionsValidator(environment).Validate(
+        var result = new ReverseProxyOptionsValidator(Environment(Environments.Production)).Validate(
             null,
             new ReverseProxyOptions());
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
         Assert.Contains("Enabled", result.FailureMessage);
     }
 
     [Fact]
     public void ReverseProxy_InvalidProxyAndNetwork_AreRejected()
     {
-        var environment = Substitute.For<IHostEnvironment>();
-        environment.EnvironmentName.Returns(Environments.Production);
-
-        var result = new ReverseProxyOptionsValidator(environment).Validate(
+        var result = new ReverseProxyOptionsValidator(Environment(Environments.Production)).Validate(
             null,
             new ReverseProxyOptions
             {
@@ -145,7 +163,7 @@ public sealed class OptionsValidationTests
                 KnownNetworks = ["10.0.0.1/not-a-prefix"],
             });
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
         Assert.Contains("invalid IP", result.FailureMessage);
         Assert.Contains("invalid CIDR", result.FailureMessage);
     }
@@ -157,30 +175,38 @@ public sealed class OptionsValidationTests
             null,
             new TelemetryOptions { OtlpExporterEnabled = true });
 
-        Assert.Failed(result);
+        OptionsAssert.Failed(result);
         Assert.Contains("OtlpEndpoint", result.FailureMessage);
     }
 
     [Fact]
     public void CrossFieldDefaults_AreValid()
     {
-        Assert.Succeeded(new JwtOptionsValidator().Validate(
+        OptionsAssert.Succeeded(new JwtOptionsValidator().Validate(
             null,
             new JwtOptions
             {
                 Issuer = "https://issuer.example",
                 Audience = "api",
             }));
-        Assert.Succeeded(SessionValidator().Validate(null, new AuthSessionOptions()));
-        Assert.Succeeded(new AuthCookieOptionsValidator().Validate(null, new AuthCookieOptions()));
-        Assert.Succeeded(new ApiCorsOptionsValidator().Validate(null, new ApiCorsOptions()));
-        Assert.Succeeded(new SocialProviderOptionsValidator().Validate(null, new SocialProviderOptions()));
-        var development = Substitute.For<IHostEnvironment>();
-        development.EnvironmentName.Returns(Environments.Development);
-        Assert.Succeeded(new ReverseProxyOptionsValidator(development).Validate(
+        OptionsAssert.Succeeded(SessionValidator().Validate(null, new AuthSessionOptions()));
+        var development = Environment(Environments.Development);
+        OptionsAssert.Succeeded(new AuthCookieOptionsValidator(development).Validate(
+            null,
+            new AuthCookieOptions()));
+        OptionsAssert.Succeeded(new ApiCorsOptionsValidator().Validate(null, new ApiCorsOptions()));
+        OptionsAssert.Succeeded(new SocialProviderOptionsValidator().Validate(null, new SocialProviderOptions()));
+        OptionsAssert.Succeeded(new ReverseProxyOptionsValidator(development).Validate(
             null,
             new ReverseProxyOptions()));
-        Assert.Succeeded(new TelemetryOptionsValidator().Validate(null, new TelemetryOptions()));
+        OptionsAssert.Succeeded(new TelemetryOptionsValidator().Validate(null, new TelemetryOptions()));
+    }
+
+    private static IHostEnvironment Environment(string environmentName)
+    {
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(environmentName);
+        return environment;
     }
 
     private static AuthSessionOptionsValidator SessionValidator(

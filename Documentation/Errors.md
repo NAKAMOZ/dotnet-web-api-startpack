@@ -33,6 +33,10 @@ Every non-2xx response this API can produce, as RFC 9457 `application/problem+js
 
 **`title` and `detail` are prose; `errorCode` is the interface.** A client that keys off the message breaks on the first copy edit, and localised clients break silently.
 
+### The one exemption
+
+`/health/live` and `/health/ready` (§28) answer `text/plain` — `Healthy` or `Unhealthy` — not Problem Details. Orchestrator probes read a status code and a word, are not API clients, and never see an `errorCode`. This is the complete list of exempt endpoints; anything else answering a non-2xx without the envelope above is a defect. See `Documentation/Architecture/Pipeline.md` §1.
+
 ---
 
 ## 2. Authentication and authorization

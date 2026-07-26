@@ -13,6 +13,9 @@ public static partial class ServiceCollectionExtensions
         var connectionString = configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("Connection string 'Postgres' is not configured.");
 
+        // Singleton so the migrations check can remember its answer between probes.
+        services.AddSingleton<PostgresHealthCheck>();
+
         services
             .AddHealthChecks()
             .AddCheck(

@@ -10,7 +10,8 @@ public static partial class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddObservabilityServices(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         // Both enrichers read the ambient request. Nothing else in the project needs the
         // accessor — controllers read claims, services take what they need as arguments —
@@ -36,6 +37,6 @@ public static partial class ServiceCollectionExtensions
         // TODO §12: HybridCache, in-memory only (ADR-0016).
         return services
             .AddApplicationHealthChecks(configuration)
-            .AddTelemetryServices(configuration);
+            .AddTelemetryServices(configuration, environment);
     }
 }
