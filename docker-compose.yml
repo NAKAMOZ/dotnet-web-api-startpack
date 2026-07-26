@@ -2,7 +2,7 @@ name: dotnet-web-api-startpack
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-startpack}
       POSTGRES_USER: ${POSTGRES_USER:-startpack}
@@ -10,7 +10,9 @@ services:
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # PostgreSQL 18+ uses /var/lib/postgresql/<major>/docker as PGDATA and
+      # requires the persistent volume to be mounted at /var/lib/postgresql.
+      - postgres18-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -18,7 +20,7 @@ services:
       retries: 12
 
   mailpit:
-    image: axllent/mailpit:v1.27
+    image: axllent/mailpit:v1.30.5
     ports:
       - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
       - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
@@ -45,4 +47,4 @@ services:
         condition: service_started
 
 volumes:
-  postgres-data:
+  postgres18-data:

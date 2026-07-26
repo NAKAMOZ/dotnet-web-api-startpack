@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/NAKAMOZ/dotnet-web-api-startpack/actions/workflows/ci.yml/badge.svg)](https://github.com/NAKAMOZ/dotnet-web-api-startpack/actions/workflows/ci.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
-![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
+![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
 </div>
@@ -74,7 +74,7 @@ production hosting target, CD workflow, and software licence have not yet been s
 
 - .NET 10 and ASP.NET Core
 - Entity Framework Core 10 and Npgsql
-- PostgreSQL 17 with the `citext` extension
+- PostgreSQL 18 with the `citext` extension
 - ES256 JSON Web Tokens and a published JWKS
 - ASP.NET Core Data Protection persisted to PostgreSQL
 - Argon2id password and secret hashing
@@ -86,6 +86,7 @@ production hosting target, CD workflow, and software licence have not yet been s
 - Scalar and OpenAPI
 - xUnit v3, Testcontainers, Respawn, NSubstitute, and Coverlet
 - Docker and Docker Compose
+- Mailpit v1.30.5 for local SMTP capture and email inspection
 
 NuGet versions are pinned centrally in
 [`Directory.Packages.props`](Directory.Packages.props), and solution-wide compiler rules
@@ -133,8 +134,13 @@ an end-user application.
 git clone https://github.com/NAKAMOZ/dotnet-web-api-startpack.git
 cd dotnet-web-api-startpack
 cp .env.example .env
+docker compose pull postgres mailpit
 docker compose up --build --detach
 ```
+
+`docker compose pull postgres mailpit` refreshes the floating `postgres:18-alpine` tag to
+the latest PostgreSQL 18 patch before startup. Subsequent starts can use only
+`docker compose up --build --detach` when no image refresh is needed.
 
 Docker Compose starts the following services:
 
@@ -144,7 +150,7 @@ Docker Compose starts the following services:
 | API Workbench | <http://localhost:5035/playground/> | Run and inspect every endpoint |
 | Scalar | <http://localhost:5035/scalar/v1> | Interactive OpenAPI reference |
 | OpenAPI JSON | <http://localhost:5035/openapi/v1.json> | Machine-readable API contract |
-| Mailpit UI | <http://localhost:8025> | Inspect local verification and reset emails |
+| Mailpit v1.30.5 UI | <http://localhost:8025> | Inspect local verification and reset emails |
 | Mailpit SMTP | `localhost:1025` | Local SMTP receiver |
 | PostgreSQL | `localhost:55432` | Local database connection |
 
@@ -409,8 +415,16 @@ The default Compose connection is:
 Host=127.0.0.1;Port=55432;Database=startpack;Username=startpack;Password=local-development-only
 ```
 
-Compose stores PostgreSQL files in the named `postgres-data` volume. Application tables
+Compose stores PostgreSQL files in the named `postgres18-data` volume. PostgreSQL 18 uses
+the version-aware `/var/lib/postgresql/18/docker` data directory inside that volume.
+Application tables
 live in the PostgreSQL `auth` schema, not `public`.
+
+If this repository was previously run with PostgreSQL 17, Compose leaves the old
+`dotnet-web-api-startpack_postgres-data` volume untouched and initializes PostgreSQL 18 in
+`dotnet-web-api-startpack_postgres18-data`. Existing PostgreSQL 17 records are not imported
+automatically; use `pg_dump`/`pg_restore` or `pg_upgrade` when that data must be retained.
+Do not remove the old volume until the migration has been verified.
 
 Inspect the owned tables:
 
@@ -542,7 +556,7 @@ dotnet test tests/UnitTests/UnitTests.csproj
 dotnet test tests/IntegrationTests/IntegrationTests.csproj
 ```
 
-Integration tests require a reachable Docker daemon. Testcontainers starts PostgreSQL 17
+Integration tests require a reachable Docker daemon. Testcontainers starts PostgreSQL 18
 on a random host port, applies the real migrations, and Respawn resets application state
 between tests.
 

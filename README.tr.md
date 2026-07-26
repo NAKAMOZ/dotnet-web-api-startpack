@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/NAKAMOZ/dotnet-web-api-startpack/actions/workflows/ci.yml/badge.svg)](https://github.com/NAKAMOZ/dotnet-web-api-startpack/actions/workflows/ci.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
-![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
+![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
 </div>
@@ -76,7 +76,7 @@ seçilmemiştir.
 
 - .NET 10 ve ASP.NET Core
 - Entity Framework Core 10 ve Npgsql
-- `citext` eklentisiyle PostgreSQL 17
+- `citext` eklentisiyle PostgreSQL 18
 - ES256 JSON Web Token ve yayınlanan JWKS
 - PostgreSQL'de saklanan ASP.NET Core Data Protection key ring
 - Argon2id parola ve secret hashleme
@@ -88,6 +88,7 @@ seçilmemiştir.
 - Scalar ve OpenAPI
 - xUnit v3, Testcontainers, Respawn, NSubstitute ve Coverlet
 - Docker ve Docker Compose
+- Yerel SMTP yakalama ve e-posta inceleme için Mailpit v1.30.5
 
 NuGet sürümleri [`Directory.Packages.props`](Directory.Packages.props) içinde merkezi olarak
 sabitlenmiştir. Çözüm genelindeki derleyici kuralları
@@ -135,8 +136,14 @@ Development ve Staging ortamlarına yönelik bir geliştirme aracıdır.
 git clone https://github.com/NAKAMOZ/dotnet-web-api-startpack.git
 cd dotnet-web-api-startpack
 cp .env.example .env
+docker compose pull postgres mailpit
 docker compose up --build --detach
 ```
+
+`docker compose pull postgres mailpit`, başlangıçtan önce değişken
+`postgres:18-alpine` etiketini PostgreSQL 18'in en güncel patch sürümüne getirir. İmajları
+yenilemek gerekmediğinde sonraki başlangıçlarda yalnızca
+`docker compose up --build --detach` kullanılabilir.
 
 Docker Compose aşağıdaki servisleri başlatır:
 
@@ -146,7 +153,7 @@ Docker Compose aşağıdaki servisleri başlatır:
 | API Workbench | <http://localhost:5035/playground/> | Tüm endpoint'leri çalıştırma ve inceleme |
 | Scalar | <http://localhost:5035/scalar/v1> | Etkileşimli OpenAPI referansı |
 | OpenAPI JSON | <http://localhost:5035/openapi/v1.json> | Makine tarafından okunabilir API sözleşmesi |
-| Mailpit arayüzü | <http://localhost:8025> | Yerel doğrulama ve parola sıfırlama e-postalarını inceleme |
+| Mailpit v1.30.5 arayüzü | <http://localhost:8025> | Yerel doğrulama ve parola sıfırlama e-postalarını inceleme |
 | Mailpit SMTP | `localhost:1025` | Yerel SMTP alıcısı |
 | PostgreSQL | `localhost:55432` | Yerel veritabanı bağlantısı |
 
@@ -418,8 +425,15 @@ Varsayılan Compose bağlantısı:
 Host=127.0.0.1;Port=55432;Database=startpack;Username=startpack;Password=local-development-only
 ```
 
-Compose, PostgreSQL dosyalarını `postgres-data` adlı volume içinde saklar. Uygulama
-tabloları `public` yerine PostgreSQL `auth` şemasında bulunur.
+Compose, PostgreSQL dosyalarını `postgres18-data` adlı volume içinde saklar. PostgreSQL 18,
+bu volume içinde sürüme özel `/var/lib/postgresql/18/docker` veri dizinini kullanır.
+Uygulama tabloları `public` yerine PostgreSQL `auth` şemasında bulunur.
+
+Bu repository daha önce PostgreSQL 17 ile çalıştırıldıysa Compose, eski
+`dotnet-web-api-startpack_postgres-data` volume'unu değiştirmeden bırakır ve PostgreSQL
+18'i `dotnet-web-api-startpack_postgres18-data` içinde başlatır. PostgreSQL 17 kayıtları
+otomatik aktarılmaz; bu verilerin korunması gerekiyorsa `pg_dump`/`pg_restore` veya
+`pg_upgrade` kullanın. Veri geçişi doğrulanmadan eski volume'u silmeyin.
 
 Uygulamaya ait tabloları inceleyin:
 
@@ -553,7 +567,7 @@ dotnet test tests/IntegrationTests/IntegrationTests.csproj
 ```
 
 Integration testleri çalışan bir Docker daemon gerektirir. Testcontainers, rastgele bir
-host portunda PostgreSQL 17 başlatır, gerçek migration'ları uygular ve Respawn testler
+host portunda PostgreSQL 18 başlatır, gerçek migration'ları uygular ve Respawn testler
 arasında uygulama durumunu sıfırlar.
 
 Ana CI kontrollerini yerelde çalıştırın:

@@ -1,6 +1,6 @@
 using Api.BackgroundServices;
-using Api.Services.Audit;
 using Api.Services.ApiKeys;
+using Api.Services.Audit;
 using Api.Services.Auth;
 using Api.Services.Crypto;
 using Api.Services.Email;

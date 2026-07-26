@@ -9,7 +9,7 @@ dotnet test
 `UnitTests` contains isolated validators, cryptographic wrappers, token issuers, policy
 handlers, mappings, and architecture guards. It uses no database, network, or
 `WebApplicationFactory`. `IntegrationTests` hosts the real pipeline and, for tests in the
-`postgres-integration` collection, starts one PostgreSQL 17 Testcontainer, applies EF
+`postgres-integration` collection, starts one PostgreSQL 18 Testcontainer, applies EF
 migrations, and uses Respawn between tests.
 
 Test names follow `Method_Condition_Expectation` when a method or transition is under test.
@@ -22,7 +22,7 @@ because it does not reproduce PostgreSQL constraints, transactions, or `ExecuteU
 ## Integration prerequisites
 
 - Docker with a reachable daemon.
-- Enough capacity for one `postgres:17-alpine` container.
+- Enough capacity for one `postgres:18-alpine` container.
 - No fixed port is required: Testcontainers chooses a random host port, so the suite can
   run beside the Compose stack.
 

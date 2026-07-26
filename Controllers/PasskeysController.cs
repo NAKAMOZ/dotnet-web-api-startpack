@@ -1,5 +1,5 @@
-using Api.Configuration;
 using Api.Attributes;
+using Api.Configuration;
 using Api.DTOs.Auth;
 using Api.DTOs.Passkeys;
 using Api.Models.Enums;

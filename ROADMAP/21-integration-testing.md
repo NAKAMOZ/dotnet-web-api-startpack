@@ -21,7 +21,7 @@ None.
 
 ## Tasks
 
-- [🔄] Factory + fixtures (`IntegrationTests/Infrastructure/`): PostgreSQL 17 container lifecycle, migrations, Respawn, shared fake clock and bearer helpers are implemented. A capturing email sender remains open.
+- [🔄] Factory + fixtures (`IntegrationTests/Infrastructure/`): PostgreSQL 18 container lifecycle, migrations, Respawn, shared fake clock and bearer helpers are implemented. A capturing email sender remains open.
 - [ ] Flow suites (each its own file):
   - Registration → verification email captured → confirm → `email_verified` claim true after next login.
   - Login/logout both transports; wrong password; lockout after 5; unlock by time advance.

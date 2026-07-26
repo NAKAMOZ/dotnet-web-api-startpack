@@ -27,7 +27,7 @@ public sealed class IntegrationTestFactory : WebApplicationFactory<Program>, IAs
     /// The image every integration container runs, named once so a major-version bump is
     /// one edit rather than a search.
     /// </summary>
-    public const string PostgresImage = "postgres:17-alpine";
+    public const string PostgresImage = "postgres:18-alpine";
 
     private readonly PostgreSqlContainer _postgres = CreateContainer("integration_tests");
 
