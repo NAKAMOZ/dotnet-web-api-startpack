@@ -323,7 +323,18 @@
         vaultSubtitle: byId("vault-subtitle"),
         leftRail: byId("left-rail"),
         toastRegion: byId("toast-region"),
+        topbar: document.querySelector(".topbar"),
+        mainContent: document.querySelector(".main-content"),
     };
+
+    // The widths at which each aside stops being a column and becomes an off-canvas drawer.
+    // These must stay in step with the two media queries in styles.css.
+    const drawerQueries = Object.freeze({
+        rail: window.matchMedia("(max-width: 980px)"),
+        panel: window.matchMedia("(max-width: 1320px)"),
+    });
+
+    let drawerReturnFocus = null;
 
     initialize();
 
@@ -349,6 +360,18 @@
         return document.getElementById(id);
     }
 
+    /// References a symbol from the sprite in index.html. Decorative by definition — every
+    /// caller either sits next to its own label or is on a button with an aria-label.
+    function icon(name) {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "icon");
+        svg.setAttribute("aria-hidden", "true");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `#${name}`);
+        svg.append(use);
+        return svg;
+    }
+
     function initialize() {
         const defaultOrigin = window.location.origin;
         dom.apiBase.value = defaultOrigin;
@@ -366,6 +389,7 @@
         renderEndpoints();
         updateVaultStatus();
         updateAuthMode();
+        syncDrawerState();
         updateTotpContinuously();
         checkServices();
     }
@@ -409,6 +433,32 @@
 
         document.querySelectorAll("#auth-mode button").forEach((button) => {
             button.addEventListener("click", () => setAuthMode(button.dataset.mode));
+        });
+
+        byId("auth-mode").addEventListener("keydown", (event) => {
+            const modes = ["bearer", "cookie", "apiKey"];
+            const next = rovingTarget(event, modes.indexOf(state.authMode), modes.length);
+            if (next === null) return;
+            event.preventDefault();
+            setAuthMode(modes[next]);
+            document.querySelector(`#auth-mode button[data-mode="${modes[next]}"]`)?.focus();
+        });
+
+        document.querySelector(".request-tabs").addEventListener("keydown", (event) => {
+            const names = ["request", "response"];
+            const current = names.findIndex(
+                (name) => byId(`tab-${name}`).getAttribute("aria-selected") === "true");
+            const next = rovingTarget(event, current, names.length);
+            if (next === null) return;
+            event.preventDefault();
+            switchPanelTab(names[next]);
+            byId(`tab-${names[next]}`).focus();
+        });
+
+        // A drawer that is open when the viewport crosses back into a column layout must
+        // stop being modal, or the rest of the shell stays inert at desktop width.
+        Object.values(drawerQueries).forEach((query) => {
+            query.addEventListener("change", () => closeDrawers(false));
         });
 
         [
@@ -480,6 +530,17 @@
         });
     }
 
+    /// Shared arrow-key arithmetic for the two composite widgets (the transport radio group
+    /// and the request/response tablist). Returns the index to move to, or null when the key
+    /// is not one this pattern handles.
+    function rovingTarget(event, current, length) {
+        if (["ArrowRight", "ArrowDown"].includes(event.key)) return (current + 1) % length;
+        if (["ArrowLeft", "ArrowUp"].includes(event.key)) return (current - 1 + length) % length;
+        if (event.key === "Home") return 0;
+        if (event.key === "End") return length - 1;
+        return null;
+    }
+
     function renderCategories() {
         dom.categoryTabs.replaceChildren();
         groups.forEach(([id, label]) => {
@@ -540,10 +601,8 @@
         security.className = `security ${item.auth}`;
         security.textContent = authLabels[item.auth];
 
-        const arrow = document.createElement("span");
-        arrow.className = "arrow";
-        arrow.setAttribute("aria-hidden", "true");
-        arrow.textContent = "→";
+        const arrow = icon("i-arrow-right");
+        arrow.classList.add("arrow");
 
         button.append(method, route, summary, security, arrow);
         return button;
@@ -571,7 +630,7 @@
         resetResponse();
         switchPanelTab("request");
 
-        if (window.matchMedia("(max-width: 1320px)").matches) {
+        if (drawerQueries.panel.matches) {
             openDrawer(dom.requestPanel);
         }
     }
@@ -616,14 +675,14 @@
         dom.specialActions.replaceChildren();
         if (item.special === "passkey-register") {
             dom.specialActions.append(specialButton(
-                "◎",
+                "i-shield",
                 "WebAuthn kayıt törenini çalıştır",
                 "Tarayıcı authenticator penceresini açar",
                 runPasskeyRegistration));
         }
         if (item.special === "passkey-auth") {
             dom.specialActions.append(specialButton(
-                "◇",
+                "i-key",
                 "Passkey ile giriş törenini çalıştır",
                 "Challenge → authenticator → assertion",
                 runPasskeyAuthentication));
@@ -633,14 +692,14 @@
                 ? `Canlı kod: ${state.variables.totpCode || "hesaplanıyor"}`
                 : "Önce enrollment endpoint’ini gönderin";
             dom.specialActions.append(specialButton(
-                "◷",
+                "i-clock",
                 "Canlı TOTP kodunu gövdeye yaz",
                 detail,
                 fillTotpCode));
         }
         if (item.special === "social") {
             dom.specialActions.append(specialButton(
-                "↗",
+                "i-external",
                 "Yerel OAuth akışını tamamla",
                 "Authorize ve callback’i art arda çalıştırır",
                 () => {
@@ -650,21 +709,19 @@
         }
     }
 
-    function specialButton(icon, title, subtitle, handler) {
+    function specialButton(iconName, title, subtitle, handler) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "special-action";
         const iconNode = document.createElement("span");
-        iconNode.textContent = icon;
+        iconNode.append(icon(iconName));
         const copy = document.createElement("span");
         const strong = document.createElement("strong");
         strong.textContent = title;
         const small = document.createElement("small");
         small.textContent = subtitle;
         copy.append(strong, small);
-        const arrow = document.createElement("span");
-        arrow.textContent = "→";
-        button.append(iconNode, copy, arrow);
+        button.append(iconNode, copy, icon("i-arrow-right"));
         button.addEventListener("click", handler);
         return button;
     }
@@ -921,7 +978,9 @@
 
     function switchPanelTab(name) {
         document.querySelectorAll("[data-panel-tab]").forEach((button) => {
-            button.setAttribute("aria-selected", String(button.dataset.panelTab === name));
+            const selected = button.dataset.panelTab === name;
+            button.setAttribute("aria-selected", String(selected));
+            button.tabIndex = selected ? 0 : -1;
         });
         byId("request-tab").hidden = name !== "request";
         byId("response-tab").hidden = name !== "response";
@@ -1269,7 +1328,10 @@
         document.querySelectorAll("#auth-mode button").forEach((button) => {
             const active = button.dataset.mode === state.authMode;
             button.classList.toggle("active", active);
-            button.setAttribute("aria-pressed", String(active));
+            // aria-checked, not aria-pressed: these are radios in a radiogroup, and only
+            // the selected one stays in the tab order (roving tabindex).
+            button.setAttribute("aria-checked", String(active));
+            button.tabIndex = active ? 0 : -1;
         });
     }
 
@@ -1300,8 +1362,11 @@
                 : "Yalnızca bu tarayıcı sekmesinde saklanır.";
         } else {
             dom.vaultTitle.textContent = "Oturum bekleniyor";
+            // The idle state is not an error state: lead with the action in every mode.
+            // The __Host- cookie prefix does need HTTPS, but that is a footnote here, not
+            // the first thing a user sees after picking cookie transport.
             dom.vaultSubtitle.textContent = mode === "cookie"
-                ? "HTTPS profili cookie isimleri için gereklidir."
+                ? "Demo hesaplardan biriyle giriş yapın (https profili gerekir)."
                 : "Demo hesaplardan biriyle giriş yapın.";
         }
     }
@@ -1422,20 +1487,74 @@
         const detail = document.createElement("span");
         detail.textContent = message;
         copy.append(strong, detail);
-        node.append(copy);
+
+        const dismiss = document.createElement("button");
+        dismiss.type = "button";
+        dismiss.className = "toast-dismiss";
+        dismiss.setAttribute("aria-label", "Bildirimi kapat");
+        dismiss.append(icon("i-close"));
+        dismiss.addEventListener("click", () => node.remove());
+
+        node.append(copy, dismiss);
         dom.toastRegion.append(node);
-        window.setTimeout(() => node.remove(), 4200);
+
+        // A failed passkey ceremony, TOTP fill or clipboard write has no other surface —
+        // the toast body is the only copy of the reason. Errors wait to be dismissed.
+        if (!error) window.setTimeout(() => node.remove(), 4200);
     }
 
     function openDrawer(element) {
-        closePanels();
+        const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        closeDrawers(false);
         element.classList.add("open");
-        dom.panelBackdrop.hidden = false;
+        drawerReturnFocus = trigger;
+        syncDrawerState();
+        element.focus();
     }
 
     function closePanels() {
+        closeDrawers(true);
+    }
+
+    function closeDrawers(restoreFocus) {
+        const wasOpen = dom.requestPanel.classList.contains("open")
+            || dom.leftRail.classList.contains("open");
         dom.requestPanel.classList.remove("open");
         dom.leftRail.classList.remove("open");
-        dom.panelBackdrop.hidden = true;
+        syncDrawerState();
+        if (!restoreFocus) return;
+        if (wasOpen && drawerReturnFocus?.isConnected) drawerReturnFocus.focus();
+        drawerReturnFocus = null;
+    }
+
+    /// A drawer parked off-canvas with translateX() is still in the tab order, so keyboard
+    /// users would tab through ~15 invisible controls. `inert` is the only thing that takes
+    /// it out without also breaking the slide transition. The same call makes an open drawer
+    /// genuinely modal by inerting every sibling region behind the backdrop.
+    function syncDrawerState() {
+        const railIsDrawer = drawerQueries.rail.matches;
+        const panelIsDrawer = drawerQueries.panel.matches;
+        const railOpen = railIsDrawer && dom.leftRail.classList.contains("open");
+        const panelOpen = panelIsDrawer && dom.requestPanel.classList.contains("open");
+        const openDrawerElement = railOpen ? dom.leftRail : panelOpen ? dom.requestPanel : null;
+
+        [dom.topbar, dom.leftRail, dom.mainContent, dom.requestPanel].forEach((region) => {
+            region.inert = openDrawerElement
+                ? region !== openDrawerElement
+                : (region === dom.leftRail && railIsDrawer)
+                    || (region === dom.requestPanel && panelIsDrawer);
+        });
+
+        [[dom.leftRail, railOpen], [dom.requestPanel, panelOpen]].forEach(([element, isModal]) => {
+            if (isModal) {
+                element.setAttribute("role", "dialog");
+                element.setAttribute("aria-modal", "true");
+            } else {
+                element.removeAttribute("role");
+                element.removeAttribute("aria-modal");
+            }
+        });
+
+        dom.panelBackdrop.hidden = !openDrawerElement;
     }
 })();

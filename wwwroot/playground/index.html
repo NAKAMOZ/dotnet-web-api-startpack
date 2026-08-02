@@ -11,6 +11,29 @@
     <script src="/playground/app.js" defer></script>
 </head>
 <body>
+    <!--
+      One icon set, one 24×24 grid, one 1.5 stroke, all currentColor. This replaces the
+      Unicode glyphs the workbench used to draw with (⌁ ◫ ☷ ◷ ⌕ ∅ ◎ ◇): they came from
+      unrelated Unicode blocks at different optical weights, and four of them have no
+      glyph in the default Windows fallback chain, where they rendered as tofu.
+    -->
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></symbol>
+        <symbol id="i-vault" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+        <symbol id="i-sessions" viewBox="0 0 24 24"><rect x="3" y="4" width="13" height="13" rx="2"/><path d="M8 21h11a2 2 0 0 0 2-2V8"/></symbol>
+        <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l2 2M14.5 8.5l2 2"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></symbol>
+        <symbol id="i-external" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></symbol>
+        <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+        <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+        <symbol id="i-empty" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m6.5 6.5 11 11"/></symbol>
+        <symbol id="i-rows" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/></symbol>
+        <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+    </svg>
+
     <a class="skip-link" href="#endpoint-list">Endpoint listesine geç</a>
 
     <div class="app-shell">
@@ -30,21 +53,21 @@
 
             <label class="base-url">
                 <span>API ORIGIN</span>
-                <input id="api-base" type="url" inputmode="url" autocomplete="url" aria-label="API adresi">
+                <input id="api-base" type="url" inputmode="url" autocomplete="url">
             </label>
 
             <div class="topbar-actions">
                 <a class="ghost-button compact" href="/scalar/v1" target="_blank" rel="noreferrer">
                     Scalar
-                    <span aria-hidden="true">↗</span>
+                    <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>
                 </a>
                 <button class="icon-button mobile-only" id="open-vault" type="button" aria-label="Kimlik kasasını aç">
-                    <span aria-hidden="true">⌁</span>
+                    <svg class="icon" aria-hidden="true"><use href="#i-vault"/></svg>
                 </button>
             </div>
         </header>
 
-        <aside class="left-rail" id="left-rail">
+        <aside class="left-rail" id="left-rail" tabindex="-1" aria-label="Kimlik kasası ve demo verisi">
             <div class="rail-scroll">
                 <section class="rail-section intro-card">
                     <p class="eyebrow">CANLI İSTEK KONSOLU</p>
@@ -68,13 +91,13 @@
                             <p class="eyebrow">KİMLİK KASASI</p>
                             <h2>Aktif taşıma</h2>
                         </div>
-                        <button class="icon-button mobile-only" id="close-vault" type="button" aria-label="Kimlik kasasını kapat">×</button>
+                        <button class="icon-button mobile-only" id="close-vault" type="button" aria-label="Kimlik kasasını kapat"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
                     </div>
 
                     <div class="segmented" id="auth-mode" role="radiogroup" aria-label="Kimlik doğrulama taşıması">
-                        <button type="button" data-mode="bearer" class="active" aria-pressed="true">Bearer</button>
-                        <button type="button" data-mode="cookie" aria-pressed="false">Cookie</button>
-                        <button type="button" data-mode="apiKey" aria-pressed="false">API Key</button>
+                        <button type="button" role="radio" data-mode="bearer" class="active" aria-checked="true" tabindex="0">Bearer</button>
+                        <button type="button" role="radio" data-mode="cookie" aria-checked="false" tabindex="-1">Cookie</button>
+                        <button type="button" role="radio" data-mode="apiKey" aria-checked="false" tabindex="-1">API Key</button>
                     </div>
 
                     <div class="vault-status">
@@ -122,7 +145,7 @@
                             <strong>Dev Admin</strong>
                             <span>admin@localhost.dev</span>
                         </div>
-                        <button class="round-action" type="button" data-demo-login="admin" aria-label="Dev Admin ile giriş yap">→</button>
+                        <button class="round-action" type="button" data-demo-login="admin" aria-label="Dev Admin ile giriş yap"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
                     </article>
                     <article class="account-card user">
                         <div class="account-avatar">DU</div>
@@ -130,16 +153,16 @@
                             <strong>Dev User</strong>
                             <span>user@localhost.dev</span>
                         </div>
-                        <button class="round-action" type="button" data-demo-login="user" aria-label="Dev User ile giriş yap">→</button>
+                        <button class="round-action" type="button" data-demo-login="user" aria-label="Dev User ile giriş yap"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
                     </article>
 
                     <div class="demo-actions">
                         <button class="soft-button" id="prepare-sessions" type="button">
-                            <span aria-hidden="true">◫</span>
+                            <svg class="icon" aria-hidden="true"><use href="#i-sessions"/></svg>
                             Oturum senaryosu
                         </button>
                         <button class="soft-button" id="use-demo-api-key" type="button">
-                            <span aria-hidden="true">⌘</span>
+                            <svg class="icon" aria-hidden="true"><use href="#i-key"/></svg>
                             Demo API key
                         </button>
                     </div>
@@ -175,7 +198,7 @@
                             <strong>Mailpit inbox</strong>
                             <small>Doğrulama ve parola sıfırlama</small>
                         </span>
-                        <span aria-hidden="true">↗</span>
+                        <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>
                     </a>
                     <button id="demo-google" type="button">
                         <span class="service-icon google">G</span>
@@ -183,7 +206,7 @@
                             <strong>Google demo OAuth</strong>
                             <small>Gerçek sağlayıcıya çıkmaz</small>
                         </span>
-                        <span aria-hidden="true">→</span>
+                        <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg>
                     </button>
                     <button id="demo-github" type="button">
                         <span class="service-icon github">GH</span>
@@ -191,7 +214,7 @@
                             <strong>GitHub demo OAuth</strong>
                             <small>Gerçek sağlayıcıya çıkmaz</small>
                         </span>
-                        <span aria-hidden="true">→</span>
+                        <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg>
                     </button>
                 </section>
             </div>
@@ -246,13 +269,14 @@
 
             <section class="catalog-toolbar" aria-label="Endpoint filtreleri">
                 <div class="search-box">
-                    <span aria-hidden="true">⌕</span>
+                    <label class="sr-only" for="endpoint-search">Endpoint ara</label>
+                    <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
                     <input id="endpoint-search" type="search" placeholder="Endpoint, yöntem veya açıklama ara…" autocomplete="off">
                     <kbd>/</kbd>
                 </div>
                 <div class="view-switch" role="group" aria-label="Görünüm">
-                    <button type="button" data-view="comfortable" class="active" aria-label="Rahat görünüm" aria-pressed="true">▦</button>
-                    <button type="button" data-view="compact" aria-label="Sıkışık görünüm" aria-pressed="false">☷</button>
+                    <button type="button" data-view="comfortable" class="active" aria-label="Rahat görünüm" aria-pressed="true"><svg class="icon" aria-hidden="true"><use href="#i-rows"/></svg></button>
+                    <button type="button" data-view="compact" aria-label="Sıkışık görünüm" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-list"/></svg></button>
                 </div>
             </section>
 
@@ -264,24 +288,24 @@
                         <p class="eyebrow">ENDPOINT KATALOĞU</p>
                         <h2 id="catalog-title">Tüm işlemler</h2>
                     </div>
-                    <span id="visible-count">45 endpoint</span>
+                    <span id="visible-count" role="status">45 endpoint</span>
                 </div>
-                <div class="endpoint-list" id="endpoint-list" aria-live="polite"></div>
+                <div class="endpoint-list" id="endpoint-list" tabindex="-1"></div>
                 <div class="empty-state" id="empty-state" hidden>
-                    <span>∅</span>
+                    <svg class="icon" aria-hidden="true"><use href="#i-empty"/></svg>
                     <h3>Eşleşme bulunamadı</h3>
                     <p>Arama metnini veya kategori filtresini değiştirin.</p>
                 </div>
             </section>
         </main>
 
-        <aside class="request-panel" id="request-panel" aria-label="İstek oluşturucu">
+        <aside class="request-panel" id="request-panel" tabindex="-1" aria-label="İstek oluşturucu">
             <div class="panel-empty" id="panel-empty">
-                <div class="empty-glyph">↗</div>
+                <div class="empty-glyph"><svg class="icon" aria-hidden="true"><use href="#i-arrow-left"/></svg></div>
                 <p class="eyebrow">REQUEST BUILDER</p>
                 <h2>Bir endpoint seçin</h2>
                 <p>Parametreler, örnek gövde ve kimlik başlıkları burada hazırlanacak.</p>
-                <span>⌘ K ile arayın · Enter ile açın</span>
+                <span><kbd>/</kbd> ile arayın · <kbd>⌘ ↵</kbd> ile gönderin</span>
             </div>
 
             <div class="panel-content" id="panel-content" hidden>
@@ -293,37 +317,37 @@
                         </div>
                         <h2 id="panel-title">Endpoint</h2>
                     </div>
-                    <button class="icon-button" id="close-panel" type="button" aria-label="İstek panelini kapat">×</button>
+                    <button class="icon-button" id="close-panel" type="button" aria-label="İstek panelini kapat"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
                 </div>
 
                 <div class="request-tabs" role="tablist" aria-label="İstek ve yanıt sekmeleri">
-                    <button type="button" role="tab" aria-selected="true" data-panel-tab="request">İstek</button>
-                    <button type="button" role="tab" aria-selected="false" data-panel-tab="response">
+                    <button type="button" role="tab" id="tab-request" aria-controls="request-tab" aria-selected="true" tabindex="0" data-panel-tab="request">İstek</button>
+                    <button type="button" role="tab" id="tab-response" aria-controls="response-tab" aria-selected="false" tabindex="-1" data-panel-tab="response">
                         Yanıt
-                        <span id="response-tab-status"></span>
+                        <span id="response-tab-status" aria-hidden="true"></span>
                     </button>
                 </div>
 
-                <div class="panel-tab active" id="request-tab" role="tabpanel">
+                <div class="panel-tab active" id="request-tab" role="tabpanel" aria-labelledby="tab-request" tabindex="0">
                     <p class="endpoint-description" id="panel-description"></p>
 
-                    <label class="request-url">
-                        <span>REQUEST URL</span>
+                    <div class="request-url">
+                        <label for="request-path">REQUEST URL</label>
                         <div>
                             <code id="request-origin"></code>
-                            <input id="request-path" type="text" spellcheck="false" aria-label="İstek yolu">
+                            <input id="request-path" type="text" spellcheck="false">
                         </div>
-                    </label>
+                    </div>
 
                     <div id="parameter-fields"></div>
 
-                    <label class="editor-field" id="body-field">
+                    <div class="editor-field" id="body-field">
                         <span>
-                            <b>JSON BODY</b>
+                            <label for="request-body">JSON BODY</label>
                             <button type="button" id="format-json">Biçimlendir</button>
                         </span>
                         <textarea id="request-body" rows="11" spellcheck="false" autocomplete="off"></textarea>
-                    </label>
+                    </div>
 
                     <details class="headers-preview">
                         <summary>Otomatik başlıklar</summary>
@@ -337,14 +361,14 @@
                             <span>İsteği gönder</span>
                             <kbd>⌘ ↵</kbd>
                         </button>
-                        <button class="icon-button copy-curl" id="copy-curl" type="button" aria-label="cURL komutunu kopyala" title="cURL olarak kopyala">⌘</button>
+                        <button class="icon-button copy-curl" id="copy-curl" type="button" aria-label="cURL komutunu kopyala" title="cURL olarak kopyala"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
                     </div>
                     <p class="destructive-note" id="destructive-note" hidden>
                         Bu işlem demo verisini değiştirir. Göndermeden önce onay istenir.
                     </p>
                 </div>
 
-                <div class="panel-tab" id="response-tab" role="tabpanel" hidden>
+                <div class="panel-tab" id="response-tab" role="tabpanel" aria-labelledby="tab-response" tabindex="0" hidden>
                     <div class="response-summary">
                         <div>
                             <span class="response-code idle" id="response-code">—</span>
@@ -367,6 +391,6 @@
 
     <div class="panel-backdrop" id="panel-backdrop" hidden></div>
 
-    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+    <div class="toast-region" id="toast-region" aria-live="polite"></div>
 </body>
 </html>

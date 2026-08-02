@@ -19,6 +19,23 @@
     --muted: #9ca9a3;
     --line: rgba(255, 255, 255, 0.09);
     --paper-line: rgba(16, 25, 23, 0.13);
+
+    /* Foreground ramp for the light "paper" column. --muted and --ink-500 are tuned
+       against --ink-900 and drop to 1.0–4.4:1 here, so the paper surface carries its
+       own three tokens. Measured against the lightest blend on the surface (--white). */
+    --paper-text: #3d4a45;
+    --paper-text-soft: #55635d;
+    --paper-accent: #2f6f5f;
+
+    /* The focus ring inherits per surface: --lime reads 1.03:1 on paper and 15.7:1 on
+       ink. .main-content and .skip-link override it; everything else stays lime. */
+    --focus: var(--lime);
+
+    /* Sticky chrome heights. Everything that has to clear the topbar or the request
+       panel's own header reads these instead of repeating a literal — the 720px
+       breakpoint shortens the topbar, and hardcoded copies did not follow it. */
+    --topbar-height: 72px;
+    --panel-header-height: 98px;
     --shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
     --radius-sm: 10px;
     --radius-md: 16px;
@@ -71,7 +88,7 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-    outline: 2px solid var(--lime);
+    outline: 2px solid var(--focus);
     outline-offset: 3px;
 }
 
@@ -79,7 +96,40 @@ summary:focus-visible {
     display: none !important;
 }
 
+/* Removes a label from view without removing it from the accessible name. Used where
+   the design hides label text at narrow widths — `display: none` there would leave the
+   control with no accessible name at all. Absolute positioning also keeps it out of the
+   grid track count in .search-box and .base-url. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* The sprite itself never renders; only its <symbol>s are referenced by <use>. */
+.icon-sprite {
+    display: none;
+}
+
+.icon {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .skip-link {
+    --focus: var(--ink-950);
+
     position: fixed;
     top: 10px;
     left: 10px;
@@ -99,8 +149,8 @@ summary:focus-visible {
 .app-shell {
     display: grid;
     grid-template-columns: 292px minmax(520px, 1fr) 430px;
-    grid-template-rows: 72px minmax(0, 1fr);
-    min-height: 100vh;
+    grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+    min-height: 100dvh;
 }
 
 .topbar {
@@ -112,7 +162,7 @@ summary:focus-visible {
     grid-template-columns: 268px max-content minmax(220px, 520px) 1fr;
     align-items: center;
     gap: 22px;
-    height: 72px;
+    height: var(--topbar-height);
     padding: 0 18px;
     border-bottom: 1px solid var(--line);
     background: rgba(10, 17, 16, 0.93);
@@ -260,10 +310,12 @@ summary:focus-visible {
 
 .left-rail {
     position: sticky;
-    top: 72px;
+    top: var(--topbar-height);
     grid-column: 1;
     grid-row: 2;
-    height: calc(100vh - 72px);
+    /* dvh, not vh: on mobile the browser chrome makes 100vh taller than the visible
+       viewport, which pushed "Kasayı temizle" underneath it with no way to reach it. */
+    height: calc(100dvh - var(--topbar-height));
     overflow: hidden;
     border-right: 1px solid var(--line);
     background:
@@ -380,6 +432,11 @@ summary:focus-visible {
     cursor: pointer;
 }
 
+.segmented button:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--paper);
+}
+
 .segmented button.active {
     background: var(--paper);
     color: var(--ink-950);
@@ -442,6 +499,9 @@ summary:focus-visible {
 
 .token-details summary,
 .fixture-details summary {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
     color: var(--muted);
     font-size: 11px;
     cursor: pointer;
@@ -478,7 +538,7 @@ summary:focus-visible {
     border-radius: 5px;
     color: var(--lime);
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
     letter-spacing: 0.08em;
 }
 
@@ -594,12 +654,19 @@ summary:focus-visible {
 }
 
 .fixture-details dd button {
+    min-height: 24px;
+    padding: 0 6px;
     border: 0;
+    border-radius: 6px;
     background: transparent;
     color: var(--aqua);
     font-family: var(--mono);
     font-size: 10px;
     cursor: pointer;
+}
+
+.fixture-details dd button:hover {
+    background: rgba(99, 220, 195, 0.12);
 }
 
 .local-services {
@@ -656,6 +723,8 @@ summary:focus-visible {
 .service-icon.github { background: var(--aqua); }
 
 .main-content {
+    --focus: var(--ink-900);
+
     grid-column: 2;
     grid-row: 2;
     min-width: 0;
@@ -694,9 +763,9 @@ summary:focus-visible {
     right: 32px;
     bottom: 24px;
     content: "AUTH / SESSIONS / KEYS / ADMIN";
-    color: rgba(16, 25, 23, 0.4);
+    color: var(--paper-text-soft);
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
     letter-spacing: 0.16em;
 }
 
@@ -708,7 +777,7 @@ summary:focus-visible {
 }
 
 .hero-copy .eyebrow {
-    color: #457e70;
+    color: var(--paper-accent);
 }
 
 .hero-copy h2 {
@@ -816,7 +885,7 @@ summary:focus-visible {
     border-radius: 5px;
     background: var(--paper);
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 800;
     box-shadow: 0 5px 18px rgba(16, 25, 23, 0.1);
 }
@@ -859,9 +928,9 @@ summary:focus-visible {
 }
 
 .health-item small {
-    color: #73827d;
+    color: var(--paper-text-soft);
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
     letter-spacing: 0.12em;
 }
 
@@ -870,9 +939,9 @@ summary:focus-visible {
 }
 
 .health-item code {
-    color: #687b74;
+    color: var(--paper-text-soft);
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .health-dot {
@@ -930,7 +999,11 @@ summary:focus-visible {
 }
 
 .search-box input::placeholder {
-    color: #88948f;
+    color: var(--paper-text-soft);
+}
+
+.search-box > .icon {
+    color: var(--paper-text-soft);
 }
 
 kbd {
@@ -960,11 +1033,19 @@ kbd {
 }
 
 .view-switch button {
+    display: grid;
+    place-items: center;
+    min-height: 26px;
     border: 0;
     border-radius: 8px;
     background: transparent;
-    color: #7b8883;
+    color: var(--paper-text-soft);
     cursor: pointer;
+}
+
+.view-switch button:hover:not(.active) {
+    background: rgba(16, 25, 23, 0.06);
+    color: var(--paper-text);
 }
 
 .view-switch button.active {
@@ -1008,7 +1089,12 @@ kbd {
     border-radius: 100px;
     background: rgba(16, 25, 23, 0.07);
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
+}
+
+.category-tabs button:hover:not(.active) {
+    border-color: rgba(16, 25, 23, 0.3);
+    color: var(--paper-text);
 }
 
 .category-tabs button.active {
@@ -1040,11 +1126,11 @@ kbd {
 }
 
 .catalog-heading .eyebrow {
-    color: #568277;
+    color: var(--paper-accent);
 }
 
 .catalog-heading > span {
-    color: #76847f;
+    color: var(--paper-text-soft);
     font-family: var(--mono);
     font-size: 10px;
 }
@@ -1052,6 +1138,13 @@ kbd {
 .endpoint-list {
     display: grid;
     gap: 7px;
+    /* Skip-link target: tabindex="-1" makes focus actually land here, and the margin keeps
+       the first card clear of the sticky topbar. */
+    scroll-margin-top: 88px;
+}
+
+.endpoint-list:focus {
+    outline: none;
 }
 
 .endpoint-card {
@@ -1082,16 +1175,33 @@ kbd {
     transition: transform 160ms ease;
 }
 
-.endpoint-card:hover,
-.endpoint-card.selected {
+.endpoint-card:hover {
     transform: translateX(3px);
     border-color: rgba(16, 25, 23, 0.32);
     background: var(--white);
 }
 
+.endpoint-card:active {
+    transform: translateX(3px) scale(0.99);
+}
+
+/* Selection has to read differently from hover, not identically: the panel on the right
+   belongs to exactly one card, and with a shared style you lose track of which after the
+   pointer moves away. Selected keeps the accent bar and a solid border, without the
+   transient nudge. */
+.endpoint-card.selected {
+    border-color: var(--ink-900);
+    background: var(--white);
+    box-shadow: 0 1px 0 rgba(16, 25, 23, 0.06), 0 6px 20px rgba(16, 25, 23, 0.08);
+}
+
 .endpoint-card:hover::before,
 .endpoint-card.selected::before {
     transform: scaleY(1);
+}
+
+.endpoint-card.selected::before {
+    width: 4px;
 }
 
 .endpoint-card .method {
@@ -1130,7 +1240,7 @@ kbd {
 
 .endpoint-card .summary small {
     overflow: hidden;
-    color: #76847f;
+    color: var(--paper-text-soft);
     font-size: 10px;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1140,9 +1250,9 @@ kbd {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    color: #6a7873;
+    color: var(--paper-text-soft);
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .endpoint-card .security::before {
@@ -1153,13 +1263,12 @@ kbd {
     background: currentColor;
 }
 
-.endpoint-card .security.public { color: #46886f; }
-.endpoint-card .security.admin { color: #b56b35; }
-.endpoint-card .security.recent { color: #9c6256; }
+.endpoint-card .security.public { color: var(--paper-accent); }
+.endpoint-card .security.admin { color: #8a5410; }
+.endpoint-card .security.recent { color: #9c3327; }
 
 .endpoint-card .arrow {
-    color: #77847f;
-    font-size: 16px;
+    color: var(--paper-text-soft);
     transition: transform 160ms ease;
 }
 
@@ -1194,9 +1303,11 @@ kbd {
     text-align: center;
 }
 
-.empty-state > span {
-    font-family: var(--mono);
-    font-size: 36px;
+.empty-state > .icon {
+    width: 32px;
+    height: 32px;
+    stroke-width: 1.25;
+    color: var(--paper-text-soft);
 }
 
 .empty-state h3 {
@@ -1205,16 +1316,16 @@ kbd {
 
 .empty-state p {
     margin: 4px 0 0;
-    color: #77847f;
+    color: var(--paper-text-soft);
     font-size: 12px;
 }
 
 .request-panel {
     position: sticky;
-    top: 72px;
+    top: var(--topbar-height);
     grid-column: 3;
     grid-row: 2;
-    height: calc(100vh - 72px);
+    height: calc(100dvh - var(--topbar-height));
     overflow: hidden;
     border-left: 1px solid var(--line);
     background:
@@ -1241,7 +1352,12 @@ kbd {
     border: 1px dashed var(--ink-500);
     border-radius: 50%;
     color: var(--lime);
-    font-size: 25px;
+}
+
+.empty-glyph .icon {
+    width: 26px;
+    height: 26px;
+    stroke-width: 1.25;
 }
 
 .panel-empty h2 {
@@ -1258,14 +1374,23 @@ kbd {
 
 .panel-empty > span {
     margin-top: 24px;
-    color: var(--ink-500);
+    color: var(--muted);
     font-family: var(--mono);
     font-size: 9px;
+}
+
+/* The base kbd chip is built for the paper column — a 55% white fill with dark text.
+   Dropped on the ink panel it collapses to 1.6:1, so the dark surface gets its own. */
+.panel-empty kbd {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--paper);
 }
 
 .panel-content {
     height: 100%;
     overflow-y: auto;
+    overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-color: var(--ink-600) transparent;
 }
@@ -1302,7 +1427,7 @@ kbd {
     padding: 4px 7px;
     border-radius: 5px;
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 900;
 }
 
@@ -1337,7 +1462,9 @@ kbd {
 
 .request-tabs {
     position: sticky;
-    top: 82px;
+    /* Must clear .panel-header, which sticks at 0 in the same scroller. At the old 82px
+       the header's last ~16px covered the tab row on every scroll. */
+    top: var(--panel-header-height);
     z-index: 3;
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1400,7 +1527,7 @@ kbd {
     margin-bottom: 16px;
 }
 
-.request-url > span,
+.request-url > label,
 .editor-field > span,
 .dynamic-fieldset > legend {
     color: var(--muted);
@@ -1423,7 +1550,7 @@ kbd {
     max-width: 42%;
     padding: 12px 0 12px 12px;
     overflow: hidden;
-    color: var(--ink-500);
+    color: var(--muted);
     font-family: var(--mono);
     font-size: 10px;
     text-overflow: ellipsis;
@@ -1495,12 +1622,20 @@ kbd {
 }
 
 .editor-field > span button {
+    min-height: 24px;
+    padding: 0 8px;
     border: 0;
+    border-radius: 6px;
     background: transparent;
     color: var(--aqua);
     font-family: var(--sans);
     font-size: 9px;
+    letter-spacing: 0;
     cursor: pointer;
+}
+
+.editor-field > span button:hover {
+    background: rgba(99, 220, 195, 0.12);
 }
 
 .editor-field textarea {
@@ -1581,7 +1716,7 @@ kbd {
     font-size: 9px;
 }
 
-.special-action > span:last-child {
+.special-action > .icon {
     color: var(--aqua);
 }
 
@@ -1729,7 +1864,7 @@ kbd {
     padding: 7px 0;
     border-bottom: 1px solid var(--line);
     font-family: var(--mono);
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .response-headers dt {
@@ -1767,16 +1902,24 @@ kbd {
 }
 
 .text-button {
+    min-height: 24px;
     margin-top: 9px;
-    padding: 0;
+    padding: 0 8px 0 0;
     border: 0;
     background: transparent;
     font-size: 10px;
+    text-align: left;
     cursor: pointer;
 }
 
 .danger-text {
     color: #d7897b;
+}
+
+.danger-text:hover {
+    color: var(--coral);
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 .toast-region {
@@ -1791,7 +1934,8 @@ kbd {
 
 .toast {
     display: grid;
-    grid-template-columns: 8px 1fr;
+    grid-template-columns: 8px 1fr max-content;
+    align-items: start;
     gap: 11px;
     padding: 13px 15px;
     border: 1px solid var(--line);
@@ -1829,13 +1973,36 @@ kbd {
     font-size: 9px;
 }
 
+.toast-dismiss {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    margin: -3px -4px 0 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.toast-dismiss .icon {
+    width: 13px;
+    height: 13px;
+}
+
+.toast-dismiss:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--paper);
+}
+
 @keyframes toast-in {
     from { transform: translateY(8px); opacity: 0; }
 }
 
 .panel-backdrop {
     position: fixed;
-    inset: 72px 0 0;
+    inset: var(--topbar-height) 0 0;
     z-index: 79;
     background: rgba(0, 0, 0, 0.48);
     backdrop-filter: blur(3px);
@@ -1856,7 +2023,7 @@ kbd {
 
     .request-panel {
         position: fixed;
-        top: 72px;
+        top: var(--topbar-height);
         right: 0;
         z-index: 90;
         width: min(450px, 92vw);
@@ -1893,7 +2060,7 @@ kbd {
 
     .left-rail {
         position: fixed;
-        top: 72px;
+        top: var(--topbar-height);
         left: 0;
         z-index: 100;
         width: min(340px, 92vw);
@@ -1907,7 +2074,7 @@ kbd {
     }
 
     .main-content {
-        min-height: calc(100vh - 72px);
+        min-height: calc(100dvh - var(--topbar-height));
     }
 
     .mobile-only {
@@ -1924,10 +2091,14 @@ kbd {
 }
 
 @media (max-width: 720px) {
+    /* One override drives the topbar, both drawers and the backdrop. */
+    :root {
+        --topbar-height: 64px;
+    }
+
     .topbar {
         position: sticky;
         grid-template-columns: max-content 1fr max-content;
-        height: 64px;
         gap: 10px;
     }
 
@@ -1936,22 +2107,25 @@ kbd {
     }
 
     .base-url {
+        /* The label leaves the grid flow below, so the input takes the whole track. */
+        grid-template-columns: 1fr;
         gap: 6px;
         padding: 7px 9px;
     }
 
+    /* Hidden visually, still the input's accessible name — see .sr-only. */
     .base-url span {
-        display: none;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 
     .topbar-actions .ghost-button {
         display: none;
-    }
-
-    .left-rail,
-    .request-panel {
-        top: 64px;
-        height: calc(100vh - 64px);
     }
 
     .hero {
@@ -2024,13 +2198,25 @@ kbd {
         align-items: center;
     }
 
-    .request-tabs {
-        top: 82px;
-    }
-
     .toast-region {
         right: 16px;
         bottom: 16px;
+    }
+
+    /* iOS Safari zooms the whole page when a focused input's text is under 16px. Every
+       field here was 9–14px, so focusing the JSON body left the user zoomed into a
+       fixed-position drawer. The viewport meta deliberately still allows pinch zoom. */
+    .base-url input,
+    .search-box input,
+    .token-details textarea,
+    .request-url input,
+    .dynamic-fields input,
+    .editor-field textarea {
+        font-size: 16px;
+    }
+
+    .dynamic-fields input {
+        height: 44px;
     }
 }
 
