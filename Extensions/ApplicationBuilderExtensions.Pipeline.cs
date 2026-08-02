@@ -156,6 +156,17 @@ public static partial class ApplicationBuilderExtensions
         // ── 10. Endpoints ────────────────────────────────────────────────────────────
         app.MapControllers();
 
+        // TanStack Router owns every client-side path below /playground. Static-file
+        // middleware serves real assets first; extensionless deep links fall back to the
+        // prerendered SPA shell. Keep this mapped only where the workbench itself is exposed.
+        if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+        {
+            app.MapFallbackToFile(
+                    "/playground/{*path:nonfile}",
+                    "playground/index.html")
+                .AllowAnonymous();
+        }
+
         return app;
     }
 }

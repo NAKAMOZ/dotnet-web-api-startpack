@@ -84,6 +84,7 @@ production hosting target, CD workflow, and software licence have not yet been s
 - Serilog structured logging
 - OpenTelemetry traces and metrics with optional OTLP export
 - Scalar and OpenAPI
+- React 19, TanStack Start/Router, Vite, Effect, Tailwind CSS, and shadcn/ui for the Workbench
 - xUnit v3, Testcontainers, Respawn, NSubstitute, and Coverlet
 - Docker and Docker Compose
 - Mailpit v1.30.5 for local SMTP capture and email inspection
@@ -234,6 +235,7 @@ directly on your machine.
 ### Requirements
 
 - .NET SDK 10
+- Node.js 24 and pnpm 11 (the .NET build produces the Workbench static bundle)
 - Docker with Docker Compose
 - An editor that supports `.slnx`, such as Visual Studio 2022 17.14+, Rider 2025.1+, or
   Visual Studio Code
@@ -291,6 +293,12 @@ The Workbench:
 - generates cURL commands and displays response headers and RFC 9457 error bodies.
 
 The Workbench is available in Development and Staging, and is not mapped in Production.
+
+Its source lives in [`playground-ui/`](playground-ui/) as an independent pnpm project in
+the same repository. `pnpm build` prerenders a static TanStack Start SPA and synchronizes
+it to `wwwroot/playground/`. A normal .NET build runs that frontend target incrementally;
+use `/p:SkipPlaygroundBuild=true` only when a pipeline has already supplied the static
+output. Frontend-only development is available with `cd playground-ui && pnpm dev`.
 
 ### 2. Scalar and OpenAPI
 
@@ -660,7 +668,8 @@ Read the maintenance and incident runbooks before invoking them in a deployed en
 ├── Configuration/              Strongly typed, startup-validated options
 ├── Logging/                     Serilog and authentication metrics
 ├── Templates/                   Embedded verification/reset email HTML
-├── wwwroot/playground/          Development/Staging API Workbench
+├── playground-ui/               React/TanStack Workbench source and frontend tests
+├── wwwroot/playground/          Generated Development/Staging static Workbench
 ├── Documentation/
 │   ├── Architecture/            System design
 │   ├── Decisions/               Architecture Decision Records
@@ -687,7 +696,7 @@ Read the maintenance and incident runbooks before invoking them in a deployed en
 | Change permissions | `Handlers/Authorization/Permissions.cs` and `RolePermissionMap.cs` | Authorization tests and endpoint docs |
 | Change Development fixtures | `Data/Seeding/DevDataSeeder.cs` | Workbench demo values and migration documentation |
 | Change email content | `Templates/` | Email tests and endpoint documentation |
-| Change Workbench behavior | `wwwroot/playground/` | Manual browser/API verification |
+| Change Workbench behavior | `playground-ui/src/` | Vitest, Biome, static build, and manual browser/API verification |
 
 ## Troubleshooting
 

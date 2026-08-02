@@ -25,7 +25,8 @@
       ROADMAP/**;
       http/**;
       .github/**;
-      .git/**
+      .git/**;
+      playground-ui/**
     </DefaultItemExcludes>
   </PropertyGroup>
 
@@ -83,5 +84,24 @@
   <ItemGroup>
     <InternalsVisibleTo Include="IntegrationTests" />
   </ItemGroup>
+
+  <!--
+    The workbench remains a separate TanStack Start/Vite project, while its SPA output is
+    part of the API artifact. Inputs/Outputs keep rebuilds incremental. Container builds
+    provide a prebuilt wwwroot and opt out with /p:SkipPlaygroundBuild=true.
+  -->
+  <ItemGroup Condition="'$(SkipPlaygroundBuild)' != 'true'">
+    <PlaygroundSource Include="playground-ui/src/**/*;playground-ui/messages/**/*;playground-ui/scripts/**/*;playground-ui/package.json;playground-ui/pnpm-lock.yaml;playground-ui/pnpm-workspace.yaml;playground-ui/project.inlang/**/*;playground-ui/vite.config.ts;playground-ui/tsconfig.json" />
+  </ItemGroup>
+
+  <Target
+    Name="BuildPlayground"
+    BeforeTargets="PrepareForBuild"
+    Condition="'$(SkipPlaygroundBuild)' != 'true'"
+    Inputs="@(PlaygroundSource)"
+    Outputs="wwwroot/playground/index.html">
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)/playground-ui" Command="pnpm install --frozen-lockfile" />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)/playground-ui" Command="pnpm build" />
+  </Target>
 
 </Project>

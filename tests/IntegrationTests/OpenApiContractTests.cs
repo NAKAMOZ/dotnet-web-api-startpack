@@ -77,6 +77,13 @@ public class OpenApiContractTests : IClassFixture<WebApplicationFactory<Program>
             TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, production.StatusCode);
+
+        var deepLink = await CreateClient("Staging").GetAsync(
+            "/playground/endpoints/health-live",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, deepLink.StatusCode);
+        Assert.Equal("text/html", deepLink.Content.Headers.ContentType?.MediaType);
     }
 
     [Fact]
@@ -93,13 +100,19 @@ public class OpenApiContractTests : IClassFixture<WebApplicationFactory<Program>
                 .Where(operation => operation.Name is "get" or "post" or "put" or "patch" or "delete")
                 .Select(operation => $"{operation.Name.ToUpperInvariant()} {path.Name}"))
             .ToHashSet(StringComparer.Ordinal);
-        var script = await File.ReadAllTextAsync(
-            Path.Combine(RepositoryPaths.Root, "wwwroot", "playground", "app.js"),
+        var catalog = await File.ReadAllTextAsync(
+            Path.Combine(
+                RepositoryPaths.Root,
+                "playground-ui",
+                "src",
+                "features",
+                "workbench",
+                "catalog.ts"),
             TestContext.Current.CancellationToken);
         var workbenchOperations = Regex
             .Matches(
-                script,
-                "endpoint\\(\"[^\"]+\", \"(?<method>GET|POST|PUT|PATCH|DELETE)\", \"(?<path>/[^\"]+)\"")
+                catalog,
+                "endpoint\\(\\s*\"[^\"]+\",\\s*\"(?<method>GET|POST|PUT|PATCH|DELETE)\",\\s*\"(?<path>/[^\"]+)\"")
             .Select(match => $"{match.Groups["method"].Value} {match.Groups["path"].Value}")
             .ToHashSet(StringComparer.Ordinal);
 

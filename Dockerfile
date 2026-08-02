@@ -1,5 +1,15 @@
 # syntax=docker/dockerfile:1.7
 
+FROM node:24-alpine AS frontend
+WORKDIR /src/playground-ui
+
+RUN corepack enable
+COPY playground-ui/package.json playground-ui/pnpm-lock.yaml playground-ui/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY playground-ui ./
+RUN pnpm build
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
@@ -7,11 +17,13 @@ COPY Directory.Build.props Directory.Packages.props dotnet-web-api-startpack.csp
 RUN dotnet restore dotnet-web-api-startpack.csproj
 
 COPY . .
+COPY --from=frontend /src/wwwroot/playground ./wwwroot/playground
 RUN dotnet publish dotnet-web-api-startpack.csproj \
     --configuration Release \
     --no-restore \
     --output /app/publish \
-    /p:UseAppHost=false
+    /p:UseAppHost=false \
+    /p:SkipPlaygroundBuild=true
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
