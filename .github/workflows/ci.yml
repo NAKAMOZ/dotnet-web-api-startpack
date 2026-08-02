@@ -22,7 +22,7 @@ jobs:
       run:
         working-directory: playground-ui
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           version: 11.18.0
@@ -50,7 +50,7 @@ jobs:
     name: Restore, format, build, and audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
       - run: dotnet format dotnet-web-api-startpack.slnx --verify-no-changes --no-restore
@@ -64,7 +64,7 @@ jobs:
     name: Unit tests and coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
       - name: Unit tests with scoped 85% line gate
@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
       # One run, not one per Category. The suite shares a single non-parallel collection
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - uses: docker/build-push-action@v7
         with:
@@ -177,7 +177,7 @@ jobs:
     env:
       ConnectionStrings__Postgres: Host=localhost;Database=bundle;Username=bundle;Password=bundle
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore --runtime linux-x64
       - run: dotnet tool restore
