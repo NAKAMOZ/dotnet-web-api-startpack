@@ -1,0 +1,362 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub environment and Azure deployment slot
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  ENVIRONMENT_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+  WORKLOAD_NAME: ${{ vars.WORKLOAD_NAME || 'startpack' }}
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'westeurope' }}
+
+jobs:
+  source_guard:
+    name: Verify deployment source is current
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      eligible: ${{ steps.decision.outputs.eligible }}
+    steps:
+      - name: Read current main head
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Decide deployment eligibility
+        id: decision
+        env:
+          CI_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          CI_EVENT: ${{ github.event.workflow_run.event }}
+          CI_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test "${{ github.event_name }}" = "workflow_dispatch"; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          current_main_sha="$(git rev-parse HEAD)"
+          if test "$CI_CONCLUSION" = "success" \
+            && test "$CI_EVENT" = "push" \
+            && test "$CI_HEAD_SHA" = "$current_main_sha"; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "eligible=false" >> "$GITHUB_OUTPUT"
+          echo "Skipping stale, unsuccessful, or non-push CI source $CI_HEAD_SHA."
+
+  deploy:
+    name: Build, migrate, deploy, and health-gate
+    needs: source_guard
+    if: needs.source_guard.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+    outputs:
+      api-url: ${{ steps.deployment-outputs.outputs.api-url }}
+      environment-name: ${{ steps.resource-group.outputs.environment-name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Azure OIDC login
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create resource group
+        id: resource-group
+        shell: bash
+        run: |
+          set -euo pipefail
+          resource_group="${WORKLOAD_NAME}-${ENVIRONMENT_NAME}-rg"
+          az group create \
+            --name "$resource_group" \
+            --location "$AZURE_LOCATION" \
+            --output none
+          echo "name=$resource_group" >> "$GITHUB_OUTPUT"
+          echo "environment-name=$ENVIRONMENT_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Provision container registry foundation
+        id: foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry_name="$(az deployment group create \
+            --name "${GITHUB_RUN_ID}-foundation" \
+            --resource-group "${{ steps.resource-group.outputs.name }}" \
+            --template-file infra/azure/foundation.bicep \
+            --parameters \
+              workloadName="$WORKLOAD_NAME" \
+              environmentName="$ENVIRONMENT_NAME" \
+              location="$AZURE_LOCATION" \
+            --query properties.outputs.registryName.value \
+            --output tsv)"
+          test -n "$registry_name"
+          login_server="$(az acr show --name "$registry_name" --query loginServer --output tsv)"
+          echo "name=$registry_name" >> "$GITHUB_OUTPUT"
+          echo "login-server=$login_server" >> "$GITHUB_OUTPUT"
+
+      - name: Sign in to ACR
+        run: az acr login --name "${{ steps.foundation.outputs.name }}"
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build and push immutable image
+        id: image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ steps.foundation.outputs.login-server }}/dotnet-web-api-startpack:${{ env.SOURCE_SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan immutable deployment image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${{ steps.foundation.outputs.login-server }}/dotnet-web-api-startpack@${{ steps.image.outputs.digest }}"
+          docker pull "$image"
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f \
+            image \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --scanners vuln \
+            --no-progress \
+            --skip-version-check \
+            "$image"
+
+      - name: Provision or update Azure resources
+        id: provision
+        env:
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          POSTGRES_RUNTIME_PASSWORD: ${{ secrets.POSTGRES_RUNTIME_PASSWORD }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+          SMTP_FROM_ADDRESS: ${{ vars.SMTP_FROM_ADDRESS }}
+          SMTP_USERNAME: ${{ vars.SMTP_USERNAME }}
+          POSTGRES_HIGH_AVAILABILITY: ${{ vars.POSTGRES_HIGH_AVAILABILITY || 'Disabled' }}
+          API_CPU: ${{ vars.API_CPU || '2.0' }}
+          API_MEMORY: ${{ vars.API_MEMORY || '4Gi' }}
+          API_MIN_REPLICAS: ${{ vars.API_MIN_REPLICAS || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production' && '5' || '1') }}
+          API_MAX_REPLICAS: ${{ vars.API_MAX_REPLICAS || '10' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$POSTGRES_ADMIN_PASSWORD"
+          test -n "$POSTGRES_RUNTIME_PASSWORD"
+          test -n "$SMTP_PASSWORD"
+          test -n "$SMTP_HOST"
+          test -n "$SMTP_FROM_ADDRESS"
+          test -n "$SMTP_USERNAME"
+          image="${{ steps.foundation.outputs.login-server }}/dotnet-web-api-startpack@${{ steps.image.outputs.digest }}"
+          app_name="${WORKLOAD_NAME,,}-${ENVIRONMENT_NAME}-api"
+          app_name="${app_name:0:32}"
+          current_image="$(az containerapp show \
+            --name "$app_name" \
+            --resource-group "${{ steps.resource-group.outputs.name }}" \
+            --query 'properties.template.containers[?name == `api`].image | [0]' \
+            --output tsv 2>/dev/null || true)"
+          application_image="${current_image:-$image}"
+
+          deployed=false
+          for attempt in 1 2 3; do
+            if az deployment group create \
+              --name "${GITHUB_RUN_ID}-application" \
+              --resource-group "${{ steps.resource-group.outputs.name }}" \
+              --template-file infra/azure/main.bicep \
+              --parameters \
+                workloadName="$WORKLOAD_NAME" \
+                environmentName="$ENVIRONMENT_NAME" \
+                location="$AZURE_LOCATION" \
+                registryName="${{ steps.foundation.outputs.name }}" \
+                containerImage="$image" \
+                applicationImage="$application_image" \
+                postgresAdministratorPassword="$POSTGRES_ADMIN_PASSWORD" \
+                postgresRuntimePassword="$POSTGRES_RUNTIME_PASSWORD" \
+                postgresHighAvailability="$POSTGRES_HIGH_AVAILABILITY" \
+                apiCpu="$API_CPU" \
+                apiMemory="$API_MEMORY" \
+                apiMinReplicas="$API_MIN_REPLICAS" \
+                apiMaxReplicas="$API_MAX_REPLICAS" \
+                emailHost="$SMTP_HOST" \
+                emailPort="$SMTP_PORT" \
+                emailFromAddress="$SMTP_FROM_ADDRESS" \
+                emailUsername="$SMTP_USERNAME" \
+                emailPassword="$SMTP_PASSWORD" \
+              --output none; then
+              deployed=true
+              break
+            fi
+
+            if test "$attempt" -lt 3; then
+              echo "Azure resource deployment attempt $attempt failed; waiting for RBAC/private-link propagation." >&2
+              sleep 30
+            fi
+          done
+          test "$deployed" = true
+          echo "previous-image=$current_image" >> "$GITHUB_OUTPUT"
+
+      - name: Read deployment outputs
+        id: deployment-outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          resource_group="${{ steps.resource-group.outputs.name }}"
+          deployment_name="${GITHUB_RUN_ID}-application"
+          api_url="$(az deployment group show \
+            --resource-group "$resource_group" \
+            --name "$deployment_name" \
+            --query properties.outputs.apiUrl.value \
+            --output tsv)"
+          migration_job="$(az deployment group show \
+            --resource-group "$resource_group" \
+            --name "$deployment_name" \
+            --query properties.outputs.migrationJobName.value \
+            --output tsv)"
+          api_name="$(az deployment group show \
+            --resource-group "$resource_group" \
+            --name "$deployment_name" \
+            --query properties.outputs.apiName.value \
+            --output tsv)"
+          test -n "$api_url"
+          test -n "$migration_job"
+          test -n "$api_name"
+          echo "api-url=$api_url" >> "$GITHUB_OUTPUT"
+          echo "api-name=$api_name" >> "$GITHUB_OUTPUT"
+          echo "migration-job=$migration_job" >> "$GITHUB_OUTPUT"
+
+      - name: Run one-shot migration job
+        id: migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          resource_group="${{ steps.resource-group.outputs.name }}"
+          job_name="${{ steps.deployment-outputs.outputs.migration-job }}"
+          execution_name="$(az containerapp job start \
+            --name "$job_name" \
+            --resource-group "$resource_group" \
+            --query name \
+            --output tsv)"
+
+          if test -z "$execution_name"; then
+            execution_name="$(az containerapp job execution list \
+              --name "$job_name" \
+              --resource-group "$resource_group" \
+              --query 'sort_by(@,&properties.startTime)[-1].name' \
+              --output tsv)"
+          fi
+          test -n "$execution_name"
+
+          for attempt in $(seq 1 90); do
+            status="$(az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$resource_group" \
+              --job-execution-name "$execution_name" \
+              --query properties.status \
+              --output tsv)"
+            case "$status" in
+              Succeeded)
+                exit 0
+                ;;
+              Failed|Stopped|Degraded)
+                echo "Migration execution $execution_name ended with status $status." >&2
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+
+          echo "Migration execution $execution_name did not complete within 15 minutes." >&2
+          exit 1
+
+      - name: Promote migrated image to the API
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${{ steps.foundation.outputs.login-server }}/dotnet-web-api-startpack@${{ steps.image.outputs.digest }}"
+          az containerapp update \
+            --name "${{ steps.deployment-outputs.outputs.api-name }}" \
+            --resource-group "${{ steps.resource-group.outputs.name }}" \
+            --image "$image" \
+            --output none
+
+      - name: Readiness deployment gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 30 \
+            --retry-delay 5 \
+            --retry-all-errors \
+            "${{ steps.deployment-outputs.outputs.api-url }}/health/ready"; then
+            exit 0
+          fi
+
+          previous_image="${{ steps.provision.outputs.previous-image }}"
+          new_image="${{ steps.foundation.outputs.login-server }}/dotnet-web-api-startpack@${{ steps.image.outputs.digest }}"
+          if test -n "$previous_image" && test "$previous_image" != "$new_image"; then
+            echo "Readiness failed; restoring previous image $previous_image." >&2
+            az containerapp update \
+              --name "${{ steps.deployment-outputs.outputs.api-name }}" \
+              --resource-group "${{ steps.resource-group.outputs.name }}" \
+              --image "$previous_image" \
+              --output none
+          fi
+          exit 1
+
+  dast:
+    name: Staging OWASP ZAP API baseline
+    needs: deploy
+    if: needs.deploy.outputs.environment-name == 'staging'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Scan the deployed OpenAPI contract
+        uses: zaproxy/action-api-scan@5158fe4d9d8fcc75ea204db81317cce7f9e5453d # v0.10.0
+        with:
+          target: ${{ needs.deploy.outputs.api-url }}/openapi/v1.json
+          format: openapi
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-staging-report

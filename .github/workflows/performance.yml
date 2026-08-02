@@ -1,0 +1,127 @@
+name: Staging performance baseline
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 0'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  WORKLOAD_NAME: ${{ vars.WORKLOAD_NAME || 'startpack' }}
+
+jobs:
+  baseline:
+    name: Run k6 budgets against staging
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Azure OIDC login
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve staging target and enable controlled test limits
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          resource_group="${WORKLOAD_NAME}-staging-rg"
+          app_name="$(az containerapp list \
+            --resource-group "$resource_group" \
+            --query '[0].name' \
+            --output tsv)"
+          test -n "$app_name"
+          az containerapp update \
+            --name "$app_name" \
+            --resource-group "$resource_group" \
+            --set-env-vars \
+              RateLimiting__AuthStrictPermitLimit=10000 \
+              RateLimiting__GeneralPermitLimit=100000 \
+            --output none
+          fqdn="$(az containerapp show \
+            --name "$app_name" \
+            --resource-group "$resource_group" \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)"
+          test -n "$fqdn"
+          echo "resource-group=$resource_group" >> "$GITHUB_OUTPUT"
+          echo "app-name=$app_name" >> "$GITHUB_OUTPUT"
+          echo "base-url=https://$fqdn" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the test revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 30 \
+            --retry-delay 5 \
+            --retry-all-errors \
+            "${{ steps.target.outputs.base-url }}/health/ready"
+
+      - name: Validate load-test credentials
+        env:
+          TEST_EMAIL: ${{ secrets.LOAD_TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.LOAD_TEST_PASSWORD }}
+        run: |
+          test -n "$TEST_EMAIL"
+          test -n "$TEST_PASSWORD"
+
+      - name: Warm horizontal replicas
+        continue-on-error: true
+        env:
+          TEST_EMAIL: ${{ secrets.LOAD_TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.LOAD_TEST_PASSWORD }}
+        run: |
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE/tests/load:/scripts:ro" \
+            --env BASE_URL="${{ steps.target.outputs.base-url }}" \
+            --env TEST_EMAIL \
+            --env TEST_PASSWORD \
+            --env LOGIN_RPS=50 \
+            --env DURATION=90s \
+            grafana/k6:2.1.0 run /scripts/login.js
+
+      - name: Run endpoint budgets
+        env:
+          TEST_EMAIL: ${{ secrets.LOAD_TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.LOAD_TEST_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for scenario in login refresh me mixed; do
+            docker run --rm \
+              --volume "$GITHUB_WORKSPACE/tests/load:/scripts:ro" \
+              --env BASE_URL="${{ steps.target.outputs.base-url }}" \
+              --env TEST_EMAIL \
+              --env TEST_PASSWORD \
+              --env DURATION=2m \
+              grafana/k6:2.1.0 run "/scripts/${scenario}.js"
+          done
+
+      - name: Restore normal staging limits
+        if: always() && steps.target.outputs.app-name != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          az containerapp update \
+            --name "${{ steps.target.outputs.app-name }}" \
+            --resource-group "${{ steps.target.outputs.resource-group }}" \
+            --remove-env-vars \
+              RateLimiting__AuthStrictPermitLimit \
+              RateLimiting__GeneralPermitLimit \
+            --output none

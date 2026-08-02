@@ -1,4 +1,5 @@
 using Serilog;
+using Serilog.Core;
 using Serilog.Formatting.Compact;
 
 namespace Api.Logging;
@@ -98,6 +99,14 @@ public static class SerilogSetup
             // aggregator querying by field, and a human-readable template throws the fields
             // away at the last step.
             logger.WriteTo.Console(new CompactJsonFormatter());
+        }
+
+        // Optional DI-provided sinks are primarily useful for verification and host-level
+        // integrations. They still receive events only after the same enrichment and
+        // redaction policy above; attaching an independent logging provider would bypass it.
+        foreach (var sink in services.GetServices<ILogEventSink>())
+        {
+            logger.WriteTo.Sink(sink);
         }
     }
 }

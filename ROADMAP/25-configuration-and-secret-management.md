@@ -13,23 +13,27 @@ Options classes, validation-on-start, configuration layering, secret channels pe
 - One options class per concern in `Configuration/` (one file each): `JwtOptions`, `SessionOptions`, `AuthCookieOptions`, `PasswordHashingOptions`, `LockoutOptions`, `RateLimitOptions`, `EmailOptions`, `SocialProviderOptions` (per-provider client id/secret), `CorsOptions`, `CleanupOptions`.
 - All registered via `AddOptions<T>().BindConfiguration(...).ValidateDataAnnotations().ValidateOnStart()`; cross-field rules via `IValidateOptions<T>` implementations (e.g. access TTL < sliding window < absolute cap).
 - Layering: `appsettings.json` (safe defaults, no secrets) → `appsettings.{Environment}.json` → user-secrets (Development) → environment variables (containers/prod). Secret channel per environment documented; committed appsettings files contain placeholder-free structure only.
-- Prod secret store: env vars now, vault decision deferred with P7/P14.
+- Prod secret store: Azure Key Vault references and managed identity (ADR-0027).
 
 ## Technology Decisions Requiring Approval
 
-P7.
+P7 resolved by ADR-0027.
 
 ## Tasks
 
-- [x] 12 concerns are represented by typed options files + `IValidateOptions` classes for cross-field rules, including production proxy trust and OTLP export. Existing collision-avoiding names `AuthSessionOptions` and `ApiCorsOptions` are retained.
+- [x] 16 concerns are represented by typed options files + `IValidateOptions` classes for
+  cross-field/environment rules, including proxy trust, HTTPS JWT/WebAuthn identity, SMTP,
+  Redis identity, Key Vault and telemetry. Existing collision-avoiding names
+  `AuthSessionOptions` and `ApiCorsOptions` are retained.
 - [x] `Extensions/ServiceCollectionExtensions.Options.cs` registering all with `ValidateOnStart`.
 - [x] `dotnet user-secrets init`; `Documentation/Operations/Configuration.md`: full key reference (key, type, default, secret? yes/no, env var name).
 - [x] Startup misconfiguration test (§21): missing JWT issuer fails host startup with `OptionsValidationException`. There is deliberately no configured signing-key secret: ADR-0020 generates and protects the database key ring.
 - [x] Sweep: no connection strings, client secrets, or keys in any committed file (CI grep gate for known patterns).
 
-**Current status (2026-07-26):** implementation and tests are complete for the env-vars-now
-recommendation. Formal completion still requires the owner to resolve P7; no vault provider
-has been inferred while P14 is open.
+**Current status (2026-08-02):** typed validation includes Azure, Redis, WebAuthn, request
+security, SMTP and Azure Monitor. Key Vault supplies deployed secrets and wraps Data
+Protection; both Staging and Production reject loopback/insecure identities, access-key
+Redis and a missing versionless wrapping-key URI.
 
 ## Expected Deliverables
 
@@ -57,4 +61,4 @@ App refuses to start with incomplete/inconsistent config; reference doc covers e
 
 ## Questions for the Project Owner
 
-1. Confirm env-vars-now / vault-later (P7), or name a vault target today?
+1. ~~Vault target?~~ Azure Key Vault selected in ADR-0027.

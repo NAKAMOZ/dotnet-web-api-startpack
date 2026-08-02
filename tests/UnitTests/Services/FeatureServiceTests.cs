@@ -5,6 +5,7 @@ using Api.Services.Auth;
 using Api.Services.Email;
 using Api.Services.Security;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -23,6 +24,29 @@ public sealed class FeatureServiceTests
 
         Assert.Contains("&lt;script&gt;&amp;token", rendered, StringComparison.Ordinal);
         Assert.DoesNotContain("<script>", rendered, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SmtpEmailSender_WhenQueueIsFull_PreservesQueuedMailAndLogsNoMessageData()
+    {
+        var logger = new CapturingLogger<SmtpEmailSender>();
+        var sender = new SmtpEmailSender(Options.Create(new EmailOptions()), logger);
+
+        for (var index = 0; index < 1_000; index++)
+        {
+            await sender.QueueAsync(
+                new EmailMessage($"queued-{index}@example.com", "subject", "body"),
+                TestContext.Current.CancellationToken);
+        }
+
+        await sender.QueueAsync(
+            new EmailMessage("must-not-leak@example.com", "secret subject", "secret body"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(LogLevel.Critical, logger.Level);
+        Assert.Contains("queue is full", logger.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("must-not-leak", logger.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret", logger.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -150,4 +174,36 @@ public sealed class FeatureServiceTests
                 Roles = ["User"],
             },
         };
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public LogLevel? Level { get; private set; }
+
+        public string Message { get; private set; } = string.Empty;
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull =>
+            NoopScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Level = logLevel;
+            Message = formatter(state, exception);
+        }
+    }
+
+    private sealed class NoopScope : IDisposable
+    {
+        public static NoopScope Instance { get; } = new();
+
+        public void Dispose()
+        {
+        }
+    }
 }

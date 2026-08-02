@@ -22,16 +22,18 @@ jobs:
       run:
         working-directory: playground-ui
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 11.18.0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
           cache: pnpm
           cache-dependency-path: playground-ui/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Frontend vulnerability gate
+        run: pnpm audit --audit-level high
       - name: Biome format and lint
         run: pnpm check
       - name: TypeScript
@@ -45,18 +47,19 @@ jobs:
           test -s ../wwwroot/playground/index.html
           test -d ../wwwroot/playground/assets
           grep --text --quiet '/playground/assets/' ../wwwroot/playground/index.html
+          test -z "$(git status --short -- ../wwwroot/playground)"
 
   quality:
     name: Restore, format, build, and audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
       - run: dotnet format dotnet-web-api-startpack.slnx --verify-no-changes --no-restore
       - run: dotnet build --configuration Release --no-restore /p:SkipPlaygroundBuild=true
       - name: Vulnerable package gate
-        run: dotnet list package --vulnerable --include-transitive
+        run: dotnet list package --vulnerable --include-transitive --no-restore
       - name: Secret pattern gate
         run: bash scripts/check-secrets.sh
 
@@ -64,7 +67,7 @@ jobs:
     name: Unit tests and coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
       - name: Unit tests with scoped 85% line gate
@@ -90,18 +93,18 @@ jobs:
             echo "### Unit coverage" >> "$GITHUB_STEP_SUMMARY"
             echo "Scoped crypto + validators line rate: ${rate}" >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: unit-test-results
           path: TestResults/unit
 
   integration:
-    name: PostgreSQL integration and security tests
+    name: PostgreSQL/Redis integration, security, and token coverage
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore
       # One run, not one per Category. The suite shares a single non-parallel collection
@@ -115,7 +118,22 @@ jobs:
           /p:SkipPlaygroundBuild=true
           --logger "trx;LogFileName=integration.trx"
           --results-directory TestResults/integration
-      - uses: actions/upload-artifact@v7
+          /p:CollectCoverage=true
+          /p:CoverletOutput=${{ github.workspace }}/TestResults/integration/coverage
+          /p:CoverletOutputFormat=cobertura
+          /p:Threshold=85
+          /p:ThresholdType=line
+          /p:ThresholdStat=total
+          /p:Include="[*]Api.Services.Tokens.*"
+      - name: Token coverage summary
+        if: always()
+        run: |
+          if test -f TestResults/integration/coverage.cobertura.xml; then
+            rate="$(sed -n 's/.*line-rate="\([^"]*\)".*/\1/p' TestResults/integration/coverage.cobertura.xml | head -1)"
+            echo "### Integration coverage" >> "$GITHUB_STEP_SUMMARY"
+            echo "Scoped token-service line rate: ${rate}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: integration-test-results
@@ -127,15 +145,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           load: true
           tags: dotnet-web-api-startpack:local
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: HIGH/CRITICAL container vulnerability gate
+        run: >-
+          docker run --rm
+          --volume /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f
+          image
+          --exit-code 1
+          --severity HIGH,CRITICAL
+          --scanners vuln
+          --no-progress
+          --skip-version-check
+          dotnet-web-api-startpack:local
       - name: Compose smoke
         run: |
           set -euo pipefail
@@ -166,6 +196,18 @@ jobs:
           curl --fail --silent --show-error \
             --output /tmp/playground.css \
             "http://127.0.0.1:5035${asset_path}"
+
+          chunked_status="$(curl \
+            --silent \
+            --show-error \
+            --output /tmp/oversized-problem.json \
+            --write-out '%{http_code}' \
+            --header 'Content-Type: application/json' \
+            --header 'Transfer-Encoding: chunked' \
+            --data-binary "@wwwroot${asset_path}" \
+            http://127.0.0.1:5035/api/v1/auth/login)"
+          test "$chunked_status" = "413"
+          grep --text --quiet 'payload_too_large' /tmp/oversized-problem.json
       - name: Stop smoke stack
         if: always()
         run: docker compose down --volumes
@@ -177,23 +219,25 @@ jobs:
     env:
       ConnectionStrings__Postgres: Host=localhost;Database=bundle;Username=bundle;Password=bundle
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/actions/dotnet-setup
       - run: dotnet restore --runtime linux-x64
       - run: dotnet tool restore
       - run: dotnet build --configuration Release --no-restore /p:SkipPlaygroundBuild=true
+      - name: Pending model-change gate
+        run: >-
+          dotnet ef migrations has-pending-model-changes
+          --no-build
+          --configuration Release
       - run: mkdir -p artifacts
       - run: >-
           dotnet ef migrations bundle
           --no-build
           --self-contained
-          --runtime linux-x64
+          --target-runtime linux-x64
           --configuration Release
           --output artifacts/efbundle
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ef-migration-bundle-linux-x64
           path: artifacts/efbundle
-
-# No CD job until P14 settles the deployment target and environment approvals. A job gated
-# on `if: false` is not a placeholder — it is a permanently skipped check on every PR.

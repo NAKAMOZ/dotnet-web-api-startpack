@@ -8,9 +8,10 @@ namespace Api.Attributes;
 /// <c>Documentation/Architecture/Authentication.md</c> §14.
 /// </summary>
 /// <remarks>
-/// Applies to the three destructive self-service operations: disabling TOTP, regenerating
-/// recovery codes, and deleting the account. These are what an attacker does after
-/// stealing a live session, so a valid access token alone must not authorise them.
+/// Applies to destructive self-service operations and every administrative mutation.
+/// These are what an attacker does after stealing a live session, so a valid access token
+/// alone must not authorise them. API keys carry no human <c>auth_time</c> and therefore
+/// cannot satisfy this policy.
 /// <para>
 /// <c>PUT /users/me/password</c> deliberately does <b>not</b> carry this attribute — it
 /// requires the current password, which is the stronger proof.

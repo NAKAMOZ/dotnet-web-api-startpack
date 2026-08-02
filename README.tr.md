@@ -28,10 +28,10 @@ sayfası veya yönetim paneli sunmaz. Bunun yerine Development ve Staging ortaml
 API'yi keşfetmek ve test etmek için `/playground/` adresinde bir API Workbench bulunur.
 
 **Güncel durum:** v1 özellik servisleri ve belgelenmiş 43 API operasyonunun tamamı
-uygulanmıştır. Kod deposu ayrıca testler, konteyner imajı, yerel Compose ortamı, EF
-migration bundle iş akışı, operasyon rehberleri ve platformdan bağımsız üretim rehberleri
-içerir. Üretim ortamı için barındırma hedefi, CD iş akışı ve yazılım lisansı henüz
-seçilmemiştir.
+uygulanmıştır. Kod deposu ayrıca 379 başarılı test, root olmayan konteyner, yerel Compose
+ortamı, Azure Container Apps/Managed Redis/Key Vault altyapı kodu, migration-first OIDC
+dağıtım ve k6/ZAP iş akışları ile operasyon rehberlerini içerir. Yazılım lisansı ve gerçek
+abonelik rollout kanıtı için hâlâ proje sahibinin işlemi gerekir.
 
 ## İçindekiler
 
@@ -140,9 +140,9 @@ docker compose pull postgres mailpit
 docker compose up --build --detach
 ```
 
-`docker compose pull postgres mailpit`, başlangıçtan önce değişken
-`postgres:18-alpine` etiketini PostgreSQL 18'in en güncel patch sürümüne getirir. İmajları
-yenilemek gerekmediğinde sonraki başlangıçlarda yalnızca
+`docker compose pull postgres mailpit`, repository'de digest ile sabitlenen PostgreSQL ve
+Mailpit imajlarını indirir. Dependabot bunların etiket/digest güncellemelerini haftalık olarak
+incelemeye açar. İmajları yenilemek gerekmediğinde sonraki başlangıçlarda yalnızca
 `docker compose up --build --detach` kullanılabilir.
 
 Docker Compose aşağıdaki servisleri başlatır:
@@ -296,6 +296,13 @@ Workbench:
 
 Workbench Development ve Staging ortamlarında kullanılabilir; Production ortamında
 route olarak eklenmez.
+
+Kaynak kodu, aynı depodaki bağımsız pnpm projesi [`playground-ui/`](playground-ui/)
+altındadır. `pnpm build`, statik TanStack Start SPA'sını prerender eder ve tekrarlanabilir
+biçimde `wwwroot/playground/` dizinine eşitler. Normal bir .NET derlemesi bu frontend hedefini
+artımlı olarak çalıştırır; `/p:SkipPlaygroundBuild=true` yalnızca pipeline statik çıktıyı
+önceden ürettiyse kullanılmalıdır. Yalnızca frontend geliştirmek için
+`cd playground-ui && pnpm dev` kullanılabilir.
 
 ### 2. Scalar ve OpenAPI
 
@@ -532,8 +539,9 @@ Davranış ortama göre değişir:
 
 - **Development:** başlangıçta migration'lar otomatik uygulanır ve
   `Data/Seeding/DevDataSeeder.cs` çalışır.
-- **Diğer ortamlar:** API otomatik migration çalıştırmaz. Yeni uygulama sürümünü
-  başlatmadan önce incelenmiş migration bundle'ı çalıştırın.
+- **Diğer ortamlar:** API otomatik migration çalıştırmaz. Yeni uygulama sürümünü yayına
+  almadan önce incelenmiş deployment işlemini çalıştırın. Azure tek seferlik Container Apps
+  job'ını, diğer platformlar CI'ın ürettiği taşınabilir EF bundle'ını kullanabilir.
 - **Tüm ortamlar:** deterministik `Admin` ve `User` rol satırları
   `Data/Seeding/RoleSeed.cs` tarafından tanımlanan, migration'a ait referans verileridir.
 
@@ -566,9 +574,9 @@ dotnet test tests/UnitTests/UnitTests.csproj
 dotnet test tests/IntegrationTests/IntegrationTests.csproj
 ```
 
-Integration testleri çalışan bir Docker daemon gerektirir. Testcontainers, rastgele bir
-host portunda PostgreSQL 18 başlatır, gerçek migration'ları uygular ve Respawn testler
-arasında uygulama durumunu sıfırlar.
+Integration testleri çalışan bir Docker daemon gerektirir. Testcontainers rastgele host
+portlarında PostgreSQL 18 ve Redis başlatır, gerçek migration'ları uygular ve Respawn
+veritabanı testleri arasında uygulama durumunu sıfırlar.
 
 Ana CI kontrollerini yerelde çalıştırın:
 
@@ -577,7 +585,7 @@ dotnet restore
 dotnet format dotnet-web-api-startpack.slnx --verify-no-changes --no-restore
 dotnet build --configuration Release --no-restore
 dotnet test --configuration Release --no-restore
-dotnet list package --vulnerable --include-transitive
+dotnet list package --vulnerable --include-transitive --no-restore
 bash scripts/check-secrets.sh
 docker build --tag dotnet-web-api-startpack:local .
 ```
@@ -587,7 +595,7 @@ GitHub Actions şu kontrolleri çalıştırır:
 - restore, format doğrulaması, Release build, dependency audit ve secret pattern taraması;
 - crypto/validator kodları için %85 line coverage sınırıyla unit testler;
 - PostgreSQL integration ve saldırı odaklı güvenlik testleri;
-- container build ve Compose readiness smoke testi;
+- digest ile sabitlenmiş container build, HIGH/CRITICAL açık kapısı ve Compose readiness smoke testi;
 - self-contained Linux x64 EF migration bundle üretimi.
 
 [`Documentation/Operations/CI.md`](Documentation/Operations/CI.md) ve
@@ -613,7 +621,7 @@ Health sözleşmeleri:
 | Endpoint | Başarılı | Başarısız | Anlamı |
 |---|---|---|---|
 | `/health/live` | `200 Healthy` | `503 Unhealthy` | Process HTTP isteğine yanıt verebilir |
-| `/health/ready` | `200 Healthy` | `503 Unhealthy` | PostgreSQL erişilebilir ve bekleyen migration yoktur |
+| `/health/ready` | `200 Healthy` | `503 Unhealthy` | PostgreSQL/migration sağlıklıdır ve yapılandırılmış Redis erişilebilirdir |
 
 Health yanıtları bilinçli olarak bağımlılık ayrıntılarını içermez. Metric kataloğu, ilk
 alarm önerileri, dashboard'lar ve telemetry güvenlik kuralları için
@@ -622,23 +630,28 @@ belgesine bakın.
 
 ## Yayınlama notları
 
-Repository, `8080` portunda dinleyen, root olmayan bir Linux container üretir ve liveness
-health check içerir. CI ayrıca bir EF migration bundle oluşturur. Güncel durumda bir imajı
-registry'ye göndermez ve herhangi bir barındırma platformuna otomatik deploy etmez.
+Repository, `8080` portunda dinleyen root olmayan bir Linux container üretir. Güvenilir bir
+`main` push'ının başarılı CI çalışması Azure OIDC ile staging dağıtımını tetikler; production
+dağıtımı GitHub Environment onaylı manuel dispatch'tir. Workflow oluşturulan kesin imaj
+digest'ini tarayıp yayına alır ve SBOM ile en yüksek ayrıntılı provenance kaydını ekler.
+Bicep; ACR, Container Apps, private PostgreSQL, Azure Managed Redis, Key Vault, managed
+identity, Log Analytics ve Application Insights kaynaklarını oluşturur.
 
 Üretim ortamında herkese açık yayın öncesinde:
 
-1. Deployment platformunu seçin ve ortama özel altyapıyı kod olarak tanımlayın.
-2. Bir yazılım lisansı ekleyin.
-3. Tüm secret'ları platformun secret manager'ında saklayın.
-4. TLS'i güvenilen edge katmanında sonlandırın ve kesin proxy allowlist'ini yapılandırın.
-5. CORS origin'lerini kesin olarak tanımlayın; Cookie ve Bearer origin'lerini ayrı tutun.
-6. Migration ve runtime için ayrı veritabanı rolleri kullanın.
-7. Yeni imajı başlatmadan önce migration bundle'ı çalıştırın.
-8. Etkinleştirilecekse SMTP ve gerçek Google/GitHub kimlik bilgilerini yapılandırın.
-9. OTLP backend, alarm yönlendirmesi, log saklama politikası ve veritabanı yedeklerini hazırlayın.
-10. [`ProductionChecklist.md`](Documentation/Operations/ProductionChecklist.md)
+1. Bir yazılım lisansı ekleyin.
+2. `staging` ve `production` GitHub Environment'larını, OIDC federation'ı, onaylayıcıları,
+   Key Vault/SMTP/veritabanı secret'larını ve kesin CORS/proxy ayarlarını yapılandırın.
+3. Azure workflow'unu çalıştırın; workflow mevcut API imajını korur, yeni imajla admin
+   rolünde migration job'ını çalıştırır ve ardından DML-only rolle yeni imajı yayına alır.
+4. Readiness'i, otomatik imaj rollback'ini, Redis/Key Vault güven sınırlarını, staging ZAP
+   ve zamanlanmış/manuel k6 bütçe workflow'unu doğrulayın.
+5. Yedek geri yükleme ve olay runbook'larını prova edin; dashboard/alarm sahiplerini atayın.
+6. [`ProductionChecklist.md`](Documentation/Operations/ProductionChecklist.md)
     belgesindeki kontrolleri tamamlayın.
+
+Kesin topoloji, ortam sözleşmesi, migration-first sıra ve kanıt listesi için
+[`AzureDeployment.md`](Documentation/Operations/AzureDeployment.md) belgesine bakın.
 
 OpenAPI, Scalar, Workbench, demo OAuth, otomatik migration ve Development fixture hesapları
 Production ortamında sunulmaz.
@@ -774,6 +787,9 @@ docker compose up --build --detach
 - [`Documentation/Operations/LocalDevelopment.md`](Documentation/Operations/LocalDevelopment.md) — yerel çalışma akışı
 - [`Documentation/Operations/Configuration.md`](Documentation/Operations/Configuration.md) — tam konfigürasyon referansı
 - [`Documentation/Operations/Migrations.md`](Documentation/Operations/Migrations.md) — migration ve seed-data operasyon rehberi
+- [`Documentation/Operations/AzureDeployment.md`](Documentation/Operations/AzureDeployment.md) — Azure topolojisi, migration-first dağıtım, ölçekleme, rollback ve kanıtlar
+- [`Documentation/Operations/PerformanceBaseline.md`](Documentation/Operations/PerformanceBaseline.md) — k6 bütçeleri ve ölçülmüş yerel baseline'lar
+- [`Documentation/Operations/Monitoring.md`](Documentation/Operations/Monitoring.md) — health, telemetri, dashboard ve alarm rehberi
 - [`Documentation/Operations/ProductionChecklist.md`](Documentation/Operations/ProductionChecklist.md) — üretime geçiş kanıt listesi
 - [`Documentation/Decisions/README.md`](Documentation/Decisions/README.md) — mimari karar indeksi
 - [`ROADMAP/README.md`](ROADMAP/README.md) — uygulama iş akışları panosu

@@ -1,5 +1,7 @@
+using Api.Configuration;
 using Api.Data;
 using Api.Handlers.Authentication;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
@@ -21,12 +23,13 @@ public static partial class ServiceCollectionExtensions
     /// <summary>
     /// Authentication schemes, token services, and authorization policies.
     /// </summary>
-    public static IServiceCollection AddAuthenticationServices(this IServiceCollection services)
+    public static IServiceCollection AddAuthenticationServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        // Protects signing-key private material at rest (ADR-0020). Interim until a vault is
-        // chosen (P7) — which is exactly why only ISigningKeyManager unprotects: the eventual
-        // migration is then a change in one component.
-        services
+        // Protects signing-key and TOTP material at rest (ADR-0020/0027). PostgreSQL holds
+        // the shared ring; Production wraps it with Key Vault through managed identity.
+        var dataProtection = services
             .AddDataProtection()
 
             // Both lines are load-bearing (ADR-0021) and neither is a default worth trusting.
@@ -43,6 +46,18 @@ public static partial class ServiceCollectionExtensions
             // writable home directory it is per-process and in-memory, announced only as a
             // startup warning. Every restart would then orphan every SigningKey row.
             .PersistKeysToDbContext<AppDbContext>();
+
+        var azure = configuration
+            .GetSection(AzurePlatformOptions.SectionName)
+            .Get<AzurePlatformOptions>() ?? new AzurePlatformOptions();
+        if (azure.DataProtectionKeyIdentifier is { } keyIdentifier)
+        {
+            var credential = string.IsNullOrWhiteSpace(azure.ManagedIdentityClientId)
+                ? new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned)
+                : new ManagedIdentityCredential(
+                    ManagedIdentityId.FromUserAssignedClientId(azure.ManagedIdentityClientId));
+            dataProtection.ProtectKeysWithAzureKeyVault(keyIdentifier, credential);
+        }
 
         services.ConfigureOptions<ConfigureJwtBearerOptions>();
 

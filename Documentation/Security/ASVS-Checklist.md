@@ -13,7 +13,8 @@ Scope: the chapters of ASVS L2 that apply to a stateless authentication and auth
 
 **Read the ⏸️ rows.** They are the point of this document; the ✅ rows are the easy half.
 
-Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12 lands a feature service.
+Last reviewed: 2026-08-02 after the full 379-test release-candidate run. Re-review after the
+first Azure staging rollout and at v1 close (§29).
 
 ---
 
@@ -21,8 +22,8 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 
 | Req | Requirement | Status | Evidence |
 |---|---|---|---|
-| 1.1.x | Secure SDLC, documented decisions | ✅ | `Documentation/Decisions/` — 26 ADRs, one per decision, superseded rather than deleted |
-| 1.2.2 | Components communicate with least-privilege accounts | 🔄 | Single `auth` schema makes a scoped grant expressible (`AppDbContext.Schema`); the grant itself is §27's deploy step |
+| 1.1.x | Secure SDLC, documented decisions | ✅ | `Documentation/Decisions/` — 31 ADRs, one per decision, superseded rather than deleted |
+| 1.2.2 | Components communicate with least-privilege accounts | ✅ | `DatabaseDeploymentService` idempotently creates a DML-only runtime role; `DatabaseDeploymentIntegrationTests` proves DML succeeds and DDL is denied |
 | 1.4.1 | Access control enforced at a trusted layer | ✅ | Deny-by-default fallback policy, §5/§12 — `Extensions/ServiceCollectionExtensions.Authorization.cs` |
 | 1.4.4 | One access-control mechanism, not several | ✅ | `[RequirePermission]` only; scheme-agnostic behind the `Composite` policy scheme |
 | 1.5.x | Input/output trust boundaries defined | ✅ | DTOs never expose entities — `DtoContractTests` |
@@ -38,9 +39,9 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 | 2.1.7 | Breached-password check on set/change | ✅ | `Validators/Common/CommonPasswords.txt`, embedded in the assembly so it cannot go missing at deploy and fail open |
 | 2.1.9 | No composition rules | ✅ | Deliberately absent from `PasswordRules` |
 | 2.1.10 | No periodic rotation requirement | ✅ | Not implemented, by decision |
-| 2.2.1 | Anti-automation on credential endpoints | 🔄 | Lockout is §16 (`Services/Security/LockoutPolicy.cs`, options bound); **per-IP limiting is §17 and is the half that stops password spraying** |
+| 2.2.1 | Anti-automation on credential endpoints | ✅ | Account lockout plus pre-auth IP/account policies; distributed Azure counters cannot multiply per replica — `FeatureAttackTests`, `RateLimitingTests`, `RedisRateLimitStoreIntegrationTests` |
 | 2.2.2 | No SMS/voice as a default MFA factor | ✅ | TOTP and WebAuthn only — `Documentation/Scope.md` |
-| 2.2.3 | Notification on credential change | 🔄 | SMTP delivery and templates are live; adding notifications to every credential-change path remains separate scope |
+| 2.2.3 | Notification on credential change | ✅ | `SecurityNotificationService` queues a non-secret email after password/reset, MFA/recovery, passkey, API-key and linked-account changes |
 | 2.3.1 | Activation/reset tokens random and short-lived | ✅ | CSPRNG via `ITokenGenerator`; lifetimes in `AuthSessionOptions` |
 | 2.4.1 | Passwords stored with an approved one-way KDF | ✅ | Argon2id — ADR-0006, `Services/Crypto/Argon2PasswordHasher.cs` |
 | 2.4.x | KDF parameters at or above recommended cost | ✅ | `PasswordHashingOptions`, validated at startup. **Two profiles**: `Hash` for passwords, `HashSecret` for high-entropy machine secrets — separate methods, never a parameter, so the cheap profile cannot default its way onto the password path |
@@ -48,9 +49,9 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 | 2.5.4 | No shared or default accounts | ✅ | Development-only named accounts receive Argon2 hashes; Production seeds no users |
 | 2.5.6 | Reset uses a random, short-lived, single-use token | ✅ | `VerificationToken` — hashed at rest, `ConsumedAt` enforces single use |
 | 2.5.7 | Reset does not reveal account existence | ✅ | `Documentation/Security/Enumeration.md` §3 |
-| 2.7.x | Out-of-band verifier (email links) | 🔄 | Entity and token pipeline exist; delivery is §12 |
-| 2.8.x | One-time verifier (TOTP), secrets protected at rest | 🔄 | `TotpCredential` mapped; encryption via Data Protection is §12's MFA service. **ADR-0021's key ring is what makes that survivable** |
-| 2.9.x | Cryptographic verifier (WebAuthn) | 🔄 | `PasskeyCredential` mapped; §12 |
+| 2.7.x | Out-of-band verifier (email links) | ✅ | SMTP queue/templates and captured-email end-to-end verification/reset tests; tokens are short-lived, hashed and single-use |
+| 2.8.x | One-time verifier (TOTP), secrets protected at rest | ✅ | Encrypted TOTP secret, atomic time-step replay prevention and one-use recovery hashes — `MfaServiceIntegrationTests` |
+| 2.9.x | Cryptographic verifier (WebAuthn) | ✅ | Full attestation/assertion ceremony, challenge replay rejection and signature-counter clone detection — `PasskeyCeremonyIntegrationTests` |
 | 2.10.1 | Service/API secrets not stored in cleartext | ✅ | API keys hashed with `HashSecret`; shown once in `CreateApiKeyResponse` |
 
 ## V3 — Session Management
@@ -60,10 +61,10 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 | 3.2.1 | New session token generated on authentication | ✅ | `SessionService` creates a session per login |
 | 3.2.2 | ≥ 64 bits of entropy in session tokens | ✅ | `TokenGenerator` — CSPRNG opaque refresh tokens |
 | 3.2.3 | Tokens stored securely (cookie flags / not in URL) | ✅ | `AuthCookieOptions` — `HttpOnly`, `Secure`, `SameSite`; never a query parameter |
-| 3.3.1 | Logout invalidates the session | 🔄 | `ISessionService` revocation exists; the logout endpoint is §12 |
+| 3.3.1 | Logout invalidates the session | ✅ | Cookie/bearer logout revokes the backing session — `CookieTransportIntegrationTests` |
 | 3.3.2 | Inactivity and absolute timeouts | ✅ | `AuthSessionOptions.InactivityWindow` (6 h) and `AbsoluteLifetime` (7 d, P1). Absolute is written once and never extended on refresh |
-| 3.3.3 | Ability to terminate all other sessions | 🔄 | `DELETE /api/v1/sessions` routes and authorizes; service is §12 |
-| 3.3.4 | Active sessions listable by the user | 🔄 | Same |
+| 3.3.3 | Ability to terminate all other sessions | ✅ | `DELETE /api/v1/sessions`; integration coverage proves the current session is preserved |
+| 3.3.4 | Active sessions listable by the user | ✅ | `GET /api/v1/sessions`; current-device flag verified over the real service |
 | 3.5.2 | Static API secrets avoided in favour of dynamic tokens | ⏸️ | API keys are a deliberate v1 capability for machine callers. Mitigated: hashed at rest, prefix-identified, revocable, separately audited |
 | 3.5.3 | Stateless tokens carry a verified digital signature | ✅ | ES256, `ValidAlgorithms = [ES256]` — the pin that closes `alg:none` and HS256-with-the-public-key. `kid` resolver returns `[]` for an unresolvable key, never the whole ring |
 | 3.7.1 | Re-authentication before sensitive operations | ✅ | `auth_time` step-up, `RecentAuthenticationWindow` (5 min) — Authentication.md §14 |
@@ -78,7 +79,7 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 | 4.1.5 | Access control fails securely | ✅ | Deny-by-default fallback. An unknown path answers **401, not 404** — an anonymous caller learns nothing about which paths exist. `ControllerArchitectureTests` fails the build on a missing authorization attribute |
 | 4.2.1 | No IDOR — object references scoped to the caller | ✅ | Own-resource routes scope every lookup to `CurrentUserId`; a miss is `404`, never `403` |
 | 4.2.2 | CSRF defences on state-changing operations | ✅ | `Filters/CsrfProtectionFilter.cs`, global. Challenged only when state-changing **and** cookie-authenticated, via `AuthTransport.CookieAuthenticatedItemKey` — never re-derived from a missing `Authorization` header. Constant-time double submit plus the token's tag verified against the request's `sid` claim |
-| 4.3.1 | Administrative interfaces use MFA | ⏸️ | Admin endpoints require `[RequirePermission]`, not step-up MFA. Deferred to post-v1; the mechanism (`auth_time`) already exists, so this is one attribute per admin action when approved. **Owner decision outstanding** |
+| 4.3.1 | Administrative interfaces use MFA | ✅ | Every administrative mutation requires `[RequireRecentAuth]` in addition to its named permission. API keys carry no `auth_time` and cannot satisfy step-up. Read-only incident queries remain available to scoped API keys. |
 
 ## V5 — Validation, Sanitization and Encoding
 
@@ -95,12 +96,12 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 | Req | Requirement | Status | Evidence |
 |---|---|---|---|
 | 7.1.1 | No credentials or payment details in logs | ✅ | `Logging/SensitiveDataDestructuringPolicy.cs` redacts credential-shaped properties from anything destructured with `{@…}` |
-| 7.1.3 | Security-relevant events logged | 🔄 | `IAuditLogger` + `AuditEventType` catalogue; **20 of the events belong to services §12 has not written**. `AuditCatalogTests` fails the build when the catalogue and the enum disagree in either direction |
+| 7.1.3 | Security-relevant events logged | ✅ | Every `AuditEventType` names a live writer; `AuditCatalogTests` enforces bidirectional catalog/writer agreement and flow tests assert durable rows |
 | 7.1.4 | Each log event has enough context | ✅ | Correlation id and user id reach every event through Serilog **enrichers**, not a `LogContext` push |
-| 7.2.1 | Authentication decisions logged | 🔄 | `login_succeeded` / `login_failed` / `account_locked` catalogued; written by §12's login service |
+| 7.2.1 | Authentication decisions logged | ✅ | Login success/failure, lockout, refresh reuse, MFA and passkey decisions have live producers and integration coverage |
 | 7.2.2 | Access-control decisions logged | ⏸️ | Only admin operations are audited. Logging every authorization decision on a token-validated API is volume without signal; revisit if an incident needs it |
 | 7.3.1 | Log injection prevented | ✅ | Structured logging only — message templates with properties, never interpolated strings |
-| 7.3.3 | Logs protected from unauthorised access | 🔄 | Audit rows readable only through `GET /api/v1/admin/audit-logs` behind `[RequirePermission]`. **Log file/stream protection is §27's** |
+| 7.3.3 | Logs protected from unauthorised access | 🔄 | Audit API is permission-gated; Azure IaC sends platform logs to resource-permission-only Log Analytics. Subscription RBAC evidence remains a rollout check |
 | 7.4.1 | Generic error message to the client | ✅ | RFC 9457 everywhere; outside Development the framework's `exception` extension is stripped and 5xx `detail` is blanked — `ExceptionToProblemDetailsMap` |
 
 > **The audit `Metadata` column is the sharpest surface in this chapter.** It is durable, exempt from log rotation, and readable over HTTP. `AuditMetadataSerializer` shares its never-logged list with the Serilog policy through `Logging/SensitiveFieldNames.cs` — one definition, two readers. That redaction is a backstop, not a licence: never hand it a request body.
@@ -109,21 +110,21 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 
 | Req | Requirement | Status | Evidence |
 |---|---|---|---|
-| 8.1.1 | Sensitive data protected from unauthorised access | ✅ | Signing-key private material encrypted at rest — ADR-0020 |
-| 8.1.6 | Backups of sensitive data protected | ⏸️ | §27. **ADR-0021 makes this sharper, not softer**: the Data Protection key ring now lives in the same database as the keys it protects, so one backup contains both |
+| 8.1.1 | Sensitive data protected from unauthorised access | ✅ | Signing-key/TOTP material is Data Protection-encrypted; Production wraps the shared ring with an RBAC-protected Azure Key Vault key — ADR-0027 |
+| 8.1.6 | Backups of sensitive data protected | 🔄 | The database contains only a Key Vault-wrapped ring and Azure provides encrypted backups; restore/RPO/RTO and vault-recovery evidence remains a staging/production rehearsal |
 | 8.2.1 | No sensitive data in browser storage | ✅ | Cookie mode is `HttpOnly` — tokens are unreachable from JavaScript by construction |
 | 8.3.1 | Sensitive data not sent in URL parameters | ✅ | Tokens in bodies, headers or cookies; never the query string |
 | 8.3.4 | Sensitive data inventoried | ✅ | `Logging/SensitiveFieldNames.cs` is the single list |
-| — | **Data Protection key ring encrypted at rest** | ❌ **Gap** | `ProtectKeysWith*` is not configured — every option is host-specific, so choosing one means choosing a deployment target (P14). **The largest known gap in §16.** ADR-0021 "Consequences"; owner: project owner; resolves with P7/P14 |
+| — | **Data Protection key ring encrypted at rest** | ✅ | Production uses `ProtectKeysWithAzureKeyVault` with managed identity and a versionless RSA key URI; the validator fails startup if it is missing |
 
 ## V9 — Communications
 
 | Req | Requirement | Status | Evidence |
 |---|---|---|---|
 | 9.1.1 | TLS for all client connectivity | ✅ | `UseHttpsRedirection`; HSTS outside Development — `ApplicationBuilderExtensions.Pipeline.cs` |
-| 9.1.2–9.1.3 | Strong cipher suites, TLS 1.2+ | ⏸️ | A host/reverse-proxy property, not an application one. §27 runbook item |
+| 9.1.2–9.1.3 | Strong cipher suites, TLS 1.2+ | 🔄 | Container Apps ingress is HTTPS-only; PostgreSQL requires verified TLS and Redis pins TLS 1.2. Platform cipher-policy evidence remains a rollout check |
 | — | Forwarded scheme/client IP accepted only from trusted proxies | ✅ | Validated exact IP/CIDR allowlist, fail-fast production configuration and known/unknown proxy tests — `ReverseProxyOptionsValidator`, `ForwardedHeadersTests` |
-| 9.2.x | Server-side TLS for outbound connections | 🔄 | Applies once social login and email delivery exist (§12) |
+| 9.2.x | Server-side TLS for outbound connections | ✅ | Social providers use HTTPS backchannels, SMTP is configured for TLS, PostgreSQL verifies TLS and Azure Redis is encrypted-only |
 
 ## V11 — Business Logic
 
@@ -151,10 +152,10 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 
 | Req | Requirement | Status | Evidence |
 |---|---|---|---|
-| 14.1.1 | Build and deploy are repeatable and automated | 🔄 | §26 |
-| 14.2.1 | No known-vulnerable components | ✅ | NuGet audit at `mode=all`, `level=low` — **a newly published advisory against any dependency, direct or transitive, fails the build.** Fixed by pinning the patched version, never by suppressing |
+| 14.1.1 | Build and deploy are repeatable and automated | ✅ | GitHub Actions CI, Azure Bicep, immutable image build, migration-first promotion, rollback and readiness/ZAP gates |
+| 14.2.1 | No known-vulnerable components | ✅ | Transitive NuGet audit, pnpm high-severity audit and a digest-pinned Trivy HIGH/CRITICAL application-image gate; findings are fixed by pinning the patched version/image, never by suppressing |
 | 14.2.2 | Unneeded features and frameworks removed | ✅ | Every package requires an ADR (ADR-0013); nothing arrives casually |
-| 14.2.3 | Third-party assets from a trusted source | 🔄 | `.github/dependabot.yml` opens the update PRs; §26 gates the merge on `dotnet list package --vulnerable --include-transitive` |
+| 14.2.3 | Third-party assets from a trusted source | ✅ | Dockerfile/Compose bases are digest-pinned; Dependabot opens pnpm, NuGet, action, Docker and Compose update PRs; deployment images carry SBOM/provenance |
 | 14.3.2 | Debug modes disabled in production | ✅ | Developer exception page and OpenAPI are Development-only; `exception` extension stripped outside it |
 | 14.3.3 | No version-disclosing headers | ✅ | `Server` and `X-Powered-By` are not emitted |
 | 14.4.1 | Content-Type on every response | ✅ | `application/json` / `application/problem+json` |
@@ -173,13 +174,10 @@ Last reviewed: 2026-07-26 (§28). Re-review at v1 close (§29) and whenever §12
 
 | # | Item | Chapter | Owner | Resolves with |
 |---|---|---|---|---|
-| 1 | ❌ Data Protection key ring unencrypted at rest | V8 | Project owner | P7 / P14 → supersedes ADR-0020 + ADR-0021 |
-| 2 | ⏸️ Admin operations do not require step-up MFA | V4.3.1 | Project owner | Post-v1 decision; mechanism already exists |
-| 3 | ⏸️ Backup trust boundary for keys vs key ring | V8.1.6 | Project owner | §27 |
-| 4 | ⏸️ TLS cipher/version policy | V9.1.2 | Project owner | §27 |
-| 5 | ⏸️ API keys as static secrets | V3.5.2 | Accepted for v1 | — |
-| 6 | ⏸️ Authorization decisions not audited | V7.2.2 | Accepted for v1 | — |
-| 7 | 🔄 Credential-change notifications on every path | V2.2.3 | Project owner | Post-v1 scope |
+| 1 | 🔄 Azure backup restore, Key Vault recovery and RPO/RTO evidence | V8.1.6 | Release owner | First staging/production rehearsal |
+| 2 | 🔄 Platform TLS/cipher and Log Analytics RBAC evidence | V7.3.3, V9.1.2 | Release owner | First Azure rollout |
+| 3 | ⏸️ API keys as static secrets | V3.5.2 | Accepted for v1 | — |
+| 4 | ⏸️ Authorization decisions not audited | V7.2.2 | Accepted for v1 | — |
 
 Per-account lockout and per-IP limiting look redundant and are not: lockout bounds
 guessing against *one* account, and does nothing about one password tried against ten

@@ -166,7 +166,8 @@ The document writes the tag as `HMAC(key, sessionId || nonce)`. The implementati
 The global filters are registered through `MvcOptions` in `AddPipelineServices`, not on
 individual controllers: a filter applied per controller is one a new controller forgets,
 and the omission is invisible until someone exploits it. The email filter resolves as a
-singleton because its in-memory partitions must survive across requests.
+singleton so its partition wrappers can be reused; their authoritative counters live in
+Redis when distributed runtime state is enabled.
 
 ---
 

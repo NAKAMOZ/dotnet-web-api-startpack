@@ -95,6 +95,10 @@ public static partial class ApplicationBuilderExtensions
         // through §13's single table and writes the RFC 9457 body.
         app.UseExceptionHandler();
 
+        // Enforces both declared Content-Length and streamed-body limits before any parser,
+        // authentication handler or controller reads attacker-controlled bytes.
+        app.UseMiddleware<RequestBodyLimitMiddleware>();
+
         // Gives a body to status codes that would otherwise have none (§13).
         //
         // An authorization challenge is not an "error result" — the middleware sets 401 and

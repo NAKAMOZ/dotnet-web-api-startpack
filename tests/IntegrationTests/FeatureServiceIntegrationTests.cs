@@ -429,6 +429,12 @@ public sealed class FeatureServiceIntegrationTests(IntegrationTestFactory factor
             TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NoContent, granted.StatusCode);
 
+        var updated = await client.PatchAsJsonAsync(
+            $"/api/v1/admin/users/{targetId}",
+            new AdminUpdateUserRequest { DisplayName = "Audited target" },
+            TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+
         var revoked = await client.DeleteAsync(
             $"/api/v1/admin/users/{targetId}/sessions",
             TestContext.Current.CancellationToken);
@@ -446,6 +452,10 @@ public sealed class FeatureServiceIntegrationTests(IntegrationTestFactory factor
                 TestContext.Current.CancellationToken));
             Assert.True(await database.AuditLogEntries.AnyAsync(
                 entry => entry.EventType == AuditEventType.RoleGranted,
+                TestContext.Current.CancellationToken));
+            Assert.True(await database.AuditLogEntries.AnyAsync(
+                entry => entry.EventType == AuditEventType.AdminUserUpdated
+                         && entry.UserId == targetId,
                 TestContext.Current.CancellationToken));
             Assert.True(await database.AuditLogEntries.AnyAsync(
                 entry => entry.EventType == AuditEventType.SessionRevoked,

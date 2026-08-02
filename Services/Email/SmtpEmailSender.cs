@@ -18,13 +18,24 @@ public sealed class SmtpEmailSender(
     private readonly Channel<EmailMessage> _messages = Channel.CreateBounded<EmailMessage>(
         new BoundedChannelOptions(1_000)
         {
-            FullMode = BoundedChannelFullMode.DropOldest,
+            // TryWrite below makes saturation observable and preserves already-queued mail.
+            // DropOldest lets an attacker evict a legitimate verification/reset message.
+            FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
             SingleWriter = false,
         });
 
-    public ValueTask QueueAsync(EmailMessage message, CancellationToken cancellationToken) =>
-        _messages.Writer.WriteAsync(message, cancellationToken);
+    public ValueTask QueueAsync(EmailMessage message, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!_messages.Writer.TryWrite(message))
+        {
+            logger.LogCritical(
+                "Email delivery queue is full; a message was not queued. No recipient or body metadata is logged.");
+        }
+
+        return ValueTask.CompletedTask;
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

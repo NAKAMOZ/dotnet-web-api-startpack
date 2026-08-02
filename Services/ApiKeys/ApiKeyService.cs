@@ -5,6 +5,7 @@ using Api.Exceptions;
 using Api.Handlers.Authorization;
 using Api.Models;
 using Api.Services.Crypto;
+using Api.Services.Email;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.ApiKeys;
@@ -13,6 +14,7 @@ public sealed class ApiKeyService(
     AppDbContext dbContext,
     IPasswordHasher passwordHasher,
     ITokenGenerator tokenGenerator,
+    ISecurityNotificationService securityNotifications,
     TimeProvider timeProvider) : IApiKeyService
 {
     public async Task<CreateApiKeyResponse> CreateAsync(
@@ -47,6 +49,10 @@ public sealed class ApiKeyService(
         };
         dbContext.ApiKeys.Add(key);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.ApiKeyCreated,
+            cancellationToken);
 
         return new CreateApiKeyResponse
         {
@@ -93,6 +99,10 @@ public sealed class ApiKeyService(
                   ?? throw new ResourceNotFoundException("API key");
         key.RevokedAt = timeProvider.GetUtcNow();
         await dbContext.SaveChangesAsync(cancellationToken);
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.ApiKeyRevoked,
+            cancellationToken);
     }
 
     private string CreatePrefix()

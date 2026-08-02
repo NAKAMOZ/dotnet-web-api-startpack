@@ -66,8 +66,8 @@ validates. Monitor `auth.logins`, `auth.refreshes`, 401s and support traffic.
 - If refresh tokens or the user database may also be exposed, run
   [MassRevocation.md](MassRevocation.md).
 - If the Data Protection key ring or full database was exposed, assume the protected private
-  key envelopes can be unwrapped. Rotate platform credentials and the Data Protection
-  protector selected by P7/P14 before issuing replacement keys. Do **not** simply delete
+  key envelopes can be unwrapped. Rotate platform credentials and the Azure Key Vault
+  Data Protection wrapping key before issuing replacement keys. Do **not** simply delete
   `DataProtectionKeys`: that orphans every protected payload.
 - If only healthy quarterly rotation is due, use
   `dotnet dotnet-web-api-startpack.dll operations rotate-signing-key`; the previous key stays

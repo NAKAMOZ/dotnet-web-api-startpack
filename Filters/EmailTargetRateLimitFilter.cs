@@ -6,6 +6,7 @@ using System.Threading.RateLimiting;
 using Api.Configuration;
 using Api.DTOs.PasswordReset;
 using Api.Middleware;
+using Api.Services.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.RateLimiting;
@@ -25,21 +26,20 @@ public sealed class EmailTargetRateLimitFilter : IAsyncActionFilter, IOrderedFil
 
     public EmailTargetRateLimitFilter(
         IOptions<RateLimitOptions> options,
+        IRateLimiterPartitionFactory partitions,
         ILogger<EmailTargetRateLimitFilter> logger)
     {
         var configured = options.Value;
         _logger = logger;
 
         _limiter = PartitionedRateLimiter.Create<string, string>(target =>
-            RateLimitPartition.GetFixedWindowLimiter(
+            RateLimitPartition.Get(
                 target,
-                _ => new FixedWindowRateLimiterOptions
-                {
-                    AutoReplenishment = true,
-                    PermitLimit = configured.EmailSendingAccountPermitLimit,
-                    QueueLimit = 0,
-                    Window = configured.EmailSendingAccountWindow,
-                }));
+                key => partitions.CreateFixedWindow(
+                    RateLimitPolicies.EmailSending + "-account",
+                    key,
+                    configured.EmailSendingAccountPermitLimit,
+                    configured.EmailSendingAccountWindow)));
     }
 
     /// <summary>

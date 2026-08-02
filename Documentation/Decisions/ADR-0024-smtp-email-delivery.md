@@ -32,5 +32,6 @@ Responses never wait for SMTP and never depend on send success.
 - Mail delivery is provider-neutral and locally inspectable.
 - A process crash can lose queued mail; a future reliability requirement adds a durable
   outbox behind the same interface.
-- Queue logs exclude recipients, bodies, tokens and secrets.
-
+- A full queue preserves messages already accepted and emits a Critical overflow event;
+  incoming overflow is discarded without blocking a request or evicting older mail.
+- Queue logs exclude recipients, bodies, tokens and secrets, including overflow logs.

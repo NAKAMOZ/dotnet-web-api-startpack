@@ -34,8 +34,6 @@ public static partial class ServiceCollectionExtensions
         // this process may build more than one host — see the remarks on SerilogSetup.Bootstrap.
         services.AddSerilog(SerilogSetup.Configure, preserveStaticLogger: true);
 
-        services.AddHybridCache();
-
         return services
             .AddApplicationHealthChecks(configuration)
             .AddTelemetryServices(configuration, environment);

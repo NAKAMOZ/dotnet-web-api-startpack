@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check } from 'k6';
-import { checkFloor, currentTokens, routes, thresholds, url } from './config.js';
+import { checkFloor, login, parseTokens, routes, thresholds, url } from './config.js';
 
 export const options = {
   scenarios: {
@@ -19,10 +19,19 @@ export const options = {
   },
 };
 
-export default function () {
+export function setup() {
+  const tokens = parseTokens(login('setup'));
+  if (!tokens.accessToken) {
+    throw new Error('Profile scenario setup login failed.');
+  }
+
+  return tokens;
+}
+
+export default function (tokens) {
   const response = http.get(url(routes.me), {
     headers: {
-      Authorization: `Bearer ${currentTokens().accessToken}`,
+      Authorization: `Bearer ${tokens.accessToken}`,
     },
     tags: { operation: 'me' },
   });

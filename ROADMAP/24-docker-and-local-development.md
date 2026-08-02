@@ -10,8 +10,8 @@ Dockerfile, docker-compose, `.http` request files, developer quickstart.
 
 ## Architectural Decisions
 
-- Multi-stage `Dockerfile`: `mcr.microsoft.com/dotnet/sdk:10.0` build/publish → `mcr.microsoft.com/dotnet/aspnet:10.0` runtime, non-root user, `HEALTHCHECK` hitting `/health/live`.
-- `docker-compose.yml`: `api` (built), `postgres` (`postgres:18-alpine`, PostgreSQL 18 volume layout, healthcheck `pg_isready`, named volume, `citext` available by default), `mailpit` (`axllent/mailpit:v1.30.5`, SMTP :1025, UI :8025). API waits on postgres health.
+- Multi-stage `Dockerfile`: digest-pinned Node 24 frontend plus .NET 10 SDK build/publish → digest-pinned ASP.NET 10 runtime, non-root user, `HEALTHCHECK` hitting `/health/live`.
+- `docker-compose.yml`: `api` (built), digest-pinned `postgres:18-alpine` (PostgreSQL 18 volume layout, healthcheck `pg_isready`, named volume, `citext` available by default), digest-pinned `axllent/mailpit:v1.30.5` (SMTP :1025, UI :8025). API waits on postgres health; Dependabot monitors Dockerfile and Compose images weekly.
 - `.env.example` documents every compose-injected variable; `.env` git-ignored.
 - Two dev modes documented: full compose, or `dotnet watch` against compose-run postgres+mailpit only (fast inner loop).
 - `.http` files per feature in `http/` (`auth.http`, `sessions.http`, `mfa.http`, …) with shared variables file — replaces the template's single `.http`.
@@ -28,11 +28,13 @@ None (Docker approved).
 - [x] `README.md` quickstart: prerequisites, `docker compose up`, first request walkthrough (register → verify via Mailpit UI → login), inner-loop mode.
 - [x] Verify Testcontainers (§21) and compose coexist (no port collisions; document ports).
 
-**Verified 2026-07-26:** the image built, ran as UID 1654, and the full stack reported
+**Verified 2026-08-02:** the digest-pinned image built, ran as UID 1654, and the full stack reported
 `/health/ready` healthy against PostgreSQL. The local machine already owned port 5432, so
 Compose now defaults its host-side mapping to 55432 while PostgreSQL remains on 5432 inside
-the network; Testcontainers independently uses a random host port. The §12 registration,
-Mailpit verification and login services complete the documented walkthrough.
+the network; Testcontainers independently uses a random host port. SPA deep links resolve to
+the prerendered shell and a genuinely chunked oversized request returns the bounded `413`
+problem. The §12 registration, Mailpit verification and login services complete the
+documented walkthrough.
 
 ## Expected Deliverables
 

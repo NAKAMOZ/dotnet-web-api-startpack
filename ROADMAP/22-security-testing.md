@@ -15,7 +15,7 @@ Negative-path test suite (part of `IntegrationTests/Security/`), CI dependency a
 
 ## Technology Decisions Requiring Approval
 
-Optional OWASP ZAP baseline scan in CI — `Pending Decision` (recommend: add once staging exists, §27).
+None. Staging OWASP ZAP API scanning is part of the deploy workflow.
 
 ## Tasks
 
@@ -28,18 +28,19 @@ Optional OWASP ZAP baseline scan in CI — `Pending Decision` (recommend: add on
 - [x] AuthZ: admin/protected endpoint matrix, recent-auth/API-key step-up denial and API-key scope/current-role intersection.
   - Step-up must be tested against `auth_time`, **not** `iat`: assert that refreshing a session repeatedly does *not* restore step-up eligibility. An implementation reading `iat` passes every happy-path test while providing no protection (Authentication.md §14).
   - API keys can never satisfy step-up — they carry no `auth_time`.
-- [ ] Input abuse: oversized bodies (request size limits), malformed JSON, header injection into correlation ID (format validation), sort-field injection.
-- [ ] Redaction test: capture all logs during a full flow run; assert zero occurrences of any issued token/password/secret material (§15).
+- [x] Input abuse: 64 KiB streamed/known-length body limit, malformed JSON, correlation-ID
+  injection and sort-field injection return stable RFC 9457 errors.
+- [x] Redaction test: captured real-flow log events contain none of the password, access/
+  refresh/reset/MFA tokens, TOTP/recovery material or API-key secret.
 - [x] CI: `dotnet list package --vulnerable --include-transitive` failing gate (§26).
 
 ## Expected Deliverables
 
 `IntegrationTests/Security/` suites; traceability table in `Documentation/Security/AttackCoverage.md`.
 
-**Current status (2026-07-26):** 47 `Category=Security` cases are separately selectable
-and green. `AttackCoverage.md` maps covered and genuinely blocked claims; enumeration,
-HTTP lockout/admin unlock, API-key scopes, oversized-body policy, and the full-flow scalar
-log scan remain tied to missing §12/§27 production behavior.
+**Current status (2026-08-02):** the selectable security suite and `AttackCoverage.md` cover
+all cataloged claims, including input abuse, full-flow log redaction, TOTP/WebAuthn replay,
+refresh-resistant step-up and API-key denial. Staging deploys run ZAP against OpenAPI.
 
 ## Dependencies
 
@@ -65,4 +66,4 @@ Every §4 claim has a mapped green test; vulnerability gate active in CI.
 
 ## Questions for the Project Owner
 
-1. Add ZAP baseline scanning once a staging environment exists?
+1. ~~Add staging ZAP?~~ Implemented in `.github/workflows/deploy.yml`.

@@ -445,6 +445,9 @@ namespace Api.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz");
 
+                    b.Property<long?>("LastUsedTimeStep")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("SecretEncrypted")
                         .IsRequired()
                         .HasMaxLength(1024)

@@ -90,7 +90,10 @@ Architecture doc reviewed and approved by owner; interfaces compile; every §22 
 
 1. **`Configuration/CookieOptions.cs` is named `AuthCookieOptions.cs`.** `Microsoft.AspNetCore.Http.CookieOptions` already exists and is in scope through implicit usings, so the roadmap's name would collide on every file that touches both.
 
-2. **`ISigningKeyManager` exposes `SignAsync`, not a key accessor.** The roadmap did not specify the shape. Handing out an unprotected key would spread private material across components; keeping signing inside the manager means the eventual migration from Data Protection to a vault (P7) is a change in exactly one place — which is the containment `ADR-0020` relies on.
+2. **`ISigningKeyManager` exposes `SignAsync`, not a key accessor.** The roadmap did not
+   specify the shape. Handing out an unprotected key would spread private material across
+   components; keeping signing inside the manager let ADR-0027 add Key Vault wrapping at the
+   Data Protection registration boundary without changing signing call sites.
 
 3. **`amr` gained `google` and `github` values** beyond the roadmap's `pwd`/`otp`/`webauthn`/`recovery`, now that P12 names concrete providers. A session authenticated by social login is otherwise indistinguishable from a password login in the token.
 
@@ -107,4 +110,4 @@ Architecture doc reviewed and approved by owner; interfaces compile; every §22 
 2. ~~Google + GitHub as launch providers (P12)? Redirect-first social flow (P13)?~~ ✅ **Both yes** — `ADR-0019`.
 3. ~~Is the `X-Auth-Transport` header approach acceptable?~~ ✅ **Yes, the header stays.** ADR-0003's open note is closed.
 
-None outstanding.
+**Remaining:** formal owner sign-off on `Documentation/Architecture/Authentication.md`.

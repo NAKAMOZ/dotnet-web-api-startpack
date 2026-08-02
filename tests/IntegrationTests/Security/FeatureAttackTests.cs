@@ -158,6 +158,74 @@ public sealed class FeatureAttackTests(IntegrationTestFactory factory)
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
     }
 
+    [Fact]
+    public async Task RefreshAndApiKey_CannotBypassAdminMutationStepUp()
+    {
+        await factory.ResetAsync();
+        const string password = "V4lid!River-Stone-Cobalt-47";
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var adminId = await SeedUserAsync(
+            "step-up-admin@example.com",
+            password,
+            RoleSeed.AdminRoleId);
+        var targetId = await SeedUserAsync(
+            "step-up-target@example.com",
+            password,
+            RoleSeed.UserRoleId);
+        var client = factory.CreateClient();
+
+        var loginResponse = await client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new LoginRequest { Email = "step-up-admin@example.com", Password = password },
+            cancellationToken);
+        var login = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken);
+        Assert.NotNull(login?.AccessToken);
+        Assert.NotNull(login.RefreshToken);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        var apiKeyResponse = await client.PostAsJsonAsync(
+            "/api/v1/api-keys",
+            new CreateApiKeyRequest
+            {
+                Name = "cannot-step-up",
+                Scopes = [Permissions.UsersReadAny, Permissions.UsersWriteAny],
+            },
+            cancellationToken);
+        var apiKey = await apiKeyResponse.Content.ReadFromJsonAsync<CreateApiKeyResponse>(
+            cancellationToken);
+
+        factory.Clock.Advance(TimeSpan.FromMinutes(6));
+        client.DefaultRequestHeaders.Authorization = null;
+        var refreshedResponse = await client.PostAsJsonAsync(
+            "/api/v1/auth/refresh",
+            new RefreshRequest { RefreshToken = login.RefreshToken },
+            cancellationToken);
+        Assert.Equal(HttpStatusCode.OK, refreshedResponse.StatusCode);
+        var refreshed = await refreshedResponse.Content.ReadFromJsonAsync<TokenPairResponse>(cancellationToken);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", refreshed!.AccessToken);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync("/api/v1/admin/users", cancellationToken)).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.PatchAsJsonAsync(
+                $"/api/v1/admin/users/{targetId}",
+                new AdminUpdateUserRequest { DisplayName = "blocked" },
+                cancellationToken)).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("ApiKey", apiKey!.Key);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.PatchAsJsonAsync(
+                $"/api/v1/admin/users/{targetId}",
+                new AdminUpdateUserRequest { DisplayName = "also blocked" },
+                cancellationToken)).StatusCode);
+    }
+
     private async Task<Guid> SeedUserAsync(string email, string password, Guid roleId)
     {
         var userId = Guid.CreateVersion7();

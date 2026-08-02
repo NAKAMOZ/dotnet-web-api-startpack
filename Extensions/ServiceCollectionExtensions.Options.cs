@@ -41,13 +41,25 @@ public static partial class ServiceCollectionExtensions
         AddValidatedSection<TelemetryOptions, TelemetryOptionsValidator>(
             services,
             TelemetryOptions.SectionName);
+        AddValidatedSection<WebAuthnOptions, WebAuthnOptionsValidator>(
+            services,
+            WebAuthnOptions.SectionName);
+        AddValidatedSection<AzurePlatformOptions, AzurePlatformOptionsValidator>(
+            services,
+            AzurePlatformOptions.SectionName);
+        AddValidatedSection<RedisOptions, RedisOptionsValidator>(
+            services,
+            RedisOptions.SectionName);
+        AddValidatedSection<EmailOptions, EmailOptionsValidator>(
+            services,
+            EmailOptions.SectionName);
 
         // Data annotations carry the whole contract for these; no validator class needed.
         AddValidatedSection<PasswordHashingOptions>(services, PasswordHashingOptions.SectionName);
         AddValidatedSection<LockoutOptions>(services, LockoutOptions.SectionName);
         AddValidatedSection<RateLimitOptions>(services, RateLimitOptions.SectionName);
-        AddValidatedSection<EmailOptions>(services, EmailOptions.SectionName);
         AddValidatedSection<CleanupOptions>(services, CleanupOptions.SectionName);
+        AddValidatedSection<RequestSecurityOptions>(services, RequestSecurityOptions.SectionName);
 
         return services;
     }

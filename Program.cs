@@ -10,12 +10,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddValidatedOptions()
+    .AddDistributedRuntimeServices(builder.Configuration)
     .AddApiServices()
     .AddForwardedHeaderServices()
     .AddDataServices(builder.Configuration)
-    .AddAuthenticationServices()
+    .AddAuthenticationServices(builder.Configuration)
     .AddAuthorizationServices()
-    .AddDomainServices()
+    .AddDomainServices(builder.Configuration)
     .AddValidationServices()
     .AddObservabilityServices(builder.Configuration, builder.Environment);
 

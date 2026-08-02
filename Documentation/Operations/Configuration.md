@@ -5,9 +5,9 @@ Configuration precedence is the ASP.NET Core default:
 `appsettings.json` → `appsettings.{Environment}.json` → Development user-secrets →
 environment variables → command-line arguments.
 
-Committed settings contain safe defaults only. Development secrets use user-secrets;
-containers and current production planning use environment variables. P7/P14 still block a
-provider-specific vault choice.
+Committed settings contain safe defaults only. Development secrets use user-secrets. The
+Azure deployment uses Key Vault references and managed identity; environment variables carry
+references or platform-injected values, not committed secret material (ADR-0027).
 
 ## Required infrastructure
 
@@ -33,6 +33,9 @@ fails during host startup when any validated option is incomplete or inconsisten
 | `Session:RecentAuthenticationWindow` | duration / `00:05:00` | No | `Session__RecentAuthenticationWindow` |
 | `Session:MfaTicketLifetime` | duration / `00:05:00` | No | `Session__MfaTicketLifetime` |
 | `Session:WebAuthnChallengeLifetime` | duration / `00:05:00` | No | `Session__WebAuthnChallengeLifetime` |
+| `WebAuthn:ServerDomain` | DNS RP ID / `localhost` | No | `WebAuthn__ServerDomain` |
+| `WebAuthn:ServerName` | string / `dotnet-web-api-startpack` | No | `WebAuthn__ServerName` |
+| `WebAuthn:Origins` | exact origin array / localhost origins | No | `WebAuthn__Origins__0`, … |
 | `AuthCookies:AccessCookieName` | string / `__Host-auth.access` | No | `AuthCookies__AccessCookieName` |
 | `AuthCookies:RefreshCookieName` | string / `__Secure-auth.refresh` | No | `AuthCookies__RefreshCookieName` |
 | `AuthCookies:CsrfCookieName` | string / `__Host-auth.csrf` | No | `AuthCookies__CsrfCookieName` |
@@ -43,7 +46,8 @@ fails during host startup when any validated option is incomplete or inconsisten
 
 Cross-field rules pin ES256, require a retirement grace at least access lifetime plus
 clock skew, require inactivity shorter than the absolute cap, and enforce cookie prefixes
-and endpoint-scoped refresh paths.
+and endpoint-scoped refresh paths. WebAuthn origins must be on the RP domain (or a
+subdomain), and non-loopback origins must use HTTPS.
 
 ## Passwords, lockout, and abuse controls
 
@@ -71,9 +75,20 @@ and endpoint-scoped refresh paths.
 | `RateLimiting:GeneralPermitLimit` | int / `100` | No | `RateLimiting__GeneralPermitLimit` |
 | `RateLimiting:GeneralWindow` | duration / `00:01:00` | No | `RateLimiting__GeneralWindow` |
 | `RateLimiting:GeneralSegmentsPerWindow` | int / `6` | No | `RateLimiting__GeneralSegmentsPerWindow` |
+| `RequestSecurity:MaxRequestBodySizeBytes` | bytes / `65536` | No | `RequestSecurity__MaxRequestBodySizeBytes` |
+| `Redis:Enabled` | bool / `false` | No | `Redis__Enabled` |
+| `Redis:Endpoint` | host:port / unset | Access-key form can be secret | `Redis__Endpoint` |
+| `Redis:UseAzureIdentity` | bool / `false` | No | `Redis__UseAzureIdentity` |
+| `Redis:InstanceName` | string / `startpack:` | No | `Redis__InstanceName` |
+| `Redis:ConnectTimeoutMilliseconds` | int / `10000` | No | `Redis__ConnectTimeoutMilliseconds` |
 
 The password and machine-secret profiles are deliberately separate. See the Argon2 tuning
 procedure before changing either.
+
+When Redis is enabled it backs both HybridCache L2 and cluster-wide rate-limit counters.
+Every environment outside Development/Testing refuses Redis access-key mode:
+`UseAzureIdentity=true` is required whenever Redis is enabled. A disabled local Redis section
+preserves the correct single-process in-memory behavior.
 
 ## Email and social providers
 
@@ -112,15 +127,35 @@ provider HTTP calls and is ignored unless the host environment is Development.
 | `Telemetry:ServiceName` | string / `dotnet-web-api-startpack` | No | `Telemetry__ServiceName` |
 | `Telemetry:OtlpExporterEnabled` | bool / `false` | No | `Telemetry__OtlpExporterEnabled` |
 | `Telemetry:OtlpEndpoint` | absolute HTTP(S) URI / unset | No | `Telemetry__OtlpEndpoint` |
+| `Telemetry:AzureMonitorExporterEnabled` | bool / `false` | No | `Telemetry__AzureMonitorExporterEnabled` |
+| `Telemetry:AzureMonitorConnectionString` | connection string / unset | **Yes** | `Telemetry__AzureMonitorConnectionString` |
+| `Azure:DataProtectionKeyIdentifier` | versionless HTTPS Key Vault key URI / required in Production | No | `Azure__DataProtectionKeyIdentifier` |
+| `Azure:ManagedIdentityClientId` | GUID / unset uses system identity | No | `Azure__ManagedIdentityClientId` |
 
 CORS accepts exact HTTP(S) origins only. Wildcards, paths, query strings, and fragments
-fail startup. Cleanup options are bound now; the §12 maintenance worker remains pending.
+fail startup. Cleanup options drive the bounded maintenance worker.
 
 Production-like environments fail startup until forwarded headers are enabled with at least
 one exact proxy IP or CIDR. The framework defaults are cleared before this allowlist is
-applied; an empty list never means trust all. OTLP export is similarly fail-fast: enabling it
-without an absolute endpoint is invalid. Exporter authentication headers, if introduced by
-P10, are secrets even though the endpoint itself is not.
+applied; an empty list never means trust all. JWT/WebAuthn loopback identities and insecure or
+localhost SMTP are also rejected outside Development/Testing. Partial SMTP credentials fail
+in every environment. OTLP export is similarly fail-fast: enabling it
+without an absolute endpoint is invalid. Azure Monitor likewise requires its connection
+string when enabled. Staging and Production require a versionless Key Vault key URI so Data
+Protection keys cannot silently fall back to database-only protection.
+
+## Database deployment command
+
+The one-shot migration job supplies these command-only values:
+
+| Key | Purpose | Secret |
+|---|---|---:|
+| `DatabaseDeployment:RuntimeRole` | least-privilege PostgreSQL role to create/grant | No |
+| `DatabaseDeployment:RuntimePassword` | runtime role password | **Yes** |
+
+It invokes `operations migrate-database`, applies EF migrations with the administrator
+connection, then idempotently creates/grants the runtime role. The API container receives
+only the resulting runtime connection string.
 
 ## Secret channels
 
@@ -131,8 +166,9 @@ dotnet user-secrets set "ConnectionStrings:Postgres" "<local connection string>"
 dotnet user-secrets set "SocialProviders:Google:ClientSecret" "<secret>"
 ```
 
-Compose uses only the obvious fake password in `.env.example`; `.env` is ignored. Current
-production planning uses platform-injected environment variables. Never place a secret in
+Compose uses only the obvious fake password in `.env.example`; `.env` is ignored. Azure
+stores PostgreSQL, SMTP and Application Insights values in Key Vault and projects them as
+Container Apps secret references. GitHub deploys through OIDC. Never place a secret in
 an `appsettings*.json`, `.http`, workflow, Compose file, or command committed to Git.
 
 The CI pattern scan catches common private-key and provider-token formats. It is a tripwire,

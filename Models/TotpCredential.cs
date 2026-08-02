@@ -35,6 +35,14 @@ public sealed class TotpCredential : IAuditableEntity
     /// </remarks>
     public DateTimeOffset? ConfirmedAt { get; set; }
 
+    /// <summary>The highest TOTP time step successfully accepted for this credential.</summary>
+    /// <remarks>
+    /// Persisting the matched step makes a code single-use throughout its clock-skew window.
+    /// Verification advances it with a conditional database update, so concurrent submissions
+    /// of the same code have exactly one winner.
+    /// </remarks>
+    public long? LastUsedTimeStep { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

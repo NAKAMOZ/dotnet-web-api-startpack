@@ -18,7 +18,7 @@ OpenAPI generator configuration, document transformers, Scalar wiring, exposure 
 
 ## Technology Decisions Requiring Approval
 
-P16.
+P16 resolved by ADR-0031.
 
 ## Tasks
 
@@ -53,4 +53,4 @@ Scalar renders all endpoints with correct schemas, auth badges, and examples; sn
 
 ## Questions for the Project Owner
 
-1. Approve dev+staging-only exposure (P16)?
+1. ~~Approve dev+staging-only exposure?~~ Resolved by ADR-0031.

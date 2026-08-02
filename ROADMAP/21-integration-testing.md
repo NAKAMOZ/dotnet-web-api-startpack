@@ -21,8 +21,10 @@ None.
 
 ## Tasks
 
-- [🔄] Factory + fixtures (`IntegrationTests/Infrastructure/`): PostgreSQL 18 container lifecycle, migrations, Respawn, shared fake clock and bearer helpers are implemented. A capturing email sender remains open.
-- [ ] Flow suites (each its own file):
+- [x] Factory + fixtures (`IntegrationTests/Infrastructure/`): PostgreSQL 18 and Redis
+  containers, migrations, Respawn, shared fake clock, capturing email/log sinks, social HTTP
+  stub and software WebAuthn authenticator are implemented.
+- [x] Flow suites (each its own file):
   - Registration → verification email captured → confirm → `email_verified` claim true after next login.
   - Login/logout both transports; wrong password; lockout after 5; unlock by time advance.
   - Refresh rotation: happy chain; reuse of rotated token → 401 + session revoked + audit row; refresh after 6 h idle (time advance) → 401; refresh past absolute cap → 401.
@@ -38,17 +40,16 @@ None.
   - Cross-cutting: RFC 9457 envelope on representative errors (§13), security headers (§14), CSRF matrix (§14), rate-limit 429s (§17), JWKS serves active+retiring keys and rotation keeps old tokens valid until expiry.
   - `DocumentationSyncTests` (§19) and OpenAPI snapshot (§18).
 
-### Implementation status (2026-07-26)
+### Implementation status (2026-08-02)
 
-- 86 integration tests are green against the real pipeline; the PostgreSQL collection uses
-  one random-port Testcontainer and preserves migrations/reference roles across Respawn.
+- The complete suite is green against the real pipeline; PostgreSQL and Redis use pinned
+  random-port Testcontainers and migrations/reference roles survive Respawn.
 - Refresh rotation/replay, idle/absolute bounds, signing-key/JWKS lifecycle, health
   up/down probes,
   OpenAPI/docs sync, rate limits, headers, and authorization/CSRF matrices are executable.
-- Registration parity, login/refresh/replay, password-reset revocation, TOTP enrollment,
-  enumeration/lockout and API-key scope intersection are executable over HTTP. Social
-  provider, complete passkey ceremony and the full admin matrix still need dedicated
-  provider/authenticator fixtures.
+- Registration/email-confirm/login, password reset, both transports, TOTP and recovery MFA,
+  social callback/dedup/state replay, real ES256 WebAuthn ceremonies/counter replay, API-key
+  lifecycle and the full admin paging/filter/sort/role/session/audit matrix are executable.
 
 ## Expected Deliverables
 

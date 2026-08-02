@@ -42,6 +42,9 @@ Two failure modes to design against:
 |---|---|---|---|
 | `Npgsql.EntityFrameworkCore.PostgreSQL` | 10.0.3 | EF Core provider for PostgreSQL ([ADR-0008](ADR-0008-persistence-postgresql-efcore.md)) | PostgreSQL |
 | `Microsoft.EntityFrameworkCore.Design` | 10.0.10 | Migrations tooling — design-time only, not shipped | MIT |
+| `Microsoft.EntityFrameworkCore` | 10.0.10 | Central runtime alignment pin shared by the API and test projects | MIT |
+| `Microsoft.EntityFrameworkCore.Relational` | 10.0.10 | Central relational runtime alignment pin | MIT |
+| `Microsoft.EntityFrameworkCore.Abstractions` | 10.0.10 | Central EF abstractions alignment pin | MIT |
 
 **API — authentication and cryptography**
 
@@ -53,6 +56,9 @@ Two failure modes to design against:
 | `Isopoh.Cryptography.Argon2` | 2.0.0 | Argon2id password hashing ([ADR-0006](ADR-0006-password-hashing.md)) | **CC0-1.0** ⚠ |
 | `Otp.NET` | 1.4.1 | TOTP generation and validation for MFA | MIT ⚠ |
 | `Fido2.AspNet` | 4.0.1 | WebAuthn / passkey ceremonies | MIT |
+| `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` | 10.0.10 | Shared PostgreSQL Data Protection key ring ([ADR-0021](ADR-0021-data-protection-key-persistence.md)) | MIT |
+| `Azure.Extensions.AspNetCore.DataProtection.Keys` | 1.6.3 | Wraps the persisted key ring with Azure Key Vault ([ADR-0027](ADR-0027-azure-production-platform.md)) | MIT |
+| `Azure.Identity` | 1.21.0 | Managed-identity credentials for Key Vault and Azure Managed Redis | MIT |
 
 **API — validation, logging, caching**
 
@@ -61,7 +67,9 @@ Two failure modes to design against:
 | `FluentValidation` | 12.1.1 | Request validation ([ADR-0009](ADR-0009-validation-and-mapping.md)) | Apache-2.0 |
 | `FluentValidation.DependencyInjectionExtensions` | 12.1.1 | Validator registration in DI | Apache-2.0 |
 | `Serilog.AspNetCore` | 10.0.0 | Structured logging ([ADR-0010](ADR-0010-logging-serilog.md)); bundles the console sink | Apache-2.0 |
-| `Microsoft.Extensions.Caching.Hybrid` | 10.8.0 | `HybridCache`, in-memory ([ADR-0016](ADR-0016-caching-strategy.md)) | MIT |
+| `Microsoft.Extensions.Caching.Hybrid` | 10.8.0 | L1/L2 `HybridCache` ([ADR-0029](ADR-0029-distributed-redis-runtime-state.md)) | MIT |
+| `Microsoft.Extensions.Caching.StackExchangeRedis` | 10.0.10 | Redis-backed `IDistributedCache` for HybridCache L2 | MIT |
+| `Microsoft.Azure.StackExchangeRedis` | 3.2.0 | Entra/managed-identity Redis authentication and token refresh | MIT |
 
 **API — observability and health**
 
@@ -71,9 +79,10 @@ Two failure modes to design against:
 | `OpenTelemetry.Instrumentation.AspNetCore` | 1.17.0 | Inbound request traces and metrics | Apache-2.0 |
 | `OpenTelemetry.Instrumentation.Http` | 1.17.0 | Outbound HTTP traces (social provider calls) | Apache-2.0 |
 | `OpenTelemetry.Instrumentation.Runtime` | 1.17.0 | GC, thread-pool, exception counters | Apache-2.0 |
-| `OpenTelemetry.Exporter.OpenTelemetryProtocol` | 1.17.0 | OTLP export; backend still open (P10) | Apache-2.0 |
+| `OpenTelemetry.Exporter.OpenTelemetryProtocol` | 1.17.0 | Optional backend-neutral OTLP export | Apache-2.0 |
 | `Npgsql.OpenTelemetry` | 10.0.3 | Npgsql command tracing (§28); version-aligned with Npgsql | PostgreSQL |
 | `AspNetCore.HealthChecks.NpgSql` | 9.0.0 | Readiness probe against PostgreSQL | Apache-2.0 |
+| `Azure.Monitor.OpenTelemetry.Exporter` | 1.8.3 | Azure Monitor trace/metric exporter ([ADR-0028](ADR-0028-azure-monitor-backend.md)) | MIT |
 
 **Tests**
 
@@ -84,9 +93,11 @@ Two failure modes to design against:
 | `Microsoft.NET.Test.Sdk` | 18.8.1 | Test host and discovery | MIT |
 | `Microsoft.AspNetCore.Mvc.Testing` | 10.0.10 | `WebApplicationFactory` for integration tests | MIT |
 | `Testcontainers.PostgreSql` | 4.13.0 | Real PostgreSQL per test run | MIT |
+| `Testcontainers.Redis` | 4.13.0 | Real Redis for atomic distributed-counter tests | MIT |
 | `Microsoft.Extensions.TimeProvider.Testing` | 10.8.0 | `FakeTimeProvider` — session/token expiry without waiting | MIT |
 | `Respawn` | 7.0.0 | Database reset between tests | Apache-2.0 |
 | `NSubstitute` | 6.0.0 | Test doubles for service unit tests | BSD-3-Clause |
+| `coverlet.msbuild` | 10.0.1 | CI coverage collection and scoped coverage gates | MIT |
 
 **Transitive security pin**
 

@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Api.Configuration;
 using Api.Filters;
 using Api.Middleware;
+using Api.Services.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
@@ -17,8 +18,9 @@ public static partial class ServiceCollectionExtensions
         services.AddRateLimiter();
         services
             .AddOptions<Microsoft.AspNetCore.RateLimiting.RateLimiterOptions>()
-            .Configure<IOptions<RateLimitOptions>>((limiter, configured) =>
-                ConfigureRateLimiting(limiter, configured.Value));
+            .Configure<IOptions<RateLimitOptions>, IRateLimiterPartitionFactory>(
+                (limiter, configured, partitions) =>
+                    ConfigureRateLimiting(limiter, configured.Value, partitions));
 
         services.AddSingleton<EmailTargetRateLimitFilter>();
 
@@ -27,7 +29,8 @@ public static partial class ServiceCollectionExtensions
 
     private static void ConfigureRateLimiting(
         Microsoft.AspNetCore.RateLimiting.RateLimiterOptions limiter,
-        RateLimitOptions configured)
+        RateLimitOptions configured,
+        IRateLimiterPartitionFactory partitions)
     {
         limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         limiter.OnRejected = WriteRejectionAsync;
@@ -35,20 +38,23 @@ public static partial class ServiceCollectionExtensions
         // The general policy is the default: every endpoint is covered without relying on a
         // controller author to remember an attribute. Named policies below add tighter caps.
         limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-            RateLimitPartition.GetSlidingWindowLimiter(
-                GeneralPartitionKey(context),
-                _ => new SlidingWindowRateLimiterOptions
-                {
-                    AutoReplenishment = true,
-                    PermitLimit = configured.GeneralPermitLimit,
-                    QueueLimit = 0,
-                    SegmentsPerWindow = configured.GeneralSegmentsPerWindow,
-                    Window = configured.GeneralWindow,
-                }));
+        {
+            var partitionKey = GeneralPartitionKey(context);
+            return RateLimitPartition.Get(
+                partitionKey,
+                key => partitions.CreateSlidingWindow(
+                    RateLimitPolicies.General,
+                    key,
+                    configured.GeneralPermitLimit,
+                    configured.GeneralWindow,
+                    configured.GeneralSegmentsPerWindow));
+        });
 
         limiter.AddPolicy(
             RateLimitPolicies.AuthStrict,
             context => FixedWindowPartition(
+                partitions,
+                RateLimitPolicies.AuthStrict,
                 ClientIp(context),
                 configured.AuthStrictPermitLimit,
                 configured.AuthStrictWindow));
@@ -56,6 +62,8 @@ public static partial class ServiceCollectionExtensions
         limiter.AddPolicy(
             RateLimitPolicies.EmailSending,
             context => FixedWindowPartition(
+                partitions,
+                RateLimitPolicies.EmailSending,
                 ClientIp(context),
                 configured.EmailSendingIpPermitLimit,
                 configured.EmailSendingIpWindow));
@@ -63,24 +71,22 @@ public static partial class ServiceCollectionExtensions
         limiter.AddPolicy(
             RateLimitPolicies.Registration,
             context => FixedWindowPartition(
+                partitions,
+                RateLimitPolicies.Registration,
                 ClientIp(context),
                 configured.RegistrationPermitLimit,
                 configured.RegistrationWindow));
     }
 
     private static RateLimitPartition<string> FixedWindowPartition(
+        IRateLimiterPartitionFactory partitions,
+        string policy,
         string partitionKey,
         int permitLimit,
         TimeSpan window) =>
-        RateLimitPartition.GetFixedWindowLimiter(
+        RateLimitPartition.Get(
             partitionKey,
-            _ => new FixedWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = permitLimit,
-                QueueLimit = 0,
-                Window = window,
-            });
+            key => partitions.CreateFixedWindow(policy, key, permitLimit, window));
 
     private static async ValueTask WriteRejectionAsync(
         OnRejectedContext rejected,

@@ -5,6 +5,7 @@ using Api.Models;
 using Api.Models.Enums;
 using Api.Services.Audit;
 using Api.Services.Crypto;
+using Api.Services.Email;
 using Api.Services.Tokens;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,8 @@ public sealed class UserService(
     AppDbContext dbContext,
     IPasswordHasher passwordHasher,
     ISessionService sessionService,
-    IAuditLogger auditLogger) : IUserService
+    IAuditLogger auditLogger,
+    ISecurityNotificationService securityNotifications) : IUserService
 {
     public async Task<UserProfileResponse> GetProfileAsync(
         Guid userId,
@@ -93,6 +95,10 @@ public sealed class UserService(
             userId,
             new { RevokedSessions = revoked },
             cancellationToken);
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.PasswordChanged,
+            cancellationToken);
     }
 
     public async Task<IReadOnlyList<LinkedAccountResponse>> ListAccountsAsync(
@@ -136,6 +142,10 @@ public sealed class UserService(
 
         dbContext.Accounts.Remove(account);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.LinkedAccountRemoved,
+            cancellationToken);
     }
 
     private IQueryable<User> ProfileQuery() =>

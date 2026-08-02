@@ -21,6 +21,12 @@ dotnet tool restore     # once per clone — installs the pinned dotnet-ef (.con
 
 Startup fails with a named error when neither is present — a missing connection string should look like a missing connection string, not like a database outage on the first login.
 
+EF design-time commands use `AppDbContextDesignTimeFactory`. This prevents bundle and
+scaffold commands from executing `Program.cs`, starting hosted services, or attempting the
+Development database setup merely to inspect the model. The factory reads JSON,
+environment-specific JSON, user-secrets, environment variables and command-line values in
+that order, and keeps the migration history table in the `auth` schema.
+
 ---
 
 ## 1. Where the tables live
@@ -54,6 +60,9 @@ Review the generated SQL before committing, and read it for these specifically:
 - **`HasData` churn.** Seed rows should only appear in a migration when the seed actually changed. If they show up unprompted, something in `RoleSeed` stopped being deterministic — see §4.
 - **Cascade changes.** `ON DELETE` behaviour is a security control here (`DataAccess.md` §4).
 
+CI runs `dotnet ef migrations has-pending-model-changes`; changing the model without a
+matching migration and snapshot update is therefore a hard failure before bundle creation.
+
 Scaffolded files are exempt from the repository's code-style rules (`.editorconfig`, `[Data/Migrations/*.cs]`, `generated_code = true`). Without that exemption every generated migration fails the build on file-scoped-namespace and unused-using errors — and the hand-edits that fix it are lost on the next regeneration.
 
 ---
@@ -68,19 +77,25 @@ Automatic. `UseDatabaseSetupAsync` migrates and seeds at startup, **in Developme
 dotnet ef database update
 ```
 
-### Production — bundles, never the API process
+### Production — one-shot deployment job, never the API process
 
-CI builds a self-contained executable (§26); deployment runs it as a step before the new version starts (§27):
+CI still builds a self-contained bundle as a portable migration artifact. The Azure deploy
+runs the immutable application image in a manual Container Apps job before health-gating the
+new app revision (§27):
 
 ```bash
-dotnet ef migrations bundle --self-contained -r linux-x64 -o efbundle
-./efbundle --connection "$ConnectionStrings__Postgres"
+dotnet Api.dll operations migrate-database
 ```
+
+The job uses the administrator connection and `DatabaseDeployment__RuntimePassword`; it
+applies migrations and idempotently provisions/grants the DML-only runtime role. The runtime
+password is passed through parameterized transaction-local PostgreSQL settings and never
+concatenated into the SQL command text.
 
 **The API never auto-migrates outside Development.** Three reasons, in the order they bite:
 
 1. Multiple instances starting together race to apply the same migration.
-2. Auto-migration needs DDL rights on the runtime role — precisely the rights an application server should not hold. The bundle runs as a migration role; the API runs as a role with DML only.
+2. Auto-migration needs DDL rights on the runtime role — precisely the rights an application server should not hold. The job runs as an administrator; the API runs as a role with DML only.
 3. A migration that fails during startup leaves the schema half-changed with nobody watching, instead of failing a deploy step that can be stopped and rolled back.
 
 ---
@@ -216,6 +231,6 @@ Rules:
 - never combine an irreversible data deletion with the release that stops reading the data;
 - every migration PR states compatibility with the previous image and its abort point.
 
-The migration bundle runs before the new image. If it fails, traffic remains on the old image.
+The migration job runs before readiness is accepted. If it fails, the deployment stops.
 If the new image fails readiness, roll back the image and leave the additive migration in
 place. A destructive `Down()` is not an emergency rollback.

@@ -3,13 +3,19 @@ import { check } from 'k6';
 import {
   adoptTokens,
   checkFloor,
-  currentTokens,
+  createTokenPool,
   defaultHeaders,
   login as postLogin,
+  parseTokens,
   routes,
   thresholds,
   url,
 } from './config.js';
+
+const loginMaxVUs = Number(__ENV.MIXED_LOGIN_MAX_VUS || 100);
+const refreshMaxVUs = Number(__ENV.MIXED_REFRESH_MAX_VUS || 200);
+const meMaxVUs = Number(__ENV.MIXED_ME_MAX_VUS || 300);
+const totalMaxVUs = loginMaxVUs + refreshMaxVUs + meMaxVUs;
 
 export const options = {
   scenarios: {
@@ -20,7 +26,7 @@ export const options = {
       timeUnit: '1s',
       duration: __ENV.DURATION || '5m',
       preAllocatedVUs: 20,
-      maxVUs: 100,
+      maxVUs: loginMaxVUs,
     },
     refresh: {
       executor: 'constant-arrival-rate',
@@ -29,7 +35,7 @@ export const options = {
       timeUnit: '1s',
       duration: __ENV.DURATION || '5m',
       preAllocatedVUs: 40,
-      maxVUs: 200,
+      maxVUs: refreshMaxVUs,
     },
     me: {
       executor: 'constant-arrival-rate',
@@ -38,7 +44,7 @@ export const options = {
       timeUnit: '1s',
       duration: __ENV.DURATION || '5m',
       preAllocatedVUs: 50,
-      maxVUs: 300,
+      maxVUs: meMaxVUs,
     },
   },
   thresholds: {
@@ -47,27 +53,49 @@ export const options = {
     ...thresholds.me,
     ...checkFloor,
   },
+  setupTimeout: '10m',
 };
+
+export function setup() {
+  const profileTokens = parseTokens(postLogin('setup'));
+  if (!profileTokens.accessToken) {
+    throw new Error('Mixed scenario setup login failed.');
+  }
+
+  // k6 assigns __VU globally across all concurrent scenarios. Preparing the total maximum
+  // makes every possible refresh VU index safe without sharing a rotating token.
+  return {
+    profileTokens,
+    refreshTokenPool: createTokenPool(totalMaxVUs),
+  };
+}
+
+let refreshTokens;
 
 export function login() {
   check(postLogin('login'), { 'login completed': (result) => result.status === 200 });
 }
 
-export function refresh() {
+export function refresh(data) {
+  refreshTokens ||= data.refreshTokenPool[__VU - 1];
+  if (!refreshTokens?.refreshToken) {
+    throw new Error(`No mixed refresh session was prepared for VU ${__VU}.`);
+  }
+
   const response = http.post(
     url(routes.refresh),
-    JSON.stringify({ refreshToken: currentTokens().refreshToken }),
+    JSON.stringify({ refreshToken: refreshTokens.refreshToken }),
     { headers: defaultHeaders, tags: { operation: 'refresh' } },
   );
 
-  adoptTokens(response);
+  refreshTokens = adoptTokens(response);
 
   check(response, { 'refresh rotated': (result) => result.status === 200 });
 }
 
-export function me() {
+export function me(data) {
   const response = http.get(url(routes.me), {
-    headers: { Authorization: `Bearer ${currentTokens().accessToken}` },
+    headers: { Authorization: `Bearer ${data.profileTokens.accessToken}` },
     tags: { operation: 'me' },
   });
 

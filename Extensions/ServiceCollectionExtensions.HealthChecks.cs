@@ -1,3 +1,4 @@
+using Api.Configuration;
 using Api.Health;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -16,7 +17,7 @@ public static partial class ServiceCollectionExtensions
         // Singleton so the migrations check can remember its answer between probes.
         services.AddSingleton<PostgresHealthCheck>();
 
-        services
+        var checks = services
             .AddHealthChecks()
             .AddCheck(
                 "self",
@@ -33,6 +34,18 @@ public static partial class ServiceCollectionExtensions
                 failureStatus: HealthStatus.Unhealthy,
                 tags: ["ready"],
                 timeout: TimeSpan.FromSeconds(5));
+
+        var redis = configuration
+            .GetSection(RedisOptions.SectionName)
+            .Get<RedisOptions>() ?? new RedisOptions();
+        if (redis.Enabled)
+        {
+            checks.AddCheck<RedisHealthCheck>(
+                "redis",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["ready"],
+                timeout: TimeSpan.FromSeconds(5));
+        }
 
         return services;
     }

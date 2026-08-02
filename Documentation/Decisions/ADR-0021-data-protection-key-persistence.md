@@ -1,6 +1,6 @@
 # ADR-0021: Data Protection Key Ring Persisted to the Database
 
-- **Status:** Accepted
+- **Status:** Superseded in production by ADR-0027; PostgreSQL persistence remains
 - **Date:** 2026-07-23
 - **Deciders:** Project owner
 - **Source:** Closes the persistence consequence left open by [ADR-0020](ADR-0020-signing-key-storage.md); §16 task 3.
@@ -43,7 +43,9 @@ Adding the package is the ADR-required event under [ADR-0013](ADR-0013-package-m
 
 **`PersistKeysToFileSystem` on a mounted volume.** No new package. Rejected because it moves the requirement into infrastructure that this repository cannot assert: a missing volume mount produces the exact ephemeral-ring failure above, silently, and the only place it would be caught is production. The database is already a hard dependency with a backup story; the key ring inherits it.
 
-**A cloud KMS or vault now.** The intended destination, still blocked by P7 and P14 — the same reasoning as ADR-0020. When either resolves, that ADR and this one are superseded together.
+**A cloud KMS or vault now.** This was blocked by P7/P14 when the ADR was written. Both were
+later resolved by ADR-0027, which keeps PostgreSQL persistence and wraps the ring with a
+versionless Azure Key Vault key.
 
 **Encrypting the ring at rest with `ProtectKeysWith*`.** Deferred, not rejected. Every option is host-specific (DPAPI, X.509 certificate, Azure Key Vault), so choosing one is choosing a deployment target. Recorded below as an accepted, named gap.
 
@@ -52,7 +54,9 @@ Adding the package is the ADR-required event under [ADR-0013](ADR-0013-package-m
 ## Consequences
 
 - **The protected material and its protector share one database.** A full database compromise yields both, so Data Protection is not defence against that — it defends against a leaked backup of the `SigningKey` table alone, an over-broad read grant, or a query log. §27 must still keep the two in different backup/restore trust boundaries if that stays unacceptable, and that is the successor decision, not this one.
-- **The key ring is unencrypted at rest in the `DataProtectionKeys` table.** `ProtectKeysWith*` is deferred with P14. This is the single largest known gap in §16 and is recorded as such in `Documentation/Security/ASVS-Checklist.md` with an owner, not left implicit.
+- The original unwrapped database ring was an explicit gap. Production now calls
+  `ProtectKeysWithAzureKeyVault` and fails startup without a versionless Key Vault key URI;
+  local development intentionally retains database-only persistence.
 - The runtime database role now needs read **and write** on `auth."DataProtectionKeys"` — Data Protection creates a new key when the current one nears expiry, at runtime, without a migration. A read-only grant produces an outage 90 days after deployment rather than at deploy time.
 - Migrations must be applied before the first protect/unprotect call. Development migrates at startup (`UseDatabaseSetupAsync`); production applies the bundle as a deploy step. Both already order correctly.
 - Losing this table is equivalent to losing the ring: recovery is signing-key rotation plus mass re-authentication, as ADR-0020 states. It is now covered by the ordinary database backup, which is the point.

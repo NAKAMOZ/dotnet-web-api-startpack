@@ -26,13 +26,6 @@ with versioned database assignments and an invalidation strategy. Preserve deny-
 validate unknown permissions, audit every mutation and define how already-issued JWT role
 claims converge after a change.
 
-## Redis scale-out
-
-**Trigger:** a second simultaneously active API node. Add Redis as the HybridCache backplane
-and move rate-limit counters to a distributed algorithm before claiming cluster-wide limits.
-Define fail-open/fail-closed behavior per feature, TLS/authentication, key prefixes, eviction,
-clock behavior and an outage test. Session/token truth remains PostgreSQL.
-
 ## SPA-driven PKCE social flow
 
 **Trigger:** a browser SPA must own redirect initiation. Add authorization-code + PKCE state
@@ -76,9 +69,7 @@ across supported browsers.
 
 ## Additional candidates
 
-- Vault/KMS-backed Data Protection and signing operations when P7/P14 select a platform.
-- Background cleanup for expired sessions/tokens and 90-day audit retention (§12).
-- A staging DAST/ZAP gate once a public staging target exists.
+- Stable fine-grained Azure Managed Redis ACLs when the custom-access-string API leaves preview.
 - Regional/multi-primary data design only after measured availability requirements justify
   its consistency and key-management cost.
 

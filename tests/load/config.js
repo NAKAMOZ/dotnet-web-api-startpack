@@ -47,31 +47,42 @@ export function login(operation) {
   });
 }
 
-// Per-VU token cache: k6 instantiates the module graph once per VU, so this holds exactly
-// the same scope a `let` in each scenario file did.
-let tokens = {};
-
 /**
- * The tokens for this VU, logging in once if it does not have them yet. The bootstrap login
- * is tagged `setup` so it stays out of the `login` scenario's own thresholds.
+ * Creates independent sessions before a rotation scenario starts. Batching four logins at
+ * a time bounds Argon2 memory to roughly 256 MiB while keeping setup reasonably short.
+ * Setup traffic is tagged out of endpoint thresholds.
  */
-export function currentTokens() {
-  if (!tokens.accessToken || !tokens.refreshToken) {
-    tokens = parseTokens(login('setup'));
+export function createTokenPool(size) {
+  const tokens = [];
+  const batchSize = 4;
+
+  for (let offset = 0; offset < size; offset += batchSize) {
+    const count = Math.min(batchSize, size - offset);
+    const responses = http.batch(
+      Array.from({ length: count }, () => ({
+        method: 'POST',
+        url: url(routes.login),
+        body: loginBody(),
+        params: { headers: defaultHeaders, tags: { operation: 'setup' } },
+      })),
+    );
+
+    for (const response of responses) {
+      const issued = parseTokens(response);
+      if (!issued.refreshToken) {
+        throw new Error('Token-pool setup login failed.');
+      }
+
+      tokens.push(issued);
+    }
   }
 
   return tokens;
 }
 
-/** Adopts a rotation's tokens. Ignores a failed rotation, leaving the cache as it was. */
+/** Parses a rotation response. Each scenario owns its own per-VU token variable. */
 export function adoptTokens(response) {
-  const rotated = parseTokens(response);
-
-  if (rotated.refreshToken) {
-    tokens = rotated;
-  }
-
-  return rotated;
+  return parseTokens(response);
 }
 
 export const thresholds = {

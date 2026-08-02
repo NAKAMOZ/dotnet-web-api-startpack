@@ -101,12 +101,13 @@ PostgreSQL integration suites are green.
   `{"kty":"EC","use":"sig","alg":"ES256","kid":"3-b1sPZ9…","crv":"P-256","x":"…","y":"…"}` — public components only, no `d`.
 - The key row exists in `auth."SigningKeys"` with a 368-character Data-Protection-wrapped private key and a 124-character public SPKI. Private material never leaves `SigningKeyManager`.
 - Deny-by-default is live: `/api/v1/sessions` → 401, `/api/v1/admin/users` → 401, unknown path → 401, `/openapi/v1.json` → 200.
-- 296 tests green (210 unit + 86 integration), including hasher round-trip,
+- 379 tests green (274 unit + 105 integration), including hasher round-trip,
   re-hash-on-cost-increase, corrupt-hash rejection, profile separation, token
   entropy/uniqueness/URL-safety, and the composed feature flows.
 
-The integration suite demonstrates registration parity, login → refresh → replay,
-password-reset revocation and TOTP enrollment against PostgreSQL.
+The integration suite demonstrates complete email, cookie, login/refresh/replay,
+password-reset, TOTP/recovery, WebAuthn, social, admin, Redis and deployment flows against
+real PostgreSQL/Redis dependencies.
 
 ## Questions for the Project Owner
 

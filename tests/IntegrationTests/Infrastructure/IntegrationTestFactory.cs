@@ -2,6 +2,7 @@ using Api.BackgroundServices;
 using Api.Data;
 using Api.Models;
 using Api.Models.Enums;
+using Api.Services.Email;
 using Api.Services.Tokens;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 using Respawn;
 using Respawn.Graph;
+using Serilog.Core;
 using Testcontainers.PostgreSql;
 
 namespace IntegrationTests.Infrastructure;
@@ -34,6 +36,10 @@ public sealed class IntegrationTestFactory : WebApplicationFactory<Program>, IAs
     private Respawner? _respawner;
 
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
+
+    public CollectingLogSink LogSink { get; } = new();
+
+    public CapturingEmailSender EmailSender { get; } = new();
 
     /// <summary>
     /// A container matching the fixture's own, for the rare test that needs to break one.
@@ -184,9 +190,25 @@ public sealed class IntegrationTestFactory : WebApplicationFactory<Program>, IAs
         builder.UseSetting("RateLimiting:EmailSendingIpPermitLimit", "10000");
         builder.UseSetting("RateLimiting:EmailSendingAccountPermitLimit", "10000");
         builder.UseSetting("RateLimiting:RegistrationPermitLimit", "10000");
+        builder.UseSetting("SocialProviders:Google:Enabled", "true");
+        builder.UseSetting("SocialProviders:Google:ClientId", "integration-client");
+        builder.UseSetting("SocialProviders:Google:ClientSecret", "integration-secret");
 
         builder.ConfigureTestServices(services =>
         {
+            services.AddSingleton<ILogEventSink>(LogSink);
+            services.RemoveAll<IHttpClientFactory>();
+            services.AddSingleton<IHttpClientFactory, StubSocialHttpClientFactory>();
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(EmailSender);
+
+            // The SMTP sender is registered as a factory-backed hosted service. Tests own
+            // delivery through CapturingEmailSender and must never attempt network SMTP.
+            var smtpHostedRegistration = services.Single(descriptor =>
+                descriptor.ServiceType == typeof(IHostedService)
+                && descriptor.ImplementationFactory is not null);
+            services.Remove(smtpHostedRegistration);
+
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
 

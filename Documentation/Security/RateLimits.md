@@ -1,8 +1,9 @@
 # Rate limits
 
-All limits are configured under `RateLimiting` and use ASP.NET Core's in-memory rate-limiter
-primitives. Queues are disabled: excess work is rejected immediately with RFC 9457
-`rate_limited`, status `429`, and `Retry-After`.
+All limits are configured under `RateLimiting`. Local single-process development uses
+ASP.NET Core's in-memory primitives. When `Redis:Enabled=true`, the same policies use atomic
+Redis fixed/segmented-sliding windows shared by every replica. Queues are disabled: excess
+work is rejected immediately with RFC 9457 `rate_limited`, status `429`, and `Retry-After`.
 
 | Policy | Endpoints | Partition | Default |
 |---|---|---|---|
@@ -23,6 +24,10 @@ must configure forwarded headers with known proxies (§27) before rate limiting;
 traffic behind a proxy intentionally shares the proxy's partition instead of accepting
 caller-forged addresses.
 
-The store is process-local. These limits are correct for the approved single-node deployment.
-A multi-node deployment must replace them with a distributed limiter before scale-out, or
-each node independently grants the full allowance.
+Redis decisions run as Lua scripts, use Redis server time for sliding segments, and store
+only SHA-256 partition digests. A wrapper can be evicted from a process without resetting its
+authoritative counter. Redis is a readiness dependency in distributed mode and there is no
+silent fallback to per-process allowances: an unavailable store fails requests/traffic
+readiness instead of multiplying an attacker's budget. Concurrency integration tests prove
+that 100 simultaneous callers and two independent store instances cannot exceed one shared
+limit.

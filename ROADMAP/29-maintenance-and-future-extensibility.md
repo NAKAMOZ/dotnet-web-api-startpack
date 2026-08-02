@@ -26,7 +26,6 @@ None now; each backlog item re-enters the consultation process (per the project'
   - Organizations / multi-tenancy (owner-excluded from v1): org + membership entities, org-scoped roles, invitation flow.
   - M2M client-credentials flow (owner-excluded from v1): client registry, `client_credentials` grant, service tokens.
   - DB-driven permissions (replaces static map, §5) when roles need runtime editing.
-  - Redis scale-out (P5/P6): distributed HybridCache backplane + rate-limit counters — trigger: second app node.
   - SPA-driven PKCE social flow (P13 deferred half).
   - `Idempotency-Key` support (§13) — trigger: any billing-like endpoint.
   - Automated key-rotation `BackgroundService`.
@@ -34,10 +33,10 @@ None now; each backlog item re-enters the consultation process (per the project'
   - SCIM provisioning; WebAuthn conditional UI (passkey autofill) notes.
 - [x] `Documentation/Operations/V1Closeout.md`: executable end-of-v1 review checklist covering §22, §23, ASVS, backup/restore, runbook rehearsal, delivery evidence and roadmap archive.
 
-**Current status (2026-07-26):** all three maintenance/close-out artifacts are written and
-the key manager has operator commands for healthy rotate/retire cadence. Approval, backlog
-grooming and execution of the v1 close-out checklist necessarily wait for feature completion,
-P7/P10/P14 and the project owner; the DoD is not yet claimed.
+**Current status (2026-08-02):** all three maintenance/close-out artifacts are written and
+the key manager has operator commands for healthy rotate/retire cadence. The previously
+promoted Redis, vault, monitoring and deployment work is implemented. Owner backlog grooming,
+formal review, real-environment rehearsal and release sign-off remain before archive.
 
 ## Expected Deliverables
 

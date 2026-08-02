@@ -10,14 +10,16 @@ Health endpoints, OpenTelemetry traces + metrics, custom auth metrics, alert cat
 
 ## Architectural Decisions
 
-- Health: `/health/live` (process up, no dependencies) and `/health/ready` (PostgreSQL reachable via `AspNetCore.HealthChecks.NpgSql`, pending-migrations check) — the split matters for orchestrator restarts vs traffic gating.
-- OpenTelemetry: ASP.NET Core + HttpClient + Npgsql instrumentation; OTLP exporter, backend per P10; correlation ID attached as span attribute (bridges Serilog and traces).
+- Health: `/health/live` (process up, no dependencies) and `/health/ready` (PostgreSQL,
+  migrations and enabled Redis) — the split matters for orchestrator restarts vs traffic gating.
+- OpenTelemetry: ASP.NET Core + HttpClient + Npgsql instrumentation; Azure Monitor production
+  exporter plus optional OTLP; correlation ID attached as a span attribute.
 - Custom metrics via `System.Diagnostics.Metrics` in `Services/` (a shared `AuthMetrics` meter class in `Logging/`): `auth.logins` (counter, tag `result`), `auth.refreshes` (tag `result`), `auth.reuse_detections`, `auth.lockouts`, `auth.mfa_challenges` (tag `result`), `auth.active_sessions` (observable gauge), `auth.password_hash_duration` (histogram — silent Argon2 drift detector).
 - Alert catalog (backend-agnostic thresholds documented): reuse-detection spike (>0 sustained), login-failure ratio surge, lockout surge, readiness flapping, hash-duration p95 drift.
 
 ## Technology Decisions Requiring Approval
 
-P10 (export backend).
+P10 resolved by ADR-0028.
 
 ## Tasks
 
@@ -26,10 +28,9 @@ P10 (export backend).
 - [x] `Logging/AuthMetrics.cs` + instrumentation: refresh, reuse, lockout, active-session, Argon2, login and MFA points are wired with low-cardinality result tags.
 - [x] `Documentation/Operations/Monitoring.md`: signal/metric catalog, health contract, alert thresholds, dashboard sketch and backend-neutral local collector procedure.
 
-**Current status (2026-07-26):** health dependency failure is container-tested; the metric
-catalog has a `MeterListener` assertion; the pinned local collector received service/resource
-attributes, correlated ASP.NET spans, Npgsql traces/metrics and `auth.active_sessions` over
-OTLP. P10 still blocks production backend/retention/on-call acceptance. The DoD is not yet claimed.
+**Current status (2026-08-02):** PostgreSQL/Redis readiness, metric catalog and local OTLP
+acceptance are covered. Azure Monitor resources/export are implemented; dashboard/alert
+ownership and on-call routing remain first-deployment operational evidence.
 
 ## Expected Deliverables
 
@@ -59,4 +60,4 @@ Health gates work under dependency failure; all cataloged metrics observable in 
 
 ## Questions for the Project Owner
 
-1. Observability backend preference (P10) — existing stack (Grafana/Datadog/other) to integrate with?
+1. ~~Observability backend?~~ Azure Monitor selected in ADR-0028; OTLP remains optional.

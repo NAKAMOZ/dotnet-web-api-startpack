@@ -11,7 +11,7 @@ public sealed class OptionsValidationTests
     [Fact]
     public void Jwt_GraceShorterThanTokenLifetime_IsRejected()
     {
-        var result = new JwtOptionsValidator().Validate(
+        var result = new JwtOptionsValidator(Environment(Environments.Development)).Validate(
             null,
             new JwtOptions
             {
@@ -29,7 +29,7 @@ public sealed class OptionsValidationTests
     [Fact]
     public void Jwt_AlgorithmOtherThanEs256_IsRejected()
     {
-        var result = new JwtOptionsValidator().Validate(
+        var result = new JwtOptionsValidator(Environment(Environments.Development)).Validate(
             null,
             new JwtOptions
             {
@@ -180,9 +180,130 @@ public sealed class OptionsValidationTests
     }
 
     [Fact]
+    public void Telemetry_AzureMonitorWithoutConnectionString_IsRejected()
+    {
+        var result = new TelemetryOptionsValidator().Validate(
+            null,
+            new TelemetryOptions { AzureMonitorExporterEnabled = true });
+
+        OptionsAssert.Failed(result);
+        Assert.Contains("AzureMonitorConnectionString", result.FailureMessage);
+    }
+
+    [Fact]
+    public void WebAuthn_CrossDomainOrInsecureOrigin_IsRejected()
+    {
+        var validator = new WebAuthnOptionsValidator(Environment(Environments.Development));
+
+        OptionsAssert.Failed(validator.Validate(
+            null,
+            new WebAuthnOptions
+            {
+                ServerDomain = "auth.example.com",
+                Origins = ["https://attacker.example"],
+            }));
+        OptionsAssert.Failed(validator.Validate(
+            null,
+            new WebAuthnOptions
+            {
+                ServerDomain = "auth.example.com",
+                Origins = ["http://auth.example.com"],
+            }));
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public void AzurePlatform_ProductionLikeRequiresVersionlessKeyVaultKey(string environmentName)
+    {
+        var validator = new AzurePlatformOptionsValidator(Environment(environmentName));
+
+        OptionsAssert.Failed(validator.Validate(null, new AzurePlatformOptions()));
+        OptionsAssert.Failed(validator.Validate(
+            null,
+            new AzurePlatformOptions
+            {
+                DataProtectionKeyIdentifier = new Uri(
+                    "https://vault.vault.azure.net/keys/data-protection/version"),
+            }));
+        OptionsAssert.Succeeded(validator.Validate(
+            null,
+            new AzurePlatformOptions
+            {
+                DataProtectionKeyIdentifier = new Uri(
+                    "https://vault.vault.azure.net/keys/data-protection"),
+            }));
+    }
+
+    [Fact]
+    public void Redis_EnabledWithoutEndpointOrProductionIdentity_IsRejected()
+    {
+        var development = new RedisOptionsValidator(Environment(Environments.Development));
+        var production = new RedisOptionsValidator(Environment(Environments.Production));
+
+        OptionsAssert.Failed(development.Validate(null, new RedisOptions { Enabled = true }));
+        OptionsAssert.Failed(production.Validate(
+            null,
+            new RedisOptions
+            {
+                Enabled = true,
+                Endpoint = "cache.example:10000",
+            }));
+        OptionsAssert.Succeeded(production.Validate(
+            null,
+            new RedisOptions
+            {
+                Enabled = true,
+                Endpoint = "cache.example:10000",
+                UseAzureIdentity = true,
+            }));
+    }
+
+    [Fact]
+    public void ProductionLike_RejectsLoopbackJwtAndWebAuthnSettings()
+    {
+        var staging = Environment("Staging");
+
+        OptionsAssert.Failed(new JwtOptionsValidator(staging).Validate(
+            null,
+            new JwtOptions
+            {
+                Issuer = "https://localhost:7052",
+                Audience = "api",
+            }));
+        OptionsAssert.Failed(new WebAuthnOptionsValidator(staging).Validate(
+            null,
+            new WebAuthnOptions()));
+    }
+
+    [Fact]
+    public void Email_PartialCredentialsOrInsecureProductionLikeSmtp_AreRejected()
+    {
+        var development = new EmailOptionsValidator(Environment(Environments.Development));
+        var staging = new EmailOptionsValidator(Environment("Staging"));
+
+        OptionsAssert.Failed(development.Validate(
+            null,
+            new EmailOptions { Username = "smtp-user" }));
+        OptionsAssert.Failed(staging.Validate(null, new EmailOptions()));
+        OptionsAssert.Succeeded(staging.Validate(
+            null,
+            new EmailOptions
+            {
+                Host = "smtp.example.com",
+                Port = 587,
+                FromAddress = "auth@example.com",
+                UseTls = true,
+                Username = "smtp-user",
+                Password = "smtp-password",
+            }));
+    }
+
+    [Fact]
     public void CrossFieldDefaults_AreValid()
     {
-        OptionsAssert.Succeeded(new JwtOptionsValidator().Validate(
+        var development = Environment(Environments.Development);
+        OptionsAssert.Succeeded(new JwtOptionsValidator(development).Validate(
             null,
             new JwtOptions
             {
@@ -190,7 +311,6 @@ public sealed class OptionsValidationTests
                 Audience = "api",
             }));
         OptionsAssert.Succeeded(SessionValidator().Validate(null, new AuthSessionOptions()));
-        var development = Environment(Environments.Development);
         OptionsAssert.Succeeded(new AuthCookieOptionsValidator(development).Validate(
             null,
             new AuthCookieOptions()));
@@ -200,6 +320,18 @@ public sealed class OptionsValidationTests
             null,
             new ReverseProxyOptions()));
         OptionsAssert.Succeeded(new TelemetryOptionsValidator().Validate(null, new TelemetryOptions()));
+        OptionsAssert.Succeeded(new WebAuthnOptionsValidator(development).Validate(
+            null,
+            new WebAuthnOptions()));
+        OptionsAssert.Succeeded(new AzurePlatformOptionsValidator(development).Validate(
+            null,
+            new AzurePlatformOptions()));
+        OptionsAssert.Succeeded(new RedisOptionsValidator(development).Validate(
+            null,
+            new RedisOptions()));
+        OptionsAssert.Succeeded(new EmailOptionsValidator(development).Validate(
+            null,
+            new EmailOptions()));
     }
 
     private static IHostEnvironment Environment(string environmentName)

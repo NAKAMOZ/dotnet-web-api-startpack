@@ -37,6 +37,9 @@ public static class ErrorCodes
     /// <summary>Body could not be parsed, or a value could not be bound to its type.</summary>
     public const string MalformedRequest = "malformed_request";
 
+    /// <summary>Request body exceeded the configured parser/resource bound.</summary>
+    public const string PayloadTooLarge = "payload_too_large";
+
     /// <summary>
     /// A cookie-authenticated state-changing request arrived without a valid CSRF token (§14).
     /// </summary>

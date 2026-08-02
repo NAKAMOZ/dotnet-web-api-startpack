@@ -1,6 +1,7 @@
 # Authentication and Token Architecture
 
-**Status:** Approved 2026-07-22 · **Workstream:** §4 · **Implemented by:** §6 (entities), §12 (services)
+**Status:** Implemented and security-reviewed; formal owner sign-off pending ·
+**Workstream:** §4 · **Implemented by:** §6 (entities), §12 (services)
 
 The complete token lifecycle — issuance, validation, rotation, reuse detection, revocation, key rotation, and transport. This document is the single source of truth for how authentication works; endpoint documentation (§19) links here rather than restating it.
 

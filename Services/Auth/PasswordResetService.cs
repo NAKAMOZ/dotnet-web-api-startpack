@@ -18,6 +18,7 @@ public sealed class PasswordResetService(
     ISessionService sessionService,
     IEmailSender emailSender,
     IEmailTemplateRenderer templates,
+    ISecurityNotificationService securityNotifications,
     IAuditLogger auditLogger,
     TimeProvider timeProvider) : IPasswordResetService
 {
@@ -102,6 +103,10 @@ public sealed class PasswordResetService(
             AuditEventType.PasswordResetCompleted,
             userId,
             cancellationToken: cancellationToken);
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.PasswordReset,
+            cancellationToken);
 
         if (revoked > 0)
         {

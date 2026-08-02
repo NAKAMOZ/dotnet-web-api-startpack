@@ -36,7 +36,11 @@ Serilog configuration, enrichment, redaction rules, `IAuditLogger` + event catal
 - **Correlation id reaches log events through an enricher, not a `LogContext` push in §14's middleware.** Its sibling `UserIdEnricher` cannot be a push (the user id does not exist five stages above authentication), and one pushed property beside one enriched property reads like a defect.
 - **`Logging/SensitiveFieldNames.cs` is shared with the audit path.** The audit table's `Metadata` column is durable, exempt from log rotation and readable over HTTP — two copies of the never-logged list would agree until one was extended.
 - **`admin_user_deleted` is not wired through `AuditActionFilter`.** `AuditLogEntry.UserId` is a foreign key; the filter runs after the action, when the referenced user no longer exists, so the insert would violate the constraint. §12's deletion service records it with a null subject.
-- **No `admin_user_updated` event.** `PATCH /admin/users/{userId}` produces no row: the catalog is closed and has no member for it. Flagged for the owner rather than invented — see `AuditTrail.md` §8.
+- **`admin_user_updated` was added to the closed catalog.** `PATCH /admin/users/{userId}`
+  now emits a durable row and is covered by the enum/catalog guard and admin flow test.
+- **Audit-storage failure does not roll back a separately committed domain mutation.** The
+  singleton logger emits a structured Critical event without metadata/secrets. Unit coverage
+  pins this behavior so a database fault is visible without falsely claiming transactionality.
 
 ## Expected Deliverables
 
@@ -65,5 +69,6 @@ Full login→refresh→revoke flow produces the expected audit sequence; redacti
 ## Questions for the Project Owner
 
 1. ~~Approve 90-day audit retention (P18)?~~ — approved 2026-07-23.
-2. `PATCH /api/v1/admin/users/{userId}` changes an account and produces no audit row, because the catalog has no `admin_user_updated` member. Add one, or accept the gap?
-3. `AuditLogger.HandleWriteFailure` is unimplemented pending a decision: when the audit row cannot be written, does the request still succeed?
+2. ~~Admin update audit gap?~~ Resolved 2026-08-02: `admin_user_updated` added.
+3. ~~Audit write failure behavior?~~ Resolved 2026-08-02: domain result stands; a
+   metadata-free Critical structured event is emitted.

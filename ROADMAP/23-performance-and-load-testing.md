@@ -23,7 +23,10 @@ P15 (k6); budget numbers.
 - [x] `tests/load/` k6 scripts: `login.js`, `refresh.js`, `me.js`, `mixed.js` (realistic mix), with shared config + thresholds encoding the budgets.
 - [x] `tests/load/README.md`: how to run against compose/staging, interpreting thresholds.
 - [x] Argon2id tuning script (`tests/load/tune-argon2.md` procedure + a small harness in `UnitTests` benchmarking hash time on the current machine).
-- [ ] Record baseline results in `Documentation/Operations/PerformanceBaseline.md`. Local Argon2 Release median recorded at 177.0 ms; endpoint baselines now await a controlled load environment and P14 production hardware selection.
+- [x] Record local Compose baselines in `Documentation/Operations/PerformanceBaseline.md`.
+  Refresh 200 RPS and profile 500 RPS pass; single-node login 50 RPS fails and is preserved
+  as capacity evidence. A 30-second mixed-flow smoke also passes every functional and latency
+  threshold. Azure staging automation is the production-topology release gate.
 - [x] Verify rate limits (§17) vs load profiles don't strangle legitimate bursts (adjust or document). Controlled-test overrides and the separate normal-policy saturation run are documented.
 
 ## Expected Deliverables

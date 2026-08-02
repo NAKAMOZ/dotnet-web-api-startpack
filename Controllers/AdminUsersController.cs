@@ -2,6 +2,7 @@ using Api.Attributes;
 using Api.DTOs.Admin;
 using Api.DTOs.Common;
 using Api.Handlers.Authorization;
+using Api.Models.Enums;
 using Api.Services.Users;
 using Microsoft.AspNetCore.Mvc;
 
@@ -49,6 +50,8 @@ public sealed class AdminUsersController(IAdminUserService adminUserService) : A
     /// </remarks>
     [HttpPatch("{userId:guid}")]
     [RequirePermission(Permissions.UsersWriteAny)]
+    [RequireRecentAuth]
+    [AuditEvent(AuditEventType.AdminUserUpdated)]
     [ProducesResponseType<AdminUserDetailResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -72,6 +75,7 @@ public sealed class AdminUsersController(IAdminUserService adminUserService) : A
     /// </remarks>
     [HttpDelete("{userId:guid}")]
     [RequirePermission(Permissions.UsersDeleteAny)]
+    [RequireRecentAuth]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]

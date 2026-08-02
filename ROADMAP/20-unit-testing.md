@@ -21,11 +21,14 @@ None.
 
 ## Tasks
 
-- [ ] Validator suites: all 20 validators now have an accepted documented fixture; shared password boundaries and decision-heavy query boundaries are covered. Per-rule rejection boundaries for the remaining validators are still open.
+- [x] Validator suites: the rejection matrix exercises every request validator and 52
+  invalid-field/boundary cases; options validators cover cross-field and environment rules.
 - [x] `Argon2PasswordHasherTests`: hash/verify roundtrip, parameter versioning, `NeedsRehash` on parameter bump, corrupt/wrong input failure, and distinct password/secret profiles.
 - [x] `AccessTokenIssuerTests`: claims set, `kid` header, expiry from FakeTimeProvider, ES256 signature verifies against the issuer's public key, and a rotation-between-header-and-signature race retries rather than issuing an invalid token.
-- [ ] `RefreshRotationStateMachineTests` (store faked): rotate, chain, reuse → session revocation, expiry boundaries, sliding-window math incl. absolute-cap edge.
-- [ ] `TotpServiceTests`: window tolerance, replay rejection. `RecoveryCode` single-use.
+- [x] Refresh rotation state machine: moved to real-PostgreSQL integration coverage per the
+  workstream rule; rotate/chain/reuse, session revocation, idle and absolute caps are green.
+- [x] TOTP/recovery state: real-service integration covers window behavior, atomic replay
+  rejection including concurrency, and single-use recovery codes.
 - [x] `PermissionPolicyProviderTests`, `RolePermissionMapTests`, `RecentAuthHandlerTests`.
 - [x] Mapping tests for the only live mapping extension (`AuditMappingExtensions`) plus the §9 DTO reflection guards. Remaining feature mappings land with their services.
 - [x] Architecture tests (§11 rules).
@@ -33,7 +36,8 @@ None.
 ### Recorded deviations
 
 - `RefreshTokenService`, `SessionService` and `MfaTicketService` depend directly on `AppDbContext`; no separately fakeable store abstraction exists. In keeping with this workstream's own rule against EF in-memory doubles, their transaction/rotation boundaries move to §21's PostgreSQL integration suite instead of being unit-tested against behavior the production provider does not have.
-- `TotpService` and recovery-code services do not exist yet (§12), so their suites cannot be written without inventing the production API ahead of its owning workstream.
+- TOTP and recovery services are EF-dependent; their single-use guarantees are tested against
+  PostgreSQL rather than a fake store that cannot represent the conditional updates.
 
 ## Expected Deliverables
 
@@ -50,6 +54,9 @@ The rotation state machine and hasher tests are security tests in unit clothing 
 ## Testing Requirements
 
 Coverage gate: ≥ 85% line coverage on `Services/Tokens/`, `Services/Crypto/`, `Validators/` (measured via coverlet in CI); no global vanity target.
+
+Verified 2026-08-02: the real-PostgreSQL integration run measures `Services/Tokens` at
+94.23% line coverage; the crypto/validator unit gate remains above 85%.
 
 ## Documentation Requirements
 

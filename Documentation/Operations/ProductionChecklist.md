@@ -1,18 +1,22 @@
 # Production Go-Live Checklist
 
-**Status:** target-agnostic controls implemented; deployment-specific verification waits on
-P14. Every unchecked item needs evidence attached to the release record.
+**Status:** Azure target and controls implemented as code; every unchecked item needs evidence
+from an actual staging/production rollout attached to the release record.
 
 ## Release identity and change control
 
-- [ ] Record the immutable image digest, source commit, migration-bundle checksum and
-  approving change ticket.
-  Verify: `docker image inspect <image> --format '{{index .RepoDigests 0}}'` and
-  `sha256sum efbundle`.
+- [ ] Record the immutable image digest, source commit, migration-job execution id and
+  approving change ticket. If the portable bundle is retained as release evidence, record
+  its checksum too.
+  Verify: `docker image inspect <image> --format '{{index .RepoDigests 0}}'`, the deployment
+  workflow output, and optionally `sha256sum efbundle`.
 - [ ] Confirm the release contains only additive/expand-contract migrations.
   Verify: review `dotnet ef migrations script <current> <target>` under the
   [migration policy](Migrations.md#9-expand-contract-policy).
 - [ ] Confirm the previous image digest is still deployable before cutover.
+- [ ] Confirm the exact built image digest passed the digest-pinned Trivy gate and its registry
+  manifest carries SBOM and max-level provenance attestations.
+  Verify: the deploy workflow scan output and `docker buildx imagetools inspect <image>`.
 
 ## Edge, TLS and public surface
 
@@ -39,7 +43,7 @@ P14. Every unchecked item needs evidence attached to the release record.
 - [ ] Confirm secure cookie prefixes, paths and `Secure` enforcement.
   Verify: `AuthCookieOptionsValidator` tests and a production login response once §12 lands.
 - [ ] Review rate-limit values against the latest §23 load result and real edge topology.
-  Record the chosen per-node capacity and whether the deployment has more than one app node.
+  Verify Redis-backed counters remain one allowance across multiple app replicas.
 
 ## Database and migrations
 
@@ -55,14 +59,15 @@ P14. Every unchecked item needs evidence attached to the release record.
   The statement must fail. Normal `SELECT`, `INSERT`, `UPDATE` and `DELETE` on application
   tables must succeed; the runtime role also needs sequence use and writes to
   `auth."DataProtectionKeys"`.
-- [ ] Run the migration bundle with the migration role before starting the new image.
+- [ ] Run the one-shot Azure migration job (or portable EF bundle off Azure) with the
+  migration role before promoting the new image.
   Verify: `SELECT * FROM auth."__EFMigrationsHistory" ORDER BY "MigrationId";`.
-- [ ] Confirm `/health/ready` is `200 Healthy` only after the bundle completes.
+- [ ] Confirm `/health/ready` is `200 Healthy` only after the migration job completes.
 - [ ] Test a PostgreSQL backup and restore into an isolated database, then run
   `/health/ready` and the §21 suite against the restore. Record recovery time and point.
-- [ ] Confirm backup access and retention cover `SigningKeys` and `DataProtectionKeys`
-  according to the same incident boundary; P7/P14 must decide whether sharing that boundary
-  is acceptable.
+- [ ] Confirm backup access and retention cover `SigningKeys` and `DataProtectionKeys`, and
+  separately verify Key Vault key recovery because database backups contain only wrapped
+  ring material.
 
 ## Keys and secrets
 
@@ -75,16 +80,16 @@ P14. Every unchecked item needs evidence attached to the release record.
   SELECT count(*) FROM auth."DataProtectionKeys";
   ```
 
-- [ ] Resolve P7/P14 and configure encryption for the Data Protection key ring at rest.
-  Until then, record acceptance of the known ASVS gap; do not mark this checklist complete.
+- [ ] Confirm the PostgreSQL-persisted Data Protection ring is wrapped by the versionless
+  Key Vault RSA key and survives an API revision replacement.
 - [ ] Rehearse [mass revocation](Runbooks/MassRevocation.md) and
   [key compromise](Runbooks/KeyCompromise.md) against staging.
 
 ## Logs, traces, metrics and alerts
 
 - [ ] Name the structured-log destination and retention policy.
-- [ ] Set `Telemetry__OtlpExporterEnabled=true` and the approved
-  `Telemetry__OtlpEndpoint`; configure exporter credentials through the secret channel.
+- [ ] Confirm `Telemetry__AzureMonitorExporterEnabled=true` and the Key Vault-sourced
+  Application Insights connection; enable optional OTLP only when a second backend is owned.
 - [ ] Confirm traces carry `service.name`, version, environment and `app.correlation_id`.
 - [ ] Confirm every metric in [Monitoring.md](Monitoring.md) is visible and all five alert
   families route to an owned on-call destination.
@@ -94,12 +99,12 @@ P14. Every unchecked item needs evidence attached to the release record.
 
 1. Freeze schema-changing writes if the reviewed migration requires it.
 2. Take/verify the required backup.
-3. Run the migration bundle with the migration role.
+3. Run the one-shot migration job with the migration role; keep the current API image active.
 4. Deploy the immutable image digest with the runtime role.
-5. Wait for `/health/ready`; exercise login/refresh when §12 exists.
+5. Wait for `/health/ready`; exercise login/refresh.
 6. Shift traffic gradually and watch readiness, 5xx, latency and auth alerts.
 7. Roll back by restoring the previous image digest. Do not run destructive `Down()`
    migrations during an incident; additive migrations remain compatible by policy.
 
-P14 supplies the actual platform definition, rollout command, health-gate primitive and
-rollback command. Until that target exists, this checklist is reviewable but not signable.
+The concrete commands and evidence list live in [AzureDeployment.md](AzureDeployment.md).
+This checklist becomes signable only after the actual environment supplies that evidence.

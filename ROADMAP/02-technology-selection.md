@@ -19,7 +19,7 @@ NuGet package selection and version pinning; no code.
 
 | # | Decision | Recorded in |
 |---|---|---|
-| P5 | **`HybridCache` in-memory**; Redis deferred to the §29 backlog | `ADR-0016` |
+| P5 | **`HybridCache`** with local L1; Azure deployments now add Redis L2 after scale-out became a v1 requirement | `ADR-0016`, superseded in part by `ADR-0029` |
 | P15 | **k6**; scripts live outside the .NET solution | `ADR-0017` |
 
 ## Tasks
@@ -46,6 +46,10 @@ Central Package Management is enabled, so `PackageReference` entries carry no `V
 | `Otp.NET` | 1.4.1 | | `Microsoft.Extensions.TimeProvider.Testing` | 10.8.0 |
 | `Fido2.AspNet` | 4.0.1 | | `Respawn` | 7.0.0 |
 | `FluentValidation` (+ DI extensions) | 12.1.1 | | `NSubstitute` | 6.0.0 |
+| `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` | 10.0.10 | | `Testcontainers.Redis` | 4.13.0 |
+| `Azure.Extensions.AspNetCore.DataProtection.Keys` | 1.6.3 | | `coverlet.msbuild` | 10.0.1 |
+| `Azure.Identity` | 1.21.0 | | `Azure.Monitor.OpenTelemetry.Exporter` | 1.8.3 |
+| `Microsoft.Extensions.Caching.StackExchangeRedis` | 10.0.10 | | `Microsoft.Azure.StackExchangeRedis` | 3.2.0 |
 
 **Security pin:** `Microsoft.OpenApi` 2.11.0 — `Microsoft.AspNetCore.OpenApi` 10.0.10 pulls 2.0.0 transitively, which is vulnerable to **GHSA-v5pm-xwqc-g5wc** (high; vulnerable ≤ 2.7.4, patched 2.7.5). Remove the pin when the parent package references ≥ 2.7.5 itself.
 
@@ -87,7 +91,11 @@ Pinned versions + CI vulnerability audit (§26) are the supply-chain defense; no
 
 This caught a real issue on first run: the template's `Microsoft.AspNetCore.OpenApi` 10.0.10 pulls `Microsoft.OpenApi` 2.0.0, which carries GHSA-v5pm-xwqc-g5wc (high). Transitive pinning to 2.11.0 cleared it.
 
-Licence audit result: all 30 packages are permissive (MIT, Apache-2.0, BSD-3-Clause, PostgreSQL, CC0-1.0). No commercial or copyleft obligations. Two packages needed resolving because their NuGet metadata uses the deprecated `licenseUrl` field — `Isopoh.Cryptography.Argon2` (CC0-1.0) and `Otp.NET` (MIT); both are recorded in ADR-0013.
+Licence audit result: every pinned direct dependency is permissively licensed (MIT,
+Apache-2.0, BSD-3-Clause, PostgreSQL or CC0-1.0). No commercial or copyleft dependency is
+approved. Two packages needed resolving because their NuGet metadata uses the deprecated
+`licenseUrl` field — `Isopoh.Cryptography.Argon2` (CC0-1.0) and `Otp.NET` (MIT); both are
+recorded in ADR-0013.
 
 ## Testing Requirements
 

@@ -1,4 +1,7 @@
+using Api.Configuration;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IntegrationTests.Infrastructure;
 
@@ -26,6 +29,27 @@ internal static class WebHostBuilderExtensions
         builder.UseEnvironment(environment);
         builder.UseTrustedTestProxy();
         builder.UseSetting("ConnectionStrings:Postgres", $"Host=localhost;Database={databaseName}");
+        builder.ConfigureAppConfiguration(configuration =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Azure:DataProtectionKeyIdentifier"] =
+                    "https://unit-tests.vault.azure.net/keys/data-protection",
+                ["Jwt:Issuer"] = "https://auth.test.example",
+                ["WebAuthn:ServerDomain"] = "auth.test.example",
+                ["WebAuthn:Origins:0"] = "https://auth.test.example",
+                ["WebAuthn:Origins:1"] = "https://login.auth.test.example",
+                ["Email:Host"] = "smtp.test.example",
+                ["Email:UseTls"] = "true",
+            }));
+        // Array binding combines values from multiple providers. Replace, rather than append
+        // to, appsettings' localhost origins for production-like TestServer hosts.
+        builder.ConfigureServices(services =>
+            services.PostConfigure<WebAuthnOptions>(options =>
+                options.Origins =
+                [
+                    "https://auth.test.example",
+                    "https://login.auth.test.example",
+                ]));
         return builder;
     }
 

@@ -12,7 +12,10 @@ Migrations, role seeding, dev-only user seeding, migration runbook.
 
 - Static reference data (roles) seeded via `HasData` in configurations — versioned inside migrations, deterministic GUIDs.
 - Dev/test users seeded at runtime by `Data/Seeding/DevDataSeeder.cs`, executed only when `IHostEnvironment.IsDevelopment()` — never compiled into migrations, so no dev credentials can reach prod schema history.
-- Dev: `dotnet ef database update` (or auto-migrate on startup in Development only). Prod: **EF migration bundles** produced by CI (§26), executed as a deploy step (§27) — the API process never auto-migrates in prod.
+- Dev: `dotnet ef database update` (or auto-migrate on startup in Development only).
+  Production: the reviewed image runs `operations migrate-database` as a one-shot Azure job;
+  CI also produces a portable EF bundle. The API process never auto-migrates outside
+  Development.
 
 ## Technology Decisions Requiring Approval
 
@@ -24,13 +27,15 @@ None.
 - [x] `Data/Seeding/RoleSeed.cs` (`HasData`: Admin, User with fixed GUIDs).
 - [x] `Data/Seeding/DevDataSeeder.cs` + `IDataSeeder` interface: one admin + one regular dev user, logged loudly at startup; legacy rows with null password hashes are repaired idempotently.
 - [x] `Extensions/ApplicationBuilderExtensions.Database.cs`: dev-only migrate+seed call.
+- [x] `Data/AppDbContextDesignTimeFactory.cs`: EF tooling inspects the model without
+  executing the web host or contacting the Development database.
 - [x] `Documentation/Operations/Migrations.md`: add/apply/rollback runbook, bundle usage, "never edit an applied migration" rule.
 
 ## Deviations and decisions taken here
 
 1. **Dev seed password dependency is closed.** `Argon2PasswordHasher` is registered by §12. The seeder both hashes new rows and repairs the two deterministic legacy rows when their `PasswordHash` is null.
 
-2. **All tables moved to an `auth` schema** (`AppDbContext.Schema`, `HasDefaultSchema`), including `__EFMigrationsHistory`. The API shares its database with other things; a dedicated schema keeps its thirteen tables identifiable as one unit and makes the runtime grant scopeable to `auth` alone. Decided during §8 because it changes the initial migration — retrofitting it later would mean moving every table.
+2. **All tables moved to an `auth` schema** (`AppDbContext.Schema`, `HasDefaultSchema`), including `__EFMigrationsHistory`. The API shares its database with other things; a dedicated schema keeps its fourteen tables identifiable as one unit and makes the runtime grant scopeable to `auth` alone. Decided during §8 because it changes the initial migration — retrofitting it later would mean moving every table.
 
 3. **No connection string is committed anywhere.** `appsettings.json` and `appsettings.Development.json` carry none: Development reads user-secrets, everything else reads `ConnectionStrings__Postgres` (§25). The §3 composition-root smoke test supplies its own and pins itself to a non-Development environment, so it neither migrates nor seeds.
 
@@ -58,13 +63,18 @@ Migrations runbook as above.
 
 Fresh database stands up from migrations alone; roles present; dev seed works in Development and provably no-ops elsewhere.
 
-**Status: met, with the password caveat above.** Verified against the project's PostgreSQL 18.4 container (`dotnet-postgres`, database `appdb`):
+**Status: met, with the password caveat above.** Re-verified against PostgreSQL 18 through
+the current Testcontainers/Compose paths:
 
-- `dotnet ef database update` on an empty database produced the `auth` schema, 13 tables, `__EFMigrationsHistory`, and the `citext` extension. `public` was left untouched.
+- Applying the migration chain to an empty database produces the `auth` schema, 14 tables,
+  `__EFMigrationsHistory`, and the `citext` extension. `public` is left untouched.
 - `auth."Roles"` contains `Admin` and `User` with their fixed GUIDs, inserted by the migration rather than by startup code.
 - Running the app in Development seeded both accounts with their role assignments and logged the credentials as warnings. A second run left the counts unchanged — the seeder is idempotent by user id.
 - The composition-root test boots in a non-Development environment and neither migrates nor seeds; `UseDatabaseSetupAsync` returns immediately.
-- Not yet exercised: the production bundle path (§26/§27 own it) and migration application against Testcontainers (§21).
+- The 105-test integration suite applies real migrations; the least-privilege deployment
+  operation is idempotent and the runtime role cannot alter schema.
+- CI rejects pending model/snapshot changes and builds a self-contained Linux x64 EF bundle;
+  the exact bundle chain was reproduced locally on 2026-08-02.
 
 ## Questions for the Project Owner
 

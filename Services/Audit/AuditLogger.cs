@@ -90,17 +90,23 @@ public sealed class AuditLogger(
     /// insert times out, the disk is full.
     /// </summary>
     /// <remarks>
-    /// TODO: decision pending — see the note accompanying this change. The two defensible
-    /// answers are "record the loss and let the request succeed" and "fail the request,
-    /// because an unrecorded security event is worse than a failed one", and they are not
-    /// reconcilable. <paramref name="entry"/> carries everything the fallback would need.
+    /// The domain operation may already have committed when this independent write runs.
+    /// Throwing would report failure without rolling that operation back and invite a
+    /// duplicate retry. The fallback therefore emits a critical operational event carrying
+    /// only bounded, non-secret identity fields; free-form metadata is deliberately omitted.
     /// </remarks>
     private void HandleWriteFailure(AuditLogEntry entry, Exception exception)
     {
-        // TODO §15: implement the chosen policy.
-        _ = logger;
-        _ = entry;
-        _ = exception;
+        logger.LogCritical(
+            exception,
+            "Security audit write failed. EventType: {AuditEventType}; AuditEntryId: {AuditEntryId}; "
+            + "SubjectUserId: {SubjectUserId}; CorrelationId: {CorrelationId}; OccurredAt: {OccurredAt}. "
+            + "Audit metadata was omitted from the fallback log by policy.",
+            entry.EventType,
+            entry.Id,
+            entry.UserId,
+            entry.CorrelationId,
+            entry.OccurredAt);
     }
 
     private static Guid? CurrentUserId(HttpContext? httpContext)

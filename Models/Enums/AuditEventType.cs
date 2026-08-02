@@ -61,6 +61,7 @@ public enum AuditEventType
     ApiKeyRevoked,
     RoleGranted,
     RoleRevoked,
+    AdminUserUpdated,
     AdminUserDeleted,
 
     /// <summary>Key ring rotated. Never records key material — only the new <c>kid</c>.</summary>

@@ -4,8 +4,8 @@ Hand-driven requests for local development, one file per controller — the same
 [`Documentation/`](../Documentation/) and the controller list in §11.
 
 The template's single `dotnet-web-api-startpack.http` was deleted in §3 along with the
-`/weatherforecast` sample. Every inventory endpoint now has a request here. Feature-service
-stubs currently answer 501; the same requests become executable as each §12 slice lands.
+`/weatherforecast` sample. Every inventory endpoint now has an executable request here and
+is backed by its production feature service.
 
 ## Layout
 

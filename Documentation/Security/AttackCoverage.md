@@ -18,16 +18,18 @@ Concrete regression coverage for the design claims in
 | Missing/wrong/cross-session CSRF token rejected | `CsrfAttackTests.CookieStateChange_RequiresMatchingTokenBoundToAuthenticatedSession` | Covered |
 | Correlation-header injection | `PipelineTests.AMalformedInboundCorrelationIdIsReplaced` | Covered |
 | Rate-limit exhaustion | `RateLimitingTests.*` | Covered |
-| Sensitive-object log redaction | `SensitiveDataDestructuringPolicyTests.*` | Covered at logger boundary |
+| Sensitive-object log redaction | `SensitiveDataDestructuringPolicyTests.*`; `LogRedactionAttackTests.FullCredentialFlow_LeaksNoIssuedOrPresentedSecretIntoLogs` | Covered at logger boundary and over real credential flows |
 | Recent auth reads `auth_time`, not `iat`; API keys cannot pass | `RecentAuthAuthorizationHandlerTests.*` | Covered at policy boundary |
 | Sort fields are allow-listed | `QueryValidatorTests.*` and `AuditQueryService` fixed expression map | Covered at validator/unit boundary |
 | Registration/reset/login enumeration equality and timing | `FeatureServiceIntegrationTests.Registration_DuplicateIsByteIdenticalAndCreatesOneAccount`; `FeatureAttackTests.EnumerationPaths_ExposeTheSamePublicOutcomes` | Covered |
 | Lockout over HTTP, reset on login success, admin unlock | `FeatureAttackTests.Lockout_IsInvisibleAndAdminUnlockRestoresLogin` | Covered |
 | Refresh rotation/replay over HTTP | `FeatureServiceIntegrationTests.LoginRefreshAndReplay_RunThroughTheHttpContract` | Covered |
+| TOTP/recovery replay, including concurrent TOTP reuse | `MfaServiceIntegrationTests.TotpAndRecoveryCodes_AreSingleUseIncludingConcurrentReplay` | Covered against PostgreSQL atomic update |
+| WebAuthn challenge replay and cloned/decreasing signature counter | `PasskeyCeremonyIntegrationTests.SoftwareAuthenticator_RegistersAuthenticatesRejectsReplayAndDeletes` | Covered with a software ES256 authenticator |
 | Every admin endpoint as User → 403; every protected endpoint anonymous → 401 | `AuthorizationAttackTests.*` (8 admin + 30 protected route cases) | Covered |
 | API-key scope enforcement and current-role intersection | `FeatureAttackTests.ApiKeyScopes_AreIntersectedWithTheOwnersCurrentRoles` | Covered |
-| Oversized request bodies | Global request-size policy not yet defined (§16/§27) | Blocked |
-| Full-flow scalar secret scan over captured logs | Capturing sink not yet present | Blocked |
+| Oversized request bodies | `InputAbuseAttackTests.OversizedBody_IsRejectedWithProblemDetailsBeforeParsing`; CI Compose smoke sends an oversized chunked body | Covered by the streamed/known-length 64 KiB limit |
+| Full-flow scalar secret scan over captured logs | `LogRedactionAttackTests.FullCredentialFlow_LeaksNoIssuedOrPresentedSecretIntoLogs` | Covered with the integration capturing sink |
 
-“Blocked” is intentionally not represented by skipped or trivially green tests. Each row
-becomes an executable named test in the same change that supplies its production service.
+Every cataloged row has an executable named test; none is represented by a skip or a
+trivially-green placeholder.

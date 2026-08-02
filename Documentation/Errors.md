@@ -62,6 +62,7 @@ Every non-2xx response this API can produce, as RFC 9457 `application/problem+js
 |---|---|---|
 | `validation_failed` | 400 | One or more fields failed structural validation |
 | `malformed_request` | 400 | The body could not be parsed, or a value could not be bound |
+| `payload_too_large` | 413 | The request body exceeded the configured resource bound |
 
 `validation_failed` responses carry both standard `errors` (messages, per field) and `errorCodes` (stable codes, per field):
 
@@ -115,7 +116,7 @@ Per-field codes are defined in `Validators/Common/ValidationErrorCodes.cs`:
 | Source | Codes |
 |---|---|
 | `DomainException` subclasses (`Exceptions/`) | `invalid_credentials`, `account_locked`*, `email_already_registered`, `token_reuse_detected`, `invalid_token`, `not_found`, plus per-case `ConflictException` codes |
-| `Exceptions/ErrorCodes.cs` | `validation_failed`, `unauthorized`, `forbidden`, `step_up_required`, `csrf_validation_failed`, `malformed_request`, `rate_limited`, `internal_error` |
+| `Exceptions/ErrorCodes.cs` | `validation_failed`, `unauthorized`, `forbidden`, `step_up_required`, `csrf_validation_failed`, `malformed_request`, `payload_too_large`, `rate_limited`, `internal_error` |
 | `Filters/CsrfProtectionFilter` | `csrf_validation_failed` |
 | `Validators/Common/ValidationErrorCodes.cs` | the per-field codes in §3 |
 | Status fallback (`AddProblemDetailsStandards`) | `not_found`, `method_not_allowed`, `not_acceptable`, `unsupported_media_type`, `not_implemented` — for responses the framework produces with no exception behind them |

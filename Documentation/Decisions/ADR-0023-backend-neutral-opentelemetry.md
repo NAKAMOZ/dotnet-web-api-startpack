@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-07-26
 - **Workstreams:** §28
-- **Does not resolve:** P10 (observability backend)
+- **Follow-up:** ADR-0028 resolves P10 with Azure Monitor; the OTLP path remains supported
 
 ## Context
 
@@ -35,7 +35,8 @@ collector with a debug exporter is an acceptance tool, not the production backen
 
 ## Consequences
 
-- P10 selects only the collector/backend destination and retention policy.
+- ADR-0028 selects Azure Monitor and a workspace-backed retention policy for the Azure
+  platform while keeping this backend-neutral instrumentation/export option.
 - Disabled export has no network destination and still permits local `MeterListener` tests.
 - Database semantic conventions can evolve with Npgsql/OpenTelemetry versions; dashboards
   must be reviewed during upgrades.

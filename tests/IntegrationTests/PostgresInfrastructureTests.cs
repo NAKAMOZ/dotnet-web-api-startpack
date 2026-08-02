@@ -79,7 +79,7 @@ public sealed class PostgresInfrastructureTests(IntegrationTestFactory factory)
                 .SqlQueryRaw<string>("SELECT extname AS \"Value\" FROM pg_extension WHERE extname = 'citext'")
                 .SingleAsync(TestContext.Current.CancellationToken);
 
-            Assert.Equal(2, migrations.Count());
+            Assert.Equal(database.Database.GetMigrations(), migrations);
             Assert.Equal(["Admin", "User"], roles);
             Assert.Equal("citext", citext);
         });

@@ -84,6 +84,12 @@ public static class ExceptionToProblemDetailsMap
         OperationCanceledException => (
             StatusCodes.Status499ClientClosedRequest, "request_cancelled", "The request was cancelled."),
 
+        BadHttpRequestException badRequest
+            when badRequest.StatusCode == StatusCodes.Status413PayloadTooLarge => (
+            StatusCodes.Status413PayloadTooLarge,
+            ErrorCodes.PayloadTooLarge,
+            "The request body is too large."),
+
         BadHttpRequestException => (
             StatusCodes.Status400BadRequest, ErrorCodes.MalformedRequest, "The request could not be read."),
 

@@ -27,6 +27,10 @@ None.
 - [x] Wire `LockoutPolicy` into `Services/Auth/LoginService`, including generic responses, one-time dummy hash, success reset and audit/metric calls.
 - [x] Anti-enumeration sweep: every 🔓 endpoint's response pair audited for status, body, timing and side-effect parity — `Documentation/Security/Enumeration.md`. Written ahead of the services, as the contract §12 builds against. **Resolves the open `email_already_registered` question in `Documentation/Errors.md` §4 in favour of a `202` on the anonymous registration path; the controller's OpenAPI response contract now reflects that decision.**
 - [x] Data Protection persistence: `Data/Configurations/DataProtectionKeyConfiguration.cs`, `AppDbContext : IDataProtectionKeyContext`, `AddDataProtection().SetApplicationName(…).PersistKeysToDbContext<AppDbContext>()`, migration `20260723125006_AddDataProtectionKeys` applied. **ADR-0021.**
+- [x] Production key wrapping: the persisted ring is wrapped by a versionless Azure Key
+  Vault RSA key through managed identity; Production fails startup without the identifier.
+- [x] Every admin mutation carries `[RequireRecentAuth]`; refreshed access tokens retain the
+  original `auth_time`, and API keys cannot satisfy the handler.
 - [x] `Documentation/Security/ASVS-Checklist.md`: ASVS 4.0.3 L2, chapters V1–V14, each item met/designed/deferred/gap with a pointer; open items summarised with owners.
 - [x] Dependabot config — `.github/dependabot.yml`, grouped version bumps plus daily security PRs, with the `Microsoft.OpenApi` 3.x ignore encoded so the rejected PR is never opened.
 
@@ -59,5 +63,5 @@ ASVS L2 checklist complete with no unexplained gaps; §22 hardening tests green.
 ## Questions for the Project Owner
 
 1. ~~Lockout policy 5 failures / 15 min — approve or adjust?~~ **Approved 2026-07-23**: 5 failures, 15-minute fixed window, counter resets on success, an expired lock grants a fresh allowance.
-2. **Should admin operations require step-up MFA?** ASVS V4.3.1 asks for it; today admin endpoints are gated by `[RequirePermission]` alone. The mechanism already exists (`auth_time`, `RecentAuthenticationWindow`), so this is one attribute per admin action if approved. Recorded as a deliberate deferral in `Documentation/Security/ASVS-Checklist.md` until answered.
-3. **`ProtectKeysWith*` for the Data Protection key ring.** ADR-0021 persists the ring to the database but leaves it unencrypted at rest — every provider is host-specific, so choosing one chooses a deployment target (P14). This is the largest known gap in §16 and is listed as such.
+2. ~~Admin step-up?~~ Resolved 2026-08-02: required on every admin mutation.
+3. ~~External Data Protection key wrapping?~~ Resolved by Azure Key Vault (ADR-0027).

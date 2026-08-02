@@ -45,7 +45,7 @@ The 13 controllers from the endpoint inventory plus a shared base class. Service
 
 ## Expected Deliverables
 
-14 controller files + base + API extension + placeholder scheme; endpoint inventory fully routable.
+14 controller files + base + API extension + production authentication schemes; endpoint inventory fully routable.
 
 ## Dependencies
 
@@ -73,7 +73,7 @@ All inventory routes respond; architecture tests green; zero business logic in c
 - All 41 former stubs call real feature services; JWKS and audit-log listing remain live.
 - Protected routes answer `401`, not `500` (`/sessions`, `/users/me`, `/admin/users`, `/mfa/totp`).
 - An anonymous unmatched path answers `401` under the deny-by-default fallback.
-- The complete suite is green: 210 unit + 86 integration tests.
+- The release-candidate suite is green: 274 unit + 105 integration tests.
 
 This also closed §10's outstanding half. `POST /api/v1/auth/register` with `{"email":"nope","password":"short"}` returns RFC 9457:
 

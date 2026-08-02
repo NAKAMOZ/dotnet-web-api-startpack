@@ -1,6 +1,7 @@
 # v1 Scope
 
-**Status:** Approved 2026-07-22 · **Source:** `ROADMAP/00-overview.md`, approved-decisions row *v1 feature scope*
+**Status:** Implementation baseline recorded 2026-07-22; formal owner review pending ·
+**Source:** `ROADMAP/00-overview.md`, approved-decisions row *v1 feature scope*
 
 This document states what v1 delivers and — as importantly — what it does not. An item's absence from the in-scope list is a decision, not an oversight; deferred capabilities are listed below with a pointer to where their design work happens.
 
@@ -57,7 +58,10 @@ Paged and filterable user management, forced session revocation, and audit-log a
 `GET /api/v1/admin/users` · `/admin/users/{userId}` · `PATCH`/`DELETE` on the same · `DELETE /admin/users/{userId}/sessions` · `GET /admin/audit-logs`
 
 ### Supporting infrastructure
-JWKS publication (`GET /.well-known/jwks.json`), liveness and readiness probes (`/health/live`, `/health/ready`), audit trail, structured logging, rate limiting, and RFC 9457 error responses throughout.
+JWKS publication (`GET /.well-known/jwks.json`), liveness and dependency-aware readiness
+probes (`/health/live`, `/health/ready`), audit trail, structured logging, distributed rate
+limiting/HybridCache state for multi-replica Azure deployments, and RFC 9457 error responses
+throughout.
 
 ## Explicitly out of scope for v1
 
@@ -69,7 +73,6 @@ Every item below has a recorded reason. Design sketches and trigger conditions l
 | **Machine-to-machine client credentials** | Owner-excluded from v1. Needs a client registry, the `client_credentials` grant, and a separate token audience. No consumer requires it today. |
 | **Message broker / async messaging** (P11) | No cross-service asynchronous communication exists in this system. Adding a broker would be speculative infrastructure. |
 | **Database-driven permissions** | v1 maps code constants to roles statically. DB-driven permissions become worthwhile only when roles need editing at runtime without a deploy. |
-| **Redis scale-out** (P5, P6) | v1 uses in-memory `HybridCache` and in-memory rate-limit counters. Trigger for revisiting: a second application node, at which point both become incorrect rather than merely suboptimal. |
 | **SPA-driven PKCE social flow** (P13, deferred half) | The API-driven redirect flow ships first; the PKCE variant follows if a browser client needs it. |
 | **`Idempotency-Key` support** | Trigger: any endpoint where a duplicate submission has a cost — billing-like operations. None in v1. |
 | **Automated signing-key rotation** | v1 rotates quarterly via a documented admin procedure ([ADR-0004](Decisions/ADR-0004-signing-key-management.md)). Automating a process that can invalidate in-flight tokens if mistimed is not the first automation to build. |
@@ -87,5 +90,5 @@ Every item below has a recorded reason. Design sketches and trigger conditions l
 ## Related documents
 
 - [`Decisions/`](Decisions/README.md) — the architectural decision records behind each choice above.
-- [`../ROADMAP/00-overview.md`](../ROADMAP/00-overview.md) — entity model, full endpoint inventory, pending decisions.
+- [`../ROADMAP/00-overview.md`](../ROADMAP/00-overview.md) — entity model, full endpoint inventory, and P1–P18 decision traceability.
 - [`../ROADMAP/29-maintenance-and-future-extensibility.md`](../ROADMAP/29-maintenance-and-future-extensibility.md) — where the deferred list becomes a groomed backlog.

@@ -28,7 +28,8 @@ The failure mode to design against is not "no documentation". It is documentatio
 2. **Mechanical** — `DocumentationSyncTests` loads the generated OpenAPI document at test time and asserts set equality with the Markdown files: a missing doc fails, and an **orphaned doc fails too**. Front-matter `method`, `route`, and `auth` keys in each file are asserted against the corresponding operation, so load-bearing facts cannot rot silently. Runs in CI.
 3. **Direction** — where the two overlap, OpenAPI wins and the test enforces it. Humans own only what the generator cannot express.
 
-**Scalar is exposed in development and staging only, never in production** (P16 recommendation; P16 itself remains pending and gets its own ADR when approved).
+**Scalar is exposed in development and staging only, never in production.** This exposure
+decision was finalized by [ADR-0031](ADR-0031-openapi-exposure.md).
 
 ## Alternatives considered
 
@@ -49,5 +50,6 @@ The failure mode to design against is not "no documentation". It is documentatio
 - The sync test needs the generated OpenAPI document, so §19 depends on §18 and on the feature slices being complete.
 - The front-matter block in each Markdown file is a machine-parsed contract, not decoration — its `method`/`route`/`auth` keys must match the operation exactly.
 - Orphan detection means deleting an endpoint requires deleting its doc, so the tree cannot accumulate documentation for routes that no longer exist.
-- Disabling Scalar in production means the interactive UI is unavailable there; the OpenAPI document's production exposure is decided with P16.
+- Disabling Scalar/OpenAPI in production means the interactive UI and machine-readable
+  document are unavailable there; both remain available in controlled staging.
 - Each file's Security Considerations section is mandatory *content*, not a heading to fill with boilerplate — §19 makes copy-paste a review rejection, since a boilerplate security section is worse than an absent one for implying review that did not happen.

@@ -52,6 +52,7 @@ The stored form is the enum member name (`LoginFailed`); the snake_case name is 
 | `api_key_revoked` | `ApiKeyRevoked` | the owning account | §12 API-keys service |
 | `role_granted` | `RoleGranted` | the target account | `AuditActionFilter` |
 | `role_revoked` | `RoleRevoked` | the target account | `AuditActionFilter` |
+| `admin_user_updated` | `AdminUserUpdated` | the target account | `AuditActionFilter` |
 | `admin_user_deleted` | `AdminUserDeleted` | **null** — see §4 | §12 users service |
 | `signing_key_rotated` | `SigningKeyRotated` | null (no subject) | `SigningKeyManager.RotateAsync` (operator command; future job reuses it) |
 
@@ -148,6 +149,18 @@ Every filter above is served by an index declared in `Data/Configurations/AuditL
 
 ---
 
-## 8. Known gaps
+## 8. Failure and rejection policy
 
-- **No `admin_user_updated` event.** `PATCH /api/v1/admin/users/{userId}` changes an account without producing a row, because the catalog has no member for it. The catalog is the spec and is closed; adding one is a decision for the project owner, not a gap to fill silently.
+`PATCH /api/v1/admin/users/{userId}` produces `admin_user_updated` after a successful 2xx
+response through `AuditActionFilter`. Request bodies are never copied into audit metadata;
+the actor, route and method provide the review trail without risking credential disclosure.
+
+If the durable audit insert fails, `AuditLogger` emits a `Critical` operational event with
+the event type, audit-entry id, subject, correlation id and occurrence time. It does not
+throw after a possibly committed domain operation and never copies free-form audit metadata
+to the fallback log.
+
+Rate-limit rejections remain structured operational log events rather than durable audit
+rows. Persisting one row per rejected request would let the flood being rejected amplify
+itself into database writes. Threshold alerts aggregate the low-cardinality rejection signal
+instead.

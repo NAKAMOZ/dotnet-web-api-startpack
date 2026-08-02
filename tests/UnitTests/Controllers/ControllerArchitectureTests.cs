@@ -1,8 +1,10 @@
 using System.Reflection;
+using Api.Attributes;
 using Api.Controllers;
 using Api.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace UnitTests.Controllers;
 
@@ -104,6 +106,20 @@ public class ControllerArchitectureTests
             .Select(action => (Action: action, Size: action.GetMethodBody()?.GetILAsByteArray()?.Length ?? 0))
             .Where(candidate => candidate.Size > 400)
             .Select(candidate => $"{candidate.Action.DeclaringType!.Name}.{candidate.Action.Name} ({candidate.Size} bytes IL)");
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void EveryAdministrativeMutationRequiresRecentHumanAuthentication()
+    {
+        var violations = Actions
+            .Where(action => action.DeclaringType!.Name.StartsWith("Admin", StringComparison.Ordinal))
+            .Where(action => action.GetCustomAttributes<HttpMethodAttribute>(inherit: true)
+                .SelectMany(attribute => attribute.HttpMethods)
+                .Any(method => method is "POST" or "PUT" or "PATCH" or "DELETE"))
+            .Where(action => action.GetCustomAttribute<RequireRecentAuthAttribute>(inherit: true) is null)
+            .Select(action => $"{action.DeclaringType!.Name}.{action.Name}");
 
         Assert.Empty(violations);
     }

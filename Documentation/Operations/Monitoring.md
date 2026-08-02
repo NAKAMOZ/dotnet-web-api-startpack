@@ -1,15 +1,15 @@
 # Monitoring and Alerting
 
 The application emits structured logs through Serilog and traces/metrics through
-OpenTelemetry. OTLP is the stable boundary: P10 chooses the backend, not a different
-instrumentation path.
+OpenTelemetry. Azure Monitor is the production backend (ADR-0028); OTLP remains an optional
+backend-neutral export path.
 
 ## Signal flow
 
 ```text
 ASP.NET Core ─┐
 HttpClient ───┤
-Npgsql ───────┼─ OpenTelemetry SDK ─ OTLP ─ collector/backend (P10)
+Npgsql ───────┼─ OpenTelemetry SDK ─ Azure Monitor / optional OTLP
 .NET runtime ─┤
 AuthMetrics ──┘
 
@@ -18,14 +18,15 @@ request X-Correlation-Id ─ app.correlation_id span tag
 ```
 
 OTLP export is disabled unless both `Telemetry:OtlpExporterEnabled=true` and an absolute
-`Telemetry:OtlpEndpoint` are configured. No public `/metrics` endpoint exists.
+`Telemetry:OtlpEndpoint` are configured. Azure export is independently gated by its enabled
+flag and Key Vault-sourced connection string. No public `/metrics` endpoint exists.
 
 ## Health contract
 
 | Endpoint | Meaning | Dependencies | Success body |
 |---|---|---|---|
 | `/health/live` | process can answer HTTP | none | `Healthy` |
-| `/health/ready` | safe to receive traffic | PostgreSQL reachable; no pending EF migration | `Healthy` |
+| `/health/ready` | safe to receive traffic | PostgreSQL reachable; no pending EF migration; Redis reachable when enabled | `Healthy` |
 
 Failures return `503 Unhealthy`. Anonymous responses never include check names, exception
 messages, hosts or migration identifiers; those details remain in server diagnostics.
@@ -83,7 +84,7 @@ baseline and require a minimum event count for ratios.
 | Refresh-token reuse | `increase(auth.reuse_detections[5m]) > 0` | Critical | A stolen token or broken client can be active. Inspect audit/correlation data; revoke the session; escalate a spike. |
 | Login-failure ratio | failures >25% with ≥50 attempts over 10m; critical above 50% | Warning/Critical | Credential stuffing or provider failure. Check source distribution, limiter saturation and successful-login baseline. |
 | Lockout surge | >10 lockouts over 10m or >3× the same-hour baseline | High | Attackers are reaching real account identifiers or a client is retrying bad credentials. |
-| Readiness flapping | 3 failures in 5m for any instance | High | Database reachability, exhausted pool or unapplied migration. Do not restart solely on readiness. |
+| Readiness flapping | 3 failures in 5m for any instance | High | PostgreSQL/Redis reachability, exhausted pool or unapplied migration. Do not restart solely on readiness. |
 | Argon2 drift | p95 >2× approved baseline or >500 ms for 15m | Warning | Hardware contention/config change can turn login into self-DoS. Compare runtime CPU/GC and deployed options. |
 
 Also alert on sustained 5xx rate, request-latency budget breaches, OTLP export failures,
@@ -122,5 +123,6 @@ docker compose \
 ```
 
 Collector output must show resource attributes, an inbound request trace, an Npgsql span and
-authentication/runtime metrics. This proves the OTLP contract only; P10 still owns backend,
-retention, dashboard and on-call routing approval.
+authentication/runtime metrics. This proves the optional OTLP contract. The Azure deployment
+creates workspace-based Application Insights and Log Analytics; dashboard/alert ownership
+and on-call routing remain release-time operational evidence.

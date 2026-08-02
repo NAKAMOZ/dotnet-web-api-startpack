@@ -17,11 +17,12 @@ Built-in ASP.NET Core `RateLimiter` policies, partition strategy, 429 semantics.
   - `general` — sliding window, 100/min per user id (per IP when anonymous).
 - Partition key: authenticated user id where available, else client IP honoring `ForwardedHeaders` config (§27) — never raw `X-Forwarded-For` trust.
 - 429 responses: RFC 9457 body + `Retry-After`; rejections logged with partition key, audited on `auth-strict` (`rate_limit_exceeded` metadata on relevant events).
-- Store: in-memory (P6) — correct for single node; Redis-backed limiter is a §29 item tied to P5 scale-out.
+- Store: built-in in-memory limiters for local single-node use; Azure Managed Redis atomic
+  fixed/segmented sliding windows for multi-replica deployments (ADR-0029).
 
 ## Technology Decisions Requiring Approval
 
-P6.
+P6 resolved by ADR-0029.
 
 ## Tasks
 
@@ -51,6 +52,8 @@ Per-account email-sending caps are the defense the per-IP limiter can't provide 
 ## Testing Requirements
 
 Implemented integration coverage: every policy can be exhausted to `429` + `Retry-After`; two target accounts on one IP remain independent; one target account across several IPs shares its account allowance; auth partitions remain independent across IPs.
+Real Redis concurrency tests prove 100 simultaneous fixed-window acquisitions grant exactly
+the configured count and two store instances cannot exceed one sliding-window allowance.
 
 ## Documentation Requirements
 
@@ -62,4 +65,5 @@ All inventory endpoints carry an explicit policy (or documented `general` defaul
 
 ## Questions for the Project Owner
 
-1. Approve the default limit numbers, or provide expected client traffic profiles to tune against?
+1. Defaults retained; staging performance runs temporarily override only controlled
+   single-source limits and restore them afterward.

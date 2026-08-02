@@ -7,6 +7,13 @@ public sealed class TelemetryOptionsValidator : IValidateOptions<TelemetryOption
 {
     public ValidateOptionsResult Validate(string? name, TelemetryOptions options)
     {
+        if (options.AzureMonitorExporterEnabled
+            && string.IsNullOrWhiteSpace(options.AzureMonitorConnectionString))
+        {
+            return ValidateOptionsResult.Fail(
+                "Telemetry:AzureMonitorConnectionString is required when Azure Monitor export is enabled.");
+        }
+
         if (!options.OtlpExporterEnabled)
         {
             return ValidateOptionsResult.Success;

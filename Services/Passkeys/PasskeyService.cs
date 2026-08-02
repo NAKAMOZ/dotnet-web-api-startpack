@@ -6,8 +6,10 @@ using Api.DTOs.Passkeys;
 using Api.Exceptions;
 using Api.Models;
 using Api.Models.Enums;
+using Api.Services.Audit;
 using Api.Services.Auth;
 using Api.Services.Crypto;
+using Api.Services.Email;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.AspNetCore.WebUtilities;
@@ -21,6 +23,8 @@ public sealed class PasskeyService(
     IFido2 fido2,
     ITokenGenerator tokenGenerator,
     IAuthenticationSessionFactory sessionFactory,
+    IAuditLogger auditLogger,
+    ISecurityNotificationService securityNotifications,
     IOptions<AuthSessionOptions> sessionOptions,
     TimeProvider timeProvider) : IPasskeyService
 {
@@ -89,6 +93,10 @@ public sealed class PasskeyService(
             };
             dbContext.PasskeyCredentials.Add(credential);
             await dbContext.SaveChangesAsync(cancellationToken);
+            await securityNotifications.NotifyAsync(
+                userId,
+                SecurityNotificationType.PasskeyAdded,
+                cancellationToken);
             return ToResponse(credential);
         }
         catch (InvalidTokenException)
@@ -158,10 +166,16 @@ public sealed class PasskeyService(
             credential.SignCount = result.SignCount;
             credential.LastUsedAt = timeProvider.GetUtcNow();
             await dbContext.SaveChangesAsync(cancellationToken);
-            return await sessionFactory.CreateAsync(
+            var response = await sessionFactory.CreateAsync(
                 credential.UserId,
                 [AuthenticationMethod.Passkey],
                 cancellationToken);
+            await auditLogger.LogAsync(
+                AuditEventType.LoginSucceeded,
+                credential.UserId,
+                new { Method = AuthenticationMethod.Passkey },
+                cancellationToken);
+            return response;
         }
         catch (InvalidCredentialsException)
         {
@@ -215,6 +229,11 @@ public sealed class PasskeyService(
         {
             throw new ResourceNotFoundException("passkey");
         }
+
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.PasskeyRemoved,
+            cancellationToken);
     }
 
     private CredentialCreateOptions RegistrationOptions(User user, string challenge)

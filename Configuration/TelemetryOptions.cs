@@ -20,4 +20,10 @@ public sealed class TelemetryOptions
 
     /// <summary>OTLP collector endpoint. Required when export is enabled.</summary>
     public Uri? OtlpEndpoint { get; init; }
+
+    /// <summary>Exports traces and metrics to Azure Monitor Application Insights.</summary>
+    public bool AzureMonitorExporterEnabled { get; init; }
+
+    /// <summary>Application Insights connection string. Treat as a deployment secret.</summary>
+    public string? AzureMonitorConnectionString { get; init; }
 }

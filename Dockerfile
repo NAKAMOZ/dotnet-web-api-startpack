@@ -1,6 +1,6 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 
-FROM node:24-alpine AS frontend
+FROM node:24-alpine@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS frontend
 WORKDIR /src/playground-ui
 
 RUN corepack enable
@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile
 COPY playground-ui ./
 RUN pnpm build
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0 AS build
 WORKDIR /src
 
 COPY Directory.Build.props Directory.Packages.props dotnet-web-api-startpack.csproj ./
@@ -25,7 +25,7 @@ RUN dotnet publish dotnet-web-api-startpack.csproj \
     /p:UseAppHost=false \
     /p:SkipPlaygroundBuild=true
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:f1126d438ccc359f51cc6d4701a8deae513856cf10f5fe645d29ea6403dcac6b AS runtime
 WORKDIR /app
 
 RUN apt-get update \

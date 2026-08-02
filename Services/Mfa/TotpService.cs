@@ -6,6 +6,7 @@ using Api.Models;
 using Api.Models.Enums;
 using Api.Services.Audit;
 using Api.Services.Crypto;
+using Api.Services.Email;
 using Api.Services.Tokens;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public sealed class TotpService(
     ITokenGenerator tokenGenerator,
     ISessionService sessionService,
     IAuditLogger auditLogger,
+    ISecurityNotificationService securityNotifications,
     TimeProvider timeProvider) : ITotpService
 {
     private const string ProtectorPurpose = "Api.TotpSecrets.v1";
@@ -78,13 +80,21 @@ public sealed class TotpService(
                              cancellationToken)
                          ?? throw new InvalidTokenException();
 
-        if (!VerifyTotp(credential, code))
+        var matchedTimeStep = MatchTotp(credential, code);
+
+        if (matchedTimeStep is null)
         {
             throw new InvalidTokenException();
         }
 
         credential.ConfirmedAt = timeProvider.GetUtcNow();
-        return await ReplaceRecoveryCodesAsync(userId, cancellationToken);
+        credential.LastUsedTimeStep = matchedTimeStep;
+        var recoveryCodes = await ReplaceRecoveryCodesAsync(userId, cancellationToken);
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.MfaEnabled,
+            cancellationToken);
+        return recoveryCodes;
     }
 
     public async Task<AuthenticationMethod?> VerifyAsync(
@@ -103,9 +113,23 @@ public sealed class TotpService(
             return null;
         }
 
-        if (VerifyTotp(credential, code))
+        if (MatchTotp(credential, code) is { } matchedTimeStep)
         {
-            return AuthenticationMethod.Totp;
+            var now = timeProvider.GetUtcNow();
+            var claimed = await dbContext.TotpCredentials
+                .Where(candidate =>
+                    candidate.Id == credential.Id
+                    && (candidate.LastUsedTimeStep == null
+                        || candidate.LastUsedTimeStep < matchedTimeStep))
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(candidate => candidate.LastUsedTimeStep, matchedTimeStep)
+                        .SetProperty(candidate => candidate.UpdatedAt, now),
+                    cancellationToken);
+
+            // This conditional update is the replay lock. A second request racing with the
+            // first affects zero rows even if both verified the cryptographic code.
+            return claimed == 1 ? AuthenticationMethod.Totp : null;
         }
 
         var recoveryCodes = await dbContext.RecoveryCodes
@@ -152,6 +176,11 @@ public sealed class TotpService(
                 new { Reason = SessionRevocationReason.MfaDisabled, Count = revoked },
                 cancellationToken);
         }
+
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.MfaDisabled,
+            cancellationToken);
     }
 
     public async Task<RecoveryCodesResponse> RegenerateRecoveryCodesAsync(
@@ -167,18 +196,25 @@ public sealed class TotpService(
             throw new ConflictException("mfa_not_enrolled", "TOTP is not enabled.");
         }
 
-        return await ReplaceRecoveryCodesAsync(userId, cancellationToken);
+        var recoveryCodes = await ReplaceRecoveryCodesAsync(userId, cancellationToken);
+        await securityNotifications.NotifyAsync(
+            userId,
+            SecurityNotificationType.RecoveryCodesRegenerated,
+            cancellationToken);
+        return recoveryCodes;
     }
 
-    private bool VerifyTotp(TotpCredential credential, string code)
+    private long? MatchTotp(TotpCredential credential, string code)
     {
         var secret = Base32Encoding.ToBytes(_protector.Unprotect(credential.SecretEncrypted));
         var totp = new Totp(secret);
         return totp.VerifyTotp(
             timeProvider.GetUtcNow().UtcDateTime,
             code,
-            out _,
-            new VerificationWindow(previous: 1, future: 1));
+            out var matchedTimeStep,
+            new VerificationWindow(previous: 1, future: 1))
+            ? matchedTimeStep
+            : null;
     }
 
     private async Task<RecoveryCodesResponse> ReplaceRecoveryCodesAsync(

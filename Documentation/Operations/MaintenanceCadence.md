@@ -8,7 +8,7 @@ without evidence is not a control.
 
 | Cadence | Action | Evidence and gate |
 |---|---|---|
-| Continuous | CI build, format, tests, coverage, dependency audit, secret scan and image smoke | Required green workflow |
+| Continuous | CI build, format, tests, coverage, dependency/secret/application-image scans and image smoke | Required green workflow |
 | Weekly | Review Dependabot PRs and security advisories; triage failed auth/security alerts | Merged/closed PRs and incident links |
 | Monthly | Apply supported .NET SDK/runtime patch; review base images and collector; restore the latest PostgreSQL backup into isolation | Version diff, full suite, restore record |
 | Quarterly | Gracefully rotate the ES256 signing key; review CORS, proxy allowlist, rate limits, alert routing and access lists | Old/new `kid`, JWKS check, owner review |

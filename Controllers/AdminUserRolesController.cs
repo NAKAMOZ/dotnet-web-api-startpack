@@ -24,6 +24,7 @@ public sealed class AdminUserRolesController(IAdminRoleService adminRoleService)
     /// </remarks>
     [HttpPost]
     [RequirePermission(Permissions.RolesAssign)]
+    [RequireRecentAuth]
     [AuditEvent(AuditEventType.RoleGranted)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -42,6 +43,7 @@ public sealed class AdminUserRolesController(IAdminRoleService adminRoleService)
     /// <summary>Revokes a role.</summary>
     [HttpDelete("{roleId:guid}")]
     [RequirePermission(Permissions.RolesRevoke)]
+    [RequireRecentAuth]
     [AuditEvent(AuditEventType.RoleRevoked)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]

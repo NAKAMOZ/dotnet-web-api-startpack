@@ -45,9 +45,10 @@ owned by another account both map to 404.
 - Verification, reset, MFA and WebAuthn challenges are hashed, typed, expiring and consumed
   atomically.
 - SMTP delivery is an in-process bounded queue. Request success never waits for provider
-  latency or depends on delivery success.
+  latency or depends on delivery success. Saturation preserves existing queued mail, rejects
+  the overflow and emits a metadata-free Critical event; it never lets new flood traffic
+  evict an older verification/reset message.
 - Audit writes use their own scope and connection, so rejected authentication and replay
   detections survive rollback of the caller's work.
 - Cleanup uses `CleanupOptions.BatchSize` and index-shaped queries. Spent refresh tokens are
   retained until expiry because replay detection depends on them.
-

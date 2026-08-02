@@ -27,9 +27,10 @@ Instead, Development and Staging include an API Workbench at `/playground/` for 
 and testing the complete API.
 
 **Current status:** the v1 feature services and all 43 documented API operations are
-implemented. The repository also contains tests, a container image, a local Compose stack,
-an EF migration bundle workflow, runbooks, and target-neutral production guidance. A
-production hosting target, CD workflow, and software licence have not yet been selected.
+implemented. The repository also contains 379 green tests, a non-root container, a local
+Compose stack, Azure Container Apps/Managed Redis/Key Vault infrastructure as code,
+migration-first OIDC deployment and k6/ZAP workflows, and operational runbooks. A software
+licence and real subscription rollout evidence still require owner action.
 
 ## Table of contents
 
@@ -139,9 +140,9 @@ docker compose pull postgres mailpit
 docker compose up --build --detach
 ```
 
-`docker compose pull postgres mailpit` refreshes the floating `postgres:18-alpine` tag to
-the latest PostgreSQL 18 patch before startup. Subsequent starts can use only
-`docker compose up --build --detach` when no image refresh is needed.
+`docker compose pull postgres mailpit` acquires the repository's digest-pinned PostgreSQL
+and Mailpit builds. Dependabot reviews their tag/digest updates weekly; subsequent starts can
+use only `docker compose up --build --detach` when no image refresh is needed.
 
 Docker Compose starts the following services:
 
@@ -296,7 +297,7 @@ The Workbench is available in Development and Staging, and is not mapped in Prod
 
 Its source lives in [`playground-ui/`](playground-ui/) as an independent pnpm project in
 the same repository. `pnpm build` prerenders a static TanStack Start SPA and synchronizes
-it to `wwwroot/playground/`. A normal .NET build runs that frontend target incrementally;
+it reproducibly to `wwwroot/playground/`. A normal .NET build runs that frontend target incrementally;
 use `/p:SkipPlaygroundBuild=true` only when a pipeline has already supplied the static
 output. Frontend-only development is available with `cd playground-ui && pnpm dev`.
 
@@ -531,8 +532,9 @@ Behavior differs by environment:
 
 - **Development:** startup automatically applies migrations and runs
   `Data/Seeding/DevDataSeeder.cs`.
-- **Other environments:** the API never auto-migrates. Run a reviewed migration bundle
-  before starting the new application version.
+- **Other environments:** the API never auto-migrates. Run a reviewed deployment operation
+  before promoting the new application version. Azure uses the one-shot Container Apps job;
+  the CI-produced EF bundle remains the portable alternative.
 - **All environments:** deterministic `Admin` and `User` role rows are migration-owned
   reference data from `Data/Seeding/RoleSeed.cs`.
 
@@ -565,8 +567,8 @@ dotnet test tests/IntegrationTests/IntegrationTests.csproj
 ```
 
 Integration tests require a reachable Docker daemon. Testcontainers starts PostgreSQL 18
-on a random host port, applies the real migrations, and Respawn resets application state
-between tests.
+and Redis on random host ports, applies the real migrations, and Respawn resets application
+state between database tests.
 
 Reproduce the main CI checks:
 
@@ -575,7 +577,7 @@ dotnet restore
 dotnet format dotnet-web-api-startpack.slnx --verify-no-changes --no-restore
 dotnet build --configuration Release --no-restore
 dotnet test --configuration Release --no-restore
-dotnet list package --vulnerable --include-transitive
+dotnet list package --vulnerable --include-transitive --no-restore
 bash scripts/check-secrets.sh
 docker build --tag dotnet-web-api-startpack:local .
 ```
@@ -585,7 +587,7 @@ GitHub Actions runs:
 - restore, format verification, Release build, dependency audit, and secret-pattern scan;
 - unit tests with a scoped 85% crypto/validator line-coverage gate;
 - PostgreSQL integration and adversarial security tests;
-- container build and Compose readiness smoke test;
+- digest-pinned container build, HIGH/CRITICAL vulnerability gate and Compose readiness smoke;
 - a self-contained Linux x64 EF migration bundle build.
 
 See [`Documentation/Operations/CI.md`](Documentation/Operations/CI.md) and
@@ -611,7 +613,7 @@ Health contracts:
 | Endpoint | Success | Failure | Meaning |
 |---|---|---|---|
 | `/health/live` | `200 Healthy` | `503 Unhealthy` | The process can serve HTTP |
-| `/health/ready` | `200 Healthy` | `503 Unhealthy` | PostgreSQL is reachable and no migration is pending |
+| `/health/ready` | `200 Healthy` | `503 Unhealthy` | PostgreSQL/migrations are healthy and configured Redis is reachable |
 
 Health responses deliberately contain no dependency details. See
 [`Documentation/Operations/Monitoring.md`](Documentation/Operations/Monitoring.md) for the
@@ -619,23 +621,27 @@ metric catalog, initial alerts, dashboards, and telemetry safety rules.
 
 ## Deployment notes
 
-The repository builds a non-root Linux container that listens on port `8080` and includes
-a liveness health check. CI also produces an EF migration bundle. It does **not** currently
-publish an image or deploy to a hosting platform.
+The repository builds a non-root Linux container that listens on port `8080`. A successful
+CI run for a trusted `main` push deploys staging through Azure OIDC; production is a manual,
+Environment-approved dispatch. The deployment scans and promotes the exact built image digest
+and attaches SBOM and max-level provenance. Bicep provisions ACR, Container Apps, private PostgreSQL, Azure
+Managed Redis, Key Vault, managed identity, Log Analytics and Application Insights.
 
 Before a production launch:
 
-1. Select the deployment platform and create environment-specific infrastructure as code.
-2. Add a software licence.
-3. Store all secrets in the platform secret manager.
-4. Terminate TLS at a trusted edge and configure the exact proxy allowlist.
-5. Configure exact CORS origins; keep cookie and bearer origins separate.
-6. Use separate migration and runtime database roles.
-7. Run the migration bundle before starting the new image.
-8. Configure SMTP and real Google/GitHub credentials if those providers are enabled.
-9. Configure an OTLP backend, alert routing, log retention, and database backups.
-10. Verify the complete
+1. Add a software licence.
+2. Configure the `staging` and `production` GitHub Environments, OIDC federation, reviewers,
+   Key Vault/SMTP/database secrets and exact CORS/proxy settings.
+3. Run the Azure workflow; it keeps the current API image active, runs the new image's
+   migration job with the admin role, then promotes the new image with the DML-only role.
+4. Verify readiness, automatic image rollback, Redis/Key Vault private trust paths, staging
+   ZAP and the scheduled/manual k6 budget workflow.
+5. Rehearse backup restore and incident runbooks; assign dashboard/alert ownership.
+6. Verify the complete
    [`ProductionChecklist.md`](Documentation/Operations/ProductionChecklist.md).
+
+See [`AzureDeployment.md`](Documentation/Operations/AzureDeployment.md) for the exact
+topology, environment contract, migration-first sequence and evidence list.
 
 OpenAPI, Scalar, the Workbench, demo OAuth, automatic migrations, and Development fixture
 accounts are not exposed in Production.
@@ -769,6 +775,9 @@ Recommended reading:
 - [`Documentation/Operations/LocalDevelopment.md`](Documentation/Operations/LocalDevelopment.md) — local workflow
 - [`Documentation/Operations/Configuration.md`](Documentation/Operations/Configuration.md) — complete configuration reference
 - [`Documentation/Operations/Migrations.md`](Documentation/Operations/Migrations.md) — migration and seed-data runbook
+- [`Documentation/Operations/AzureDeployment.md`](Documentation/Operations/AzureDeployment.md) — Azure topology, migration-first rollout, scaling, rollback, and evidence
+- [`Documentation/Operations/PerformanceBaseline.md`](Documentation/Operations/PerformanceBaseline.md) — k6 budgets and measured local baselines
+- [`Documentation/Operations/Monitoring.md`](Documentation/Operations/Monitoring.md) — health, telemetry, dashboards, and alerts
 - [`Documentation/Operations/ProductionChecklist.md`](Documentation/Operations/ProductionChecklist.md) — go-live evidence checklist
 - [`Documentation/Decisions/README.md`](Documentation/Decisions/README.md) — architecture decision index
 - [`ROADMAP/README.md`](ROADMAP/README.md) — the implementation workstream board

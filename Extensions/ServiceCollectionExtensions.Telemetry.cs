@@ -2,6 +2,7 @@ using System.Reflection;
 using Api.Configuration;
 using Api.Logging;
 using Api.Services.Monitoring;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Npgsql;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -28,6 +29,9 @@ public static partial class ServiceCollectionExtensions
             .Get<TelemetryOptions>() ?? new TelemetryOptions();
         var otlpEndpoint = configured is { OtlpExporterEnabled: true, OtlpEndpoint: { } endpoint }
             ? endpoint
+            : null;
+        var azureMonitorConnectionString = configured.AzureMonitorExporterEnabled
+            ? configured.AzureMonitorConnectionString
             : null;
         var version = typeof(ServiceCollectionExtensions).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
@@ -59,6 +63,12 @@ public static partial class ServiceCollectionExtensions
             {
                 tracing.AddOtlpExporter(exporter => exporter.Endpoint = otlpEndpoint);
             }
+
+            if (azureMonitorConnectionString is not null)
+            {
+                tracing.AddAzureMonitorTraceExporter(
+                    exporter => exporter.ConnectionString = azureMonitorConnectionString);
+            }
         });
 
         telemetry.WithMetrics(metrics =>
@@ -73,6 +83,12 @@ public static partial class ServiceCollectionExtensions
             if (otlpEndpoint is not null)
             {
                 metrics.AddOtlpExporter(exporter => exporter.Endpoint = otlpEndpoint);
+            }
+
+            if (azureMonitorConnectionString is not null)
+            {
+                metrics.AddAzureMonitorMetricExporter(
+                    exporter => exporter.ConnectionString = azureMonitorConnectionString);
             }
         });
 

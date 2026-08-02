@@ -1,7 +1,8 @@
 # Project Implementation Roadmap
 
 **Project:** Better Auth–inspired authentication & authorization system — headless .NET 10 REST API
-**Status:** Planning complete for approved decisions; items marked `Pending Decision` require project-owner approval before their workstream starts.
+**Status:** Planning and all v1 technology decisions are complete. Implementation is code-
+complete; first-environment rollout evidence and owner sign-offs remain where named.
 **Deliverable policy:** No UI. Controllers only (no minimal API endpoints). `Program.cs` is strictly a composition root. Better Auth is architectural inspiration only — no source code is copied.
 
 ---
@@ -37,9 +38,10 @@
 | Containers / CI | **Docker + docker-compose** (API + PostgreSQL + Mailpit) and **GitHub Actions** |
 | API documentation | **Scalar** UI over the built-in OpenAPI generator + one Markdown file per endpoint under `Documentation/` |
 
-## Pending Decisions (owner approval required)
+## Decision traceability
 
-**P1–P5, P12, P13, P15 and P17 are resolved** (approved 2026-07-22), and **P18 is resolved** (approved 2026-07-23 — 90-day audit retention). They are retained below for traceability; the decisions themselves now live in `Documentation/Decisions/`. **P6–P11, P14 and P16 remain open.**
+**P1–P18 are resolved.** The table remains as historical traceability; durable decisions
+live in `Documentation/Decisions/`.
 
 | # | Decision | Recommendation | Blocking workstream(s) |
 |---|---|---|---|
@@ -47,19 +49,19 @@
 | ~~P2~~ | API versioning style | ✅ **Approved: URL segment `/api/v1/…`** via `Asp.Versioning.Mvc` — `ADR-0015` | ~~3, 11~~ resolved |
 | ~~P3~~ | Additional directories beyond the mandated list | ✅ **Approved: all four** — `Validators/`, `Extensions/`, `Exceptions/`, `BackgroundServices/` — `ADR-0014` | ~~3~~ resolved |
 | ~~P4~~ | Solution layout | ✅ Resolved — **revised to a flat root layout** (`ADR-0018`, superseding the `src/Api/` decision in `ADR-0014`). Root namespace `Api`. | ~~3~~ resolved |
-| ~~P5~~ | Caching | ✅ **Approved: `HybridCache` in-memory** — Redis deferred to §29 backlog — `ADR-0016` | ~~12, 17~~ resolved |
-| P6 | Rate-limiting store | Built-in ASP.NET Core `RateLimiter`, in-memory (single node); Redis-backed counters deferred with P5 | 17 |
-| P7 | Secret management (prod) | Env vars now; vault target (Azure Key Vault / AWS SM / HashiCorp) chosen with deployment target | 25, 27 |
+| ~~P5~~ | Caching | ✅ **Approved: `HybridCache`** — local L1 remains; Azure L2 added by `ADR-0029`, partially superseding `ADR-0016` | ~~12, 17~~ resolved |
+| ~~P6~~ | Rate-limiting store | ✅ **Approved: Azure Managed Redis atomic distributed counters**; local single-node mode remains in-memory — `ADR-0029` | ~~17~~ resolved |
+| ~~P7~~ | Secret management (prod) | ✅ **Approved: Azure Key Vault references + managed identity** — `ADR-0027` | ~~25, 27~~ resolved |
 | ~~P8~~ | Email provider (prod) | ✅ **Approved:** SMTP behind `IEmailSender`; Mailpit in dev — `ADR-0024` | ~~12~~ resolved |
 | ~~P9~~ | Background jobs | ✅ **Approved:** plain `BackgroundService`; no Hangfire/Quartz in v1 — `ADR-0025` | ~~12~~ resolved |
-| P10 | Observability backend | OpenTelemetry traces + metrics; export target open (OTLP-compatible) | 28 |
-| P11 | Message broker | **None in v1.** No async cross-service communication exists; adding a broker would be speculative complexity | — |
+| ~~P10~~ | Observability backend | ✅ **Approved: Azure Monitor**, with optional OTLP retained — `ADR-0028` | ~~28~~ resolved |
+| ~~P11~~ | Message broker | ✅ **Approved: none in v1**; no cross-service asynchronous communication exists — `ADR-0030` | resolved |
 | ~~P12~~ | Initial social providers | ✅ **Approved: Google + GitHub** — `ADR-0019` | ~~4, 12~~ resolved |
 | ~~P13~~ | Social login flow style | ✅ **Approved: API-driven redirect**; SPA-PKCE deferred to §29 — `ADR-0019` | ~~4~~ resolved |
-| P14 | Deployment target | Open — entire §27 is pending | 27 |
+| ~~P14~~ | Deployment target | ✅ **Approved: Azure Container Apps** with private PostgreSQL/Redis and Bicep — `ADR-0027` | ~~27~~ resolved |
 | ~~P15~~ | Load-testing tool | ✅ **Approved: k6** — scripts live outside the solution — `ADR-0017` | ~~23~~ resolved |
-| P16 | Scalar exposure in production | Dev + staging only; disabled in prod | 18 |
-| ~~P17~~ | Signing-key private-key storage at rest | ✅ **Approved: ASP.NET Core Data Protection**; interim, superseded when a vault is chosen (P7/P14) — `ADR-0020` | ~~4, 27~~ resolved |
+| ~~P16~~ | Scalar exposure in production | ✅ **Approved: Development + Staging only; disabled in Production** — `ADR-0031` | ~~18~~ resolved |
+| ~~P17~~ | Signing-key private-key storage at rest | ✅ **Approved: Data Protection persisted to PostgreSQL and production-wrapped by Azure Key Vault** — `ADR-0020`, `ADR-0021`, `ADR-0027` | ~~4, 27~~ resolved |
 | P18 | Audit log retention period | 90 days, then archive/delete via cleanup job | 15 |
 
 **Explicitly out of v1 scope** (owner did not select; documented as future work in §29): organizations / multi-tenancy, machine-to-machine client-credentials flow. The full in-scope/out-of-scope statement now lives in `Documentation/Scope.md` (§1).

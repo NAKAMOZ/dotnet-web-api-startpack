@@ -21,6 +21,7 @@ public sealed class AdminUserSessionsController(IAdminSessionService adminSessio
     /// </remarks>
     [HttpDelete]
     [RequirePermission(Permissions.SessionsRevokeAny)]
+    [RequireRecentAuth]
     [AuditEvent(AuditEventType.SessionRevoked)]
     [ProducesResponseType<RevokeSessionsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]

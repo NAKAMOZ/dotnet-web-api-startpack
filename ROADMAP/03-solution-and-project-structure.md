@@ -70,9 +70,10 @@ Four, each with a reason:
 
 ## Documentation Requirements
 
-`README.md` quickstart section (clone → compose up → run) stubbed, completed in §24.
+`README.md` quickstart section (clone → compose up → run), completed in §24.
 
-✅ `README.md` created at the repo root with a stubbed quickstart (compose steps marked `TODO §24`, migrations `TODO §8`).
+✅ `README.md` was created at the repo root during this milestone. §8 and §24 later
+replaced its marked migration/Compose placeholders; the current quickstart is complete.
 
 ## Definition of Done
 

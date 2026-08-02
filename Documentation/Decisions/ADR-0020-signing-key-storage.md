@@ -1,6 +1,6 @@
 # ADR-0020: Signing-Key Private Material Protected by ASP.NET Core Data Protection
 
-- **Status:** Accepted
+- **Status:** Superseded in production by ADR-0027; Data Protection abstraction remains
 - **Date:** 2026-07-22
 - **Deciders:** Project owner
 - **Source:** **Resolves pending decision P17** (`ROADMAP/00-overview.md`). Completes the open item in [ADR-0004](ADR-0004-signing-key-management.md).
@@ -10,7 +10,8 @@
 
 [ADR-0004](ADR-0004-signing-key-management.md) put the ES256 key ring in the database and deliberately left one question open: how the private key material is protected at rest. It is the most sensitive value in the system — anyone holding it can mint access tokens for any user, and no amount of correct validation elsewhere compensates.
 
-The deployment target is still undecided (P14), which rules out committing to a cloud KMS today.
+At the time of this decision the deployment target was undecided (P14), which ruled out
+committing to a cloud KMS. ADR-0027 later selected Azure and added Key Vault wrapping.
 
 ## Decision
 

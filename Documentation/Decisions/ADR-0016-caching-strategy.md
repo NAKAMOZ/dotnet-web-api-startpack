@@ -1,6 +1,6 @@
 # ADR-0016: In-Memory `HybridCache` as the v1 Caching Layer
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0029 for multi-node deployments; local L1 decision remains
 - **Date:** 2026-07-22
 - **Deciders:** Project owner
 - **Source:** **Resolves pending decision P5** (`ROADMAP/00-overview.md`)

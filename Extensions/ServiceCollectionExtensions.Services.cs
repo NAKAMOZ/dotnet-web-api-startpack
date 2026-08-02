@@ -1,10 +1,12 @@
 using Api.BackgroundServices;
+using Api.Configuration;
 using Api.Services.ApiKeys;
 using Api.Services.Audit;
 using Api.Services.Auth;
 using Api.Services.Crypto;
 using Api.Services.Email;
 using Api.Services.Mfa;
+using Api.Services.Operations;
 using Api.Services.Passkeys;
 using Api.Services.Security;
 using Api.Services.Sessions;
@@ -20,7 +22,9 @@ public static partial class ServiceCollectionExtensions
     /// <summary>
     /// Domain services — crypto primitives, the token pipeline, and feature services.
     /// </summary>
-    public static IServiceCollection AddDomainServices(this IServiceCollection services)
+    public static IServiceCollection AddDomainServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         services.TryAddSingleton(TimeProvider.System);
 
@@ -58,21 +62,22 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IApiKeyService, ApiKeyService>();
         services.AddScoped<ISocialAuthService, SocialAuthService>();
         services.AddScoped<IPasskeyService, PasskeyService>();
+        services.AddScoped<DatabaseDeploymentService>();
         services.AddHttpClient();
+        var webAuthn = configuration
+            .GetSection(WebAuthnOptions.SectionName)
+            .Get<WebAuthnOptions>() ?? new WebAuthnOptions();
         services.AddFido2(options =>
         {
-            options.ServerDomain = "localhost";
-            options.ServerName = "dotnet-web-api-startpack";
-            options.Origins = new HashSet<string>(StringComparer.Ordinal)
-            {
-                "https://localhost:7052",
-                "http://localhost:5035",
-            };
+            options.ServerDomain = webAuthn.ServerDomain;
+            options.ServerName = webAuthn.ServerName;
+            options.Origins = webAuthn.Origins.ToHashSet(StringComparer.Ordinal);
         });
 
         services.AddSingleton<EmbeddedEmailTemplateRenderer>();
         services.AddSingleton<IEmailTemplateRenderer>(
             static provider => provider.GetRequiredService<EmbeddedEmailTemplateRenderer>());
+        services.AddScoped<ISecurityNotificationService, SecurityNotificationService>();
         services.AddSingleton<SmtpEmailSender>();
         services.AddSingleton<IEmailSender>(
             static provider => provider.GetRequiredService<SmtpEmailSender>());
