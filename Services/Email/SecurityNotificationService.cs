@@ -1,5 +1,4 @@
 using Api.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.Email;
 
@@ -14,11 +13,14 @@ public sealed class SecurityNotificationService(
         string eventName,
         CancellationToken cancellationToken)
     {
-        var email = await dbContext.Users
-            .AsNoTracking()
-            .Where(user => user.Id == userId)
-            .Select(user => user.Email)
-            .SingleAsync(cancellationToken);
+        // FindAsync rather than a projection: most callers are feature services that have
+        // already loaded and mutated this user in the same scoped context, so the change
+        // tracker answers without a round trip. An AsNoTracking projection deliberately
+        // bypasses it and would add a SELECT to every credential change.
+        var user = await dbContext.Users.FindAsync([userId], cancellationToken)
+                   ?? throw new InvalidOperationException(
+                       $"Cannot notify user '{userId}': the user no longer exists.");
+        var email = user.Email;
         var occurredAt = timeProvider.GetUtcNow();
 
         await emailSender.QueueAsync(

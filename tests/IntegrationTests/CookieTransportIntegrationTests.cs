@@ -1,9 +1,5 @@
 using System.Net.Http.Json;
-using Api.Data;
-using Api.Data.Seeding;
 using Api.DTOs.Auth;
-using Api.Models;
-using Api.Services.Crypto;
 
 namespace IntegrationTests;
 
@@ -17,7 +13,7 @@ public sealed class CookieTransportIntegrationTests(IntegrationTestFactory facto
         const string email = "cookie-flow@example.com";
         const string password = "V4lid!River-Stone-Cobalt-47";
         var cancellationToken = TestContext.Current.CancellationToken;
-        await SeedPasswordUserAsync(email, password);
+        await factory.SeedUserAsync(cancellationToken, email, password);
         var client = factory.CreateClient();
 
         using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
@@ -57,23 +53,6 @@ public sealed class CookieTransportIntegrationTests(IntegrationTestFactory facto
 
         var afterLogout = await client.GetAsync("/api/v1/sessions", cancellationToken);
         Assert.Equal(HttpStatusCode.Unauthorized, afterLogout.StatusCode);
-    }
-
-    private async Task SeedPasswordUserAsync(string email, string password)
-    {
-        await factory.InScopeAsync(async services =>
-        {
-            var database = services.GetRequiredService<AppDbContext>();
-            var user = new User
-            {
-                Email = email,
-                EmailVerified = true,
-                PasswordHash = services.GetRequiredService<IPasswordHasher>().Hash(password),
-            };
-            database.Users.Add(user);
-            database.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = RoleSeed.UserRoleId });
-            await database.SaveChangesAsync(TestContext.Current.CancellationToken);
-        });
     }
 
     private static async Task SetFreshCsrfHeaderAsync(HttpClient client, CancellationToken cancellationToken)

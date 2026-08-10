@@ -1,7 +1,10 @@
 using Api.BackgroundServices;
 using Api.Data;
+using Api.Data.Seeding;
+using Api.Logging;
 using Api.Models;
 using Api.Models.Enums;
+using Api.Services.Crypto;
 using Api.Services.Email;
 using Api.Services.Tokens;
 using Microsoft.AspNetCore.Hosting;
@@ -135,8 +138,21 @@ public sealed class IntegrationTestFactory : WebApplicationFactory<Program>, IAs
         await action(scope.ServiceProvider);
     }
 
-    /// <summary>Persists a minimal verified user and returns its id.</summary>
-    public async Task<Guid> SeedUserAsync(CancellationToken cancellationToken)
+    /// <summary>Persists a user and its role grant, and returns the new id.</summary>
+    /// <remarks>
+    /// The one seeder for the collection. Every argument past the token is optional so the
+    /// common "some verified user exists" case stays a single call, while the login and admin
+    /// scenarios get a password, a role or an unverified address from the same place. Six
+    /// private near-copies of this used to exist, two of them identical and one deriving the
+    /// granted role from an email prefix.
+    /// </remarks>
+    public async Task<Guid> SeedUserAsync(
+        CancellationToken cancellationToken,
+        string? email = null,
+        string? password = null,
+        Guid? roleId = null,
+        string? displayName = null,
+        bool emailVerified = true)
     {
         var userId = Guid.CreateVersion7();
 
@@ -146,8 +162,17 @@ public sealed class IntegrationTestFactory : WebApplicationFactory<Program>, IAs
             database.Users.Add(new User
             {
                 Id = userId,
-                Email = $"{userId:N}@example.com",
-                EmailVerified = true,
+                Email = email ?? $"{userId:N}@example.com",
+                EmailVerified = emailVerified,
+                DisplayName = displayName,
+                PasswordHash = password is null
+                    ? null
+                    : services.GetRequiredService<IPasswordHasher>().Hash(password),
+            });
+            database.UserRoles.Add(new UserRole
+            {
+                UserId = userId,
+                RoleId = roleId ?? RoleSeed.UserRoleId,
             });
             await database.SaveChangesAsync(cancellationToken);
         });
@@ -196,7 +221,7 @@ public sealed class IntegrationTestFactory : WebApplicationFactory<Program>, IAs
 
         builder.ConfigureTestServices(services =>
         {
-            services.AddSingleton<ILogEventSink>(LogSink);
+            services.AddSingleton<IDiagnosticLogEventSink>(LogSink);
             services.RemoveAll<IHttpClientFactory>();
             services.AddSingleton<IHttpClientFactory, StubSocialHttpClientFactory>();
             services.RemoveAll<IEmailSender>();

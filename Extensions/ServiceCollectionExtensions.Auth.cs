@@ -1,7 +1,6 @@
 using Api.Configuration;
 using Api.Data;
 using Api.Handlers.Authentication;
-using Azure.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
@@ -47,16 +46,10 @@ public static partial class ServiceCollectionExtensions
             // startup warning. Every restart would then orphan every SigningKey row.
             .PersistKeysToDbContext<AppDbContext>();
 
-        var azure = configuration
-            .GetSection(AzurePlatformOptions.SectionName)
-            .Get<AzurePlatformOptions>() ?? new AzurePlatformOptions();
+        var azure = BindSection<AzurePlatformOptions>(configuration, AzurePlatformOptions.SectionName);
         if (azure.DataProtectionKeyIdentifier is { } keyIdentifier)
         {
-            var credential = string.IsNullOrWhiteSpace(azure.ManagedIdentityClientId)
-                ? new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned)
-                : new ManagedIdentityCredential(
-                    ManagedIdentityId.FromUserAssignedClientId(azure.ManagedIdentityClientId));
-            dataProtection.ProtectKeysWithAzureKeyVault(keyIdentifier, credential);
+            dataProtection.ProtectKeysWithAzureKeyVault(keyIdentifier, azure.CreateCredential());
         }
 
         services.ConfigureOptions<ConfigureJwtBearerOptions>();

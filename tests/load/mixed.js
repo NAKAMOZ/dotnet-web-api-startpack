@@ -1,7 +1,6 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import {
-  adoptTokens,
   checkFloor,
   createTokenPool,
   defaultHeaders,
@@ -88,7 +87,7 @@ export function refresh(data) {
     { headers: defaultHeaders, tags: { operation: 'refresh' } },
   );
 
-  refreshTokens = adoptTokens(response);
+  refreshTokens = parseTokens(response);
 
   check(response, { 'refresh rotated': (result) => result.status === 200 });
 }

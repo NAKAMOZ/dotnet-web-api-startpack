@@ -64,6 +64,22 @@ public static partial class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Reads a section at composition time, for the handful of decisions that shape
+    /// <i>registration</i> and therefore cannot wait for <see cref="IOptions{TOptions}"/> —
+    /// which service to register for a limiter backend, whether to add a health check.
+    /// </summary>
+    /// <remarks>
+    /// This is the escape hatch from <see cref="AddValidatedOptions"/>, not an alternative to
+    /// it: the section is bound again there, with its validator and <c>ValidateOnStart</c>.
+    /// Everything read at runtime must resolve <see cref="IOptions{TOptions}"/> instead, or it
+    /// silently ignores any <c>Configure</c>/<c>PostConfigure</c> applied after this snapshot.
+    /// Spelled once so the <c>?? new()</c> fallback cannot be forgotten at one site.
+    /// </remarks>
+    private static TOptions BindSection<TOptions>(IConfiguration configuration, string sectionName)
+        where TOptions : new() =>
+        configuration.GetSection(sectionName).Get<TOptions>() ?? new TOptions();
+
     private static void AddValidatedSection<TOptions, TValidator>(
         IServiceCollection services,
         string sectionName)

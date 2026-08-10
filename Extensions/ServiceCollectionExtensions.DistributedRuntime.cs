@@ -1,7 +1,5 @@
 using Api.Configuration;
 using Api.Services.RateLimiting;
-using Azure.Core;
-using Azure.Identity;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using StackExchange.Redis;
 
@@ -17,9 +15,7 @@ public static partial class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var redis = configuration
-            .GetSection(RedisOptions.SectionName)
-            .Get<RedisOptions>() ?? new RedisOptions();
+        var redis = BindSection<RedisOptions>(configuration, RedisOptions.SectionName);
 
         if (!redis.Enabled)
         {
@@ -28,12 +24,15 @@ public static partial class ServiceCollectionExtensions
             return services;
         }
 
+        // Bound here rather than inside the factory below: the lambda runs on first
+        // resolution, and re-binding a section by reflection at that point would also capture
+        // `configuration` for the lifetime of the singleton.
+        var azure = BindSection<AzurePlatformOptions>(configuration, AzurePlatformOptions.SectionName);
+
         services.AddSingleton<IConnectionMultiplexer>(provider =>
             CreateRedisConnection(
                 redis,
-                configuration
-                    .GetSection(AzurePlatformOptions.SectionName)
-                    .Get<AzurePlatformOptions>() ?? new AzurePlatformOptions(),
+                azure,
                 provider.GetRequiredService<ILoggerFactory>()));
 
         services.AddStackExchangeRedisCache(options => options.InstanceName = redis.InstanceName);
@@ -62,12 +61,8 @@ public static partial class ServiceCollectionExtensions
         if (redis.UseAzureIdentity)
         {
             configuration.Ssl = true;
-            TokenCredential credential = string.IsNullOrWhiteSpace(azure.ManagedIdentityClientId)
-                ? new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned)
-                : new ManagedIdentityCredential(
-                    ManagedIdentityId.FromUserAssignedClientId(azure.ManagedIdentityClientId));
             configuration
-                .ConfigureForAzureWithTokenCredentialAsync(credential)
+                .ConfigureForAzureWithTokenCredentialAsync(azure.CreateCredential())
                 .GetAwaiter()
                 .GetResult();
         }

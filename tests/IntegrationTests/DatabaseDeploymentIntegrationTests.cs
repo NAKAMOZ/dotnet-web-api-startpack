@@ -47,18 +47,19 @@ public sealed class DatabaseDeploymentIntegrationTests(IntegrationTestFactory fa
         await runtimeConnection.OpenAsync(cancellationToken);
         await using (var read = runtimeConnection.CreateCommand())
         {
-            read.CommandText = "SELECT COUNT(*) FROM auth.\"Roles\";";
+            read.CommandText = $"SELECT COUNT(*) FROM {AppDbContext.Schema}.\"Roles\";";
             Assert.Equal(2L, await read.ExecuteScalarAsync(cancellationToken));
         }
 
         await using (var write = runtimeConnection.CreateCommand())
         {
-            write.CommandText = "UPDATE auth.\"Users\" SET \"UpdatedAt\" = \"UpdatedAt\" WHERE FALSE;";
+            write.CommandText =
+                $"UPDATE {AppDbContext.Schema}.\"Users\" SET \"UpdatedAt\" = \"UpdatedAt\" WHERE FALSE;";
             Assert.Equal(0, await write.ExecuteNonQueryAsync(cancellationToken));
         }
 
         await using var ddl = runtimeConnection.CreateCommand();
-        ddl.CommandText = "CREATE TABLE auth.\"ForbiddenRuntimeDdl\" (\"Id\" integer);";
+        ddl.CommandText = $"CREATE TABLE {AppDbContext.Schema}.\"ForbiddenRuntimeDdl\" (\"Id\" integer);";
         var exception = await Assert.ThrowsAsync<PostgresException>(
             () => ddl.ExecuteNonQueryAsync(cancellationToken));
         Assert.Equal(PostgresErrorCodes.InsufficientPrivilege, exception.SqlState);

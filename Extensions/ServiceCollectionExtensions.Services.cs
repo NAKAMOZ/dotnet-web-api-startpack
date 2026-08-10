@@ -64,9 +64,7 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IPasskeyService, PasskeyService>();
         services.AddScoped<DatabaseDeploymentService>();
         services.AddHttpClient();
-        var webAuthn = configuration
-            .GetSection(WebAuthnOptions.SectionName)
-            .Get<WebAuthnOptions>() ?? new WebAuthnOptions();
+        var webAuthn = BindSection<WebAuthnOptions>(configuration, WebAuthnOptions.SectionName);
         services.AddFido2(options =>
         {
             options.ServerDomain = webAuthn.ServerDomain;

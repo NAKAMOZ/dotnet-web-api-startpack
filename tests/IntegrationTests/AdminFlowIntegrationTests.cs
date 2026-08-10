@@ -20,7 +20,7 @@ public sealed class AdminFlowIntegrationTests(IntegrationTestFactory factory)
     {
         await factory.ResetAsync();
         var cancellationToken = TestContext.Current.CancellationToken;
-        var adminId = await SeedUserAsync("admin-matrix@example.com", true);
+        var adminId = await SeedUserAsync("admin-matrix@example.com", true, roleId: RoleSeed.AdminRoleId);
         var alphaId = await SeedUserAsync("alpha-matrix@example.com", true, "Alpha target");
         var betaId = await SeedUserAsync("beta-matrix@example.com", false, "Beta target");
         await factory.InScopeAsync(async services =>
@@ -104,31 +104,22 @@ public sealed class AdminFlowIntegrationTests(IntegrationTestFactory factory)
         });
     }
 
+    /// <summary>
+    /// Seeds through the shared factory, then nudges the clock so the paging and sorting
+    /// assertions below see a strict CreatedAt ordering.
+    /// </summary>
     private async Task<Guid> SeedUserAsync(
         string email,
         bool emailVerified,
-        string? displayName = null)
+        string? displayName = null,
+        Guid? roleId = null)
     {
-        var userId = Guid.CreateVersion7();
-        await factory.InScopeAsync(async services =>
-        {
-            var database = services.GetRequiredService<AppDbContext>();
-            database.Users.Add(new User
-            {
-                Id = userId,
-                Email = email,
-                EmailVerified = emailVerified,
-                DisplayName = displayName,
-            });
-            database.UserRoles.Add(new UserRole
-            {
-                UserId = userId,
-                RoleId = email.StartsWith("admin-", StringComparison.Ordinal)
-                    ? RoleSeed.AdminRoleId
-                    : RoleSeed.UserRoleId,
-            });
-            await database.SaveChangesAsync(TestContext.Current.CancellationToken);
-        });
+        var userId = await factory.SeedUserAsync(
+            TestContext.Current.CancellationToken,
+            email,
+            roleId: roleId,
+            displayName: displayName,
+            emailVerified: emailVerified);
         factory.Clock.Advance(TimeSpan.FromTicks(1));
         return userId;
     }

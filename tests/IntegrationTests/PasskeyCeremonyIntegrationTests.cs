@@ -1,11 +1,13 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Api.Configuration;
 using Api.Data;
 using Api.DTOs.Auth;
 using Api.DTOs.Passkeys;
 using Api.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace IntegrationTests;
 
@@ -26,7 +28,9 @@ public sealed class PasskeyCeremonyIntegrationTests(IntegrationTestFactory facto
         var authenticated = factory.CreateClient();
         authenticated.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", bearer);
-        using var authenticator = new SoftwareWebAuthnAuthenticator();
+        var webAuthn = await factory.InScopeAsync(services =>
+            Task.FromResult(services.GetRequiredService<IOptions<WebAuthnOptions>>().Value));
+        using var authenticator = new SoftwareWebAuthnAuthenticator(webAuthn);
 
         var registrationOptionsResponse = await authenticated.PostAsJsonAsync(
             "/api/v1/passkeys/registration/options",

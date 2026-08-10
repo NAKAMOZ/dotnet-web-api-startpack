@@ -1,10 +1,10 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import {
-  adoptTokens,
   checkFloor,
   createTokenPool,
   defaultHeaders,
+  parseTokens,
   routes,
   thresholds,
   url,
@@ -53,7 +53,7 @@ export default function (tokenPool) {
 
   // Rotation invalidates the presented token, so the successor has to replace it or the
   // next iteration replays a burnt one and trips reuse detection.
-  tokens = adoptTokens(response);
+  tokens = parseTokens(response);
 
   check(response, {
     'refresh rotated': (result) => result.status === 200,

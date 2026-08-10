@@ -226,25 +226,8 @@ public sealed class FeatureAttackTests(IntegrationTestFactory factory)
                 cancellationToken)).StatusCode);
     }
 
-    private async Task<Guid> SeedUserAsync(string email, string password, Guid roleId)
-    {
-        var userId = Guid.CreateVersion7();
-        await factory.InScopeAsync(async services =>
-        {
-            var database = services.GetRequiredService<AppDbContext>();
-            var hasher = services.GetRequiredService<IPasswordHasher>();
-            database.Users.Add(new User
-            {
-                Id = userId,
-                Email = email,
-                EmailVerified = true,
-                PasswordHash = hasher.Hash(password),
-            });
-            database.UserRoles.Add(new UserRole { UserId = userId, RoleId = roleId });
-            await database.SaveChangesAsync(TestContext.Current.CancellationToken);
-        });
-        return userId;
-    }
+    private Task<Guid> SeedUserAsync(string email, string password, Guid roleId) =>
+        factory.SeedUserAsync(TestContext.Current.CancellationToken, email, password, roleId);
 
     private static async Task<(HttpResponseMessage Response, TimeSpan Elapsed)> TimedLoginAsync(
         HttpClient client,

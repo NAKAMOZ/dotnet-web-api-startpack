@@ -10,12 +10,7 @@ public sealed class ApiCorsOptionsValidator : IValidateOptions<ApiCorsOptions>
 
         foreach (var origin in origins)
         {
-            if (origin == "*"
-                || !Uri.TryCreate(origin, UriKind.Absolute, out var uri)
-                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-                || uri.AbsolutePath != "/"
-                || !string.IsNullOrEmpty(uri.Query)
-                || !string.IsNullOrEmpty(uri.Fragment))
+            if (!OriginRules.IsExactOrigin(origin, out _))
             {
                 return ValidateOptionsResult.Fail(
                     $"Cors origin '{origin}' must be an exact HTTP(S) origin; wildcards and paths are forbidden.");

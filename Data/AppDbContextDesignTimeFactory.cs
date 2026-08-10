@@ -21,21 +21,12 @@ public sealed class AppDbContextDesignTimeFactory : IDesignTimeDbContextFactory<
             .AddEnvironmentVariables()
             .AddCommandLine(args)
             .Build();
-        var connectionString = configuration.GetConnectionString("Postgres");
-
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException(
-                "EF tooling requires ConnectionStrings:Postgres. Configure user-secrets or "
-                + "the ConnectionStrings__Postgres environment variable.");
-        }
-
+        // Both the connection string and the provider options come from AppDbContext, so a
+        // migration is always scaffolded against the model the running host builds.
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(
-                connectionString,
-                postgres => postgres.MigrationsHistoryTable(
-                    "__EFMigrationsHistory",
-                    AppDbContext.Schema))
+                AppDbContext.ResolveConnectionString(configuration),
+                AppDbContext.ConfigureNpgsql)
             .Options;
 
         return new AppDbContext(options);

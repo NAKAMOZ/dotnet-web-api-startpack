@@ -24,9 +24,7 @@ public static partial class ServiceCollectionExtensions
         // registration-time decision. AddValidatedOptions binds and validates the same
         // section for everything that resolves it later; a bad endpoint here still fails the
         // host at ValidateOnStart rather than exporting to nowhere.
-        var configured = configuration
-            .GetSection(TelemetryOptions.SectionName)
-            .Get<TelemetryOptions>() ?? new TelemetryOptions();
+        var configured = BindSection<TelemetryOptions>(configuration, TelemetryOptions.SectionName);
         var otlpEndpoint = configured is { OtlpExporterEnabled: true, OtlpEndpoint: { } endpoint }
             ? endpoint
             : null;

@@ -1,5 +1,3 @@
-using Api.Configuration;
-using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace Api.Services.RateLimiting;
@@ -8,9 +6,7 @@ namespace Api.Services.RateLimiting;
 /// Atomic Redis scripts for fixed and segmented sliding windows. Redis server time is used,
 /// so counters remain correct when application-node clocks drift.
 /// </summary>
-public sealed class RedisRateLimitStore(
-    IConnectionMultiplexer connection,
-    IOptions<RedisOptions> options) : IRedisRateLimitStore
+public sealed class RedisRateLimitStore(IConnectionMultiplexer connection) : IRedisRateLimitStore
 {
     private const string FixedWindowScript = """
         local permits = tonumber(ARGV[1])
@@ -77,10 +73,9 @@ public sealed class RedisRateLimitStore(
         """;
 
     private readonly IDatabase _database = connection.GetDatabase();
-    private readonly string _instanceName = options.Value.InstanceName;
 
     public async ValueTask<RedisRateLimitDecision> AcquireFixedWindowAsync(
-        string key,
+        RedisKey key,
         int permitLimit,
         int permitCount,
         TimeSpan window,
@@ -89,13 +84,13 @@ public sealed class RedisRateLimitStore(
         cancellationToken.ThrowIfCancellationRequested();
         var result = await _database.ScriptEvaluateAsync(
             FixedWindowScript,
-            [Key(key)],
+            [key],
             [permitCount, permitLimit, Milliseconds(window)]);
         return Decision(result);
     }
 
     public async ValueTask<RedisRateLimitDecision> AcquireSlidingWindowAsync(
-        string key,
+        RedisKey key,
         int permitLimit,
         int permitCount,
         TimeSpan window,
@@ -105,12 +100,10 @@ public sealed class RedisRateLimitStore(
         cancellationToken.ThrowIfCancellationRequested();
         var result = await _database.ScriptEvaluateAsync(
             SlidingWindowScript,
-            [Key(key)],
+            [key],
             [permitCount, permitLimit, Milliseconds(window), segmentsPerWindow]);
         return Decision(result);
     }
-
-    private RedisKey Key(string key) => _instanceName + "ratelimit:" + key;
 
     private static long Milliseconds(TimeSpan value) =>
         Math.Max(1, checked((long)Math.Ceiling(value.TotalMilliseconds)));

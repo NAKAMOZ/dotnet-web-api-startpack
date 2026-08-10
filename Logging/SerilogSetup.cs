@@ -1,5 +1,4 @@
 using Serilog;
-using Serilog.Core;
 using Serilog.Formatting.Compact;
 
 namespace Api.Logging;
@@ -101,10 +100,11 @@ public static class SerilogSetup
             logger.WriteTo.Console(new CompactJsonFormatter());
         }
 
-        // Optional DI-provided sinks are primarily useful for verification and host-level
-        // integrations. They still receive events only after the same enrichment and
-        // redaction policy above; attaching an independent logging provider would bypass it.
-        foreach (var sink in services.GetServices<ILogEventSink>())
+        // Sinks a host attached on purpose, named by a marker interface rather than by the
+        // bare Serilog one — see IDiagnosticLogEventSink for why the narrower contract is the
+        // point. They still receive events only after the enrichment and redaction policy
+        // above; attaching an independent logging provider would bypass it.
+        foreach (var sink in services.GetServices<IDiagnosticLogEventSink>())
         {
             logger.WriteTo.Sink(sink);
         }

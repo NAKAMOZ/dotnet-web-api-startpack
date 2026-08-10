@@ -80,11 +80,6 @@ export function createTokenPool(size) {
   return tokens;
 }
 
-/** Parses a rotation response. Each scenario owns its own per-VU token variable. */
-export function adoptTokens(response) {
-  return parseTokens(response);
-}
-
 export const thresholds = {
   login: {
     'http_req_duration{operation:login}': ['p(95)<500'],

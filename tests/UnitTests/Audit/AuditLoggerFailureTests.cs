@@ -3,6 +3,7 @@ using Api.Services.Audit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using UnitTests.TestSupport;
 
 namespace UnitTests.Audit;
 
@@ -35,37 +36,4 @@ public sealed class AuditLoggerFailureTests
         public IServiceScope CreateScope() => throw new InvalidOperationException("audit database unavailable");
     }
 
-    private sealed class CapturingLogger<T> : ILogger<T>
-    {
-        public LogLevel? Level { get; private set; }
-
-        public string Message { get; private set; } = string.Empty;
-
-        public Exception? Exception { get; private set; }
-
-        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NoopScope.Instance;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter)
-        {
-            Level = logLevel;
-            Message = formatter(state, exception);
-            Exception = exception;
-        }
-    }
-
-    private sealed class NoopScope : IDisposable
-    {
-        public static NoopScope Instance { get; } = new();
-
-        public void Dispose()
-        {
-        }
-    }
 }

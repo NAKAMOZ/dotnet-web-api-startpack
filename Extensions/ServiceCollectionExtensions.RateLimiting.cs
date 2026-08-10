@@ -35,58 +35,71 @@ public static partial class ServiceCollectionExtensions
         limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         limiter.OnRejected = WriteRejectionAsync;
 
+        // Every input below is fixed once this method runs, so each limiter factory is built
+        // here and reused. Written inline, the delegate would close over the policy name and
+        // the limits, allocating a display class and a delegate per request that
+        // PartitionedRateLimiter discards on every partition hit.
+        var general = SlidingWindowFactory(
+            partitions,
+            RateLimitPolicies.General,
+            configured.GeneralPermitLimit,
+            configured.GeneralWindow,
+            configured.GeneralSegmentsPerWindow);
+
         // The general policy is the default: every endpoint is covered without relying on a
         // controller author to remember an attribute. Named policies below add tighter caps.
         limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        {
-            var partitionKey = GeneralPartitionKey(context);
-            return RateLimitPartition.Get(
-                partitionKey,
-                key => partitions.CreateSlidingWindow(
-                    RateLimitPolicies.General,
-                    key,
-                    configured.GeneralPermitLimit,
-                    configured.GeneralWindow,
-                    configured.GeneralSegmentsPerWindow));
-        });
+            RateLimitPartition.Get(GeneralPartitionKey(context), general));
 
         limiter.AddPolicy(
             RateLimitPolicies.AuthStrict,
-            context => FixedWindowPartition(
+            PerClientIpPolicy(
                 partitions,
                 RateLimitPolicies.AuthStrict,
-                ClientIp(context),
                 configured.AuthStrictPermitLimit,
                 configured.AuthStrictWindow));
 
         limiter.AddPolicy(
             RateLimitPolicies.EmailSending,
-            context => FixedWindowPartition(
+            PerClientIpPolicy(
                 partitions,
                 RateLimitPolicies.EmailSending,
-                ClientIp(context),
                 configured.EmailSendingIpPermitLimit,
                 configured.EmailSendingIpWindow));
 
         limiter.AddPolicy(
             RateLimitPolicies.Registration,
-            context => FixedWindowPartition(
+            PerClientIpPolicy(
                 partitions,
                 RateLimitPolicies.Registration,
-                ClientIp(context),
                 configured.RegistrationPermitLimit,
                 configured.RegistrationWindow));
     }
 
-    private static RateLimitPartition<string> FixedWindowPartition(
+    private static Func<HttpContext, RateLimitPartition<string>> PerClientIpPolicy(
         IRateLimiterPartitionFactory partitions,
         string policy,
-        string partitionKey,
+        int permitLimit,
+        TimeSpan window)
+    {
+        var factory = FixedWindowFactory(partitions, policy, permitLimit, window);
+        return context => RateLimitPartition.Get(ClientIp(context), factory);
+    }
+
+    private static Func<string, RateLimiter> FixedWindowFactory(
+        IRateLimiterPartitionFactory partitions,
+        string policy,
         int permitLimit,
         TimeSpan window) =>
-        RateLimitPartition.Get(
-            partitionKey,
-            key => partitions.CreateFixedWindow(policy, key, permitLimit, window));
+        key => partitions.CreateFixedWindow(policy, key, permitLimit, window);
+
+    private static Func<string, RateLimiter> SlidingWindowFactory(
+        IRateLimiterPartitionFactory partitions,
+        string policy,
+        int permitLimit,
+        TimeSpan window,
+        int segmentsPerWindow) =>
+        key => partitions.CreateSlidingWindow(policy, key, permitLimit, window, segmentsPerWindow);
 
     private static async ValueTask WriteRejectionAsync(
         OnRejectedContext rejected,

@@ -23,22 +23,12 @@ public sealed class LogRedactionAttackTests(IntegrationTestFactory factory)
         await factory.ResetAsync();
         const string password = "LogCanary!River-Stone-Cobalt-47";
         var cancellationToken = TestContext.Current.CancellationToken;
-        var userId = Guid.CreateVersion7();
 
-        await factory.InScopeAsync(async services =>
-        {
-            var database = services.GetRequiredService<AppDbContext>();
-            var hasher = services.GetRequiredService<IPasswordHasher>();
-            database.Users.Add(new User
-            {
-                Id = userId,
-                Email = "log-redaction@example.com",
-                EmailVerified = true,
-                PasswordHash = hasher.Hash(password),
-            });
-            database.UserRoles.Add(new UserRole { UserId = userId, RoleId = RoleSeed.AdminRoleId });
-            await database.SaveChangesAsync(cancellationToken);
-        });
+        await factory.SeedUserAsync(
+            cancellationToken,
+            "log-redaction@example.com",
+            password,
+            RoleSeed.AdminRoleId);
 
         factory.LogSink.Clear();
         var client = factory.CreateClient();

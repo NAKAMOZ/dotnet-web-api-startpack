@@ -2,6 +2,7 @@ using Api.Models;
 using Api.Models.Enums;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
 namespace Api.Data;
 
@@ -70,6 +71,52 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     /// else, so a mistake in another schema cannot reach the credential store.
     /// </remarks>
     public const string Schema = "auth";
+
+    /// <summary>
+    /// Reads the one connection string this application has, failing by name when it is
+    /// absent.
+    /// </summary>
+    /// <remarks>
+    /// A missing connection string that surfaces as a 500 on the first login reads like a
+    /// database outage; here it names itself. Shared with the design-time factory so EF
+    /// tooling and the running host cannot disagree about where the database is.
+    /// </remarks>
+    public static string ResolveConnectionString(IConfiguration configuration) =>
+        configuration.GetConnectionString("Postgres") is { } connectionString
+        && !string.IsNullOrWhiteSpace(connectionString)
+            ? connectionString
+            : throw new InvalidOperationException(
+                "Connection string 'Postgres' is not configured. Set ConnectionStrings:Postgres "
+                + "in user-secrets or configuration, or the ConnectionStrings__Postgres "
+                + "environment variable.");
+
+    /// <summary>
+    /// Provider options shared by the runtime context and the design-time factory.
+    /// </summary>
+    /// <remarks>
+    /// Spelled once because EF tooling builds its own <see cref="DbContextOptions"/>: a
+    /// second, hand-written provider configuration is how a migration comes to be scaffolded
+    /// against a model the running application does not have.
+    /// </remarks>
+    public static void ConfigureNpgsql(NpgsqlDbContextOptionsBuilder npgsql)
+    {
+        // Transient faults — a failover, a dropped connection, a restarting container — are
+        // retried rather than surfaced as a 500.
+        //
+        // The cost is real and worth stating up front: with a retrying execution strategy,
+        // code that opens its own transaction must run through
+        // db.Database.CreateExecutionStrategy().ExecuteAsync(...) or EF throws at runtime.
+        // §12's refresh rotation is exactly that shape — DataAccess.md carries the pattern.
+        npgsql.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null);
+
+        // The history table lives with the tables it describes. Left in `public` it would sit
+        // apart from the schema it versions, and a database hosting two applications would
+        // have them competing for one history table.
+        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", Schema);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

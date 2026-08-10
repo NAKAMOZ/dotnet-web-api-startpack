@@ -1,6 +1,4 @@
-using Api.Configuration;
 using Api.Services.RateLimiting;
-using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using Testcontainers.Redis;
 
@@ -35,7 +33,7 @@ public sealed class RedisRateLimitStoreIntegrationTests : IAsyncLifetime
         var store = CreateStore();
         var attempts = Enumerable.Range(0, 100)
             .Select(_ => store.AcquireFixedWindowAsync(
-                    "fixed-shared",
+                    Key("fixed-shared"),
                     permitLimit: 10,
                     permitCount: 1,
                     TimeSpan.FromMinutes(1),
@@ -58,7 +56,7 @@ public sealed class RedisRateLimitStoreIntegrationTests : IAsyncLifetime
         var attempts = Enumerable.Range(0, 40)
             .Select(index => (index % 2 == 0 ? firstNode : secondNode)
                 .AcquireSlidingWindowAsync(
-                    "sliding-shared",
+                    Key("sliding-shared"),
                     permitLimit: 7,
                     permitCount: 1,
                     TimeSpan.FromMinutes(1),
@@ -73,12 +71,12 @@ public sealed class RedisRateLimitStoreIntegrationTests : IAsyncLifetime
     }
 
     private RedisRateLimitStore CreateStore() =>
-        new(
-            _connection ?? throw new InvalidOperationException("Redis has not started."),
-            Options.Create(new RedisOptions
-            {
-                Enabled = true,
-                Endpoint = _redis.GetConnectionString(),
-                InstanceName = _instanceName,
-            }));
+        new(_connection ?? throw new InvalidOperationException("Redis has not started."));
+
+    /// <summary>
+    /// The store takes keys already qualified — the partition factory builds them once per
+    /// partition rather than once per acquire — so these tests carry their own run-unique
+    /// prefix for isolation.
+    /// </summary>
+    private RedisKey Key(string name) => _instanceName + name;
 }

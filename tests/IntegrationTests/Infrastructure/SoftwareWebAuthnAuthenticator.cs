@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Api.Configuration;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace IntegrationTests.Infrastructure;
@@ -11,10 +12,16 @@ namespace IntegrationTests.Infrastructure;
 /// standards-shaped none attestation and ES256 assertions; application tests therefore do
 /// not replace or bypass the production verifier.
 /// </summary>
-internal sealed class SoftwareWebAuthnAuthenticator : IDisposable
+/// <param name="options">
+/// The host's own WebAuthn configuration. Taken rather than restated: the relying-party id
+/// and origin are what the production verifier checks the ceremony against, so hardcoding
+/// them here would turn a configuration change into an opaque signature mismatch instead of a
+/// validation error.
+/// </param>
+internal sealed class SoftwareWebAuthnAuthenticator(WebAuthnOptions options) : IDisposable
 {
-    private const string Origin = "http://localhost:5035";
-    private const string RelyingPartyId = "localhost";
+    private readonly string _relyingPartyId = options.ServerDomain;
+    private readonly string _origin = options.Origins[0];
 
     private readonly ECDsa _key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
     private readonly byte[] _credentialId = RandomNumberGenerator.GetBytes(32);
@@ -113,20 +120,20 @@ internal sealed class SoftwareWebAuthnAuthenticator : IDisposable
         return data;
     }
 
-    private static int WriteAuthenticatorHeader(byte[] destination, byte flags, uint signCount)
+    private int WriteAuthenticatorHeader(byte[] destination, byte flags, uint signCount)
     {
-        SHA256.HashData(Encoding.UTF8.GetBytes(RelyingPartyId)).CopyTo(destination, 0);
+        SHA256.HashData(Encoding.UTF8.GetBytes(_relyingPartyId)).CopyTo(destination, 0);
         destination[32] = flags;
         BinaryPrimitives.WriteUInt32BigEndian(destination.AsSpan(33, 4), signCount);
         return 37;
     }
 
-    private static byte[] ClientData(string type, string challenge) =>
+    private byte[] ClientData(string type, string challenge) =>
         JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string, object?>
         {
             ["type"] = type,
             ["challenge"] = challenge,
-            ["origin"] = Origin,
+            ["origin"] = _origin,
             ["crossOrigin"] = false,
         });
 

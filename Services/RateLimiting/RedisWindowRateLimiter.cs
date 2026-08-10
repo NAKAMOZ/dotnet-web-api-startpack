@@ -1,16 +1,20 @@
 using System.Diagnostics;
 using System.Threading.RateLimiting;
+using StackExchange.Redis;
 
 namespace Api.Services.RateLimiting;
 
 /// <summary>Adapts Redis's atomic window decision to ASP.NET Core's limiter contract.</summary>
 internal sealed class RedisWindowRateLimiter(
     IRedisRateLimitStore store,
-    string key,
+    RedisKey key,
     int permitLimit,
     TimeSpan window,
     int segmentsPerWindow) : RateLimiter
 {
+    private static readonly RateLimitLease NotAcquiredWithoutRedis =
+        new RedisRateLimitLease(false, TimeSpan.Zero);
+
     private long _availablePermits = permitLimit;
     private long _failedLeases;
     private long _lastActivityTimestamp = Stopwatch.GetTimestamp();
@@ -30,11 +34,23 @@ internal sealed class RedisWindowRateLimiter(
         TotalSuccessfulLeases = Interlocked.Read(ref _successfulLeases),
     };
 
+    /// <summary>
+    /// Declines without touching Redis. The caller then takes the asynchronous path, which is
+    /// the only one that can reach the network without blocking.
+    /// </summary>
+    /// <remarks>
+    /// <c>RateLimitingMiddleware</c> tries this synchronous attempt first and falls back to
+    /// <see cref="AcquireAsyncCore"/> when it returns a lease that was not acquired, honouring
+    /// whatever the async path decides. Answering it over the wire instead would block a
+    /// thread-pool thread for a full Redis round trip on every request — the shape that turns
+    /// a slow Redis into thread-pool starvation rather than slow responses.
+    /// <para>
+    /// Declining is free of side effects: both Lua scripts only increment on the branch that
+    /// grants, so a refusal here consumes no permit and the counters stay exact.
+    /// </para>
+    /// </remarks>
     protected override RateLimitLease AttemptAcquireCore(int permitCount) =>
-        AcquireCoreAsync(permitCount, CancellationToken.None)
-            .AsTask()
-            .GetAwaiter()
-            .GetResult();
+        NotAcquiredWithoutRedis;
 
     protected override ValueTask<RateLimitLease> AcquireAsyncCore(
         int permitCount,

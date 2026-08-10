@@ -46,17 +46,23 @@ public static partial class ApplicationBuilderExtensions
 
         switch (arguments[1])
         {
+            // Each section is braced so its locals are scoped to it. Sharing one scope across
+            // sections forces a second command to invent a different name for the same thing.
             case RotateSigningKey:
+            {
                 var keyManager = scope.ServiceProvider.GetRequiredService<ISigningKeyManager>();
                 var keyId = await keyManager.RotateAsync(cancellationToken);
                 logger.LogInformation("Operational signing-key rotation completed. New kid {KeyId}.", keyId);
                 break;
+            }
 
             case RetireSigningKeys:
-                var retiringKeyManager = scope.ServiceProvider.GetRequiredService<ISigningKeyManager>();
-                var count = await retiringKeyManager.RetireElapsedKeysAsync(cancellationToken);
+            {
+                var keyManager = scope.ServiceProvider.GetRequiredService<ISigningKeyManager>();
+                var count = await keyManager.RetireElapsedKeysAsync(cancellationToken);
                 logger.LogInformation("Operational key retirement completed. Retired {Count} key(s).", count);
                 break;
+            }
 
             case MigrateDatabase:
                 await scope.ServiceProvider

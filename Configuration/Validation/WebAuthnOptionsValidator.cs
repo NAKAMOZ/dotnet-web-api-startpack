@@ -15,11 +15,7 @@ public sealed class WebAuthnOptionsValidator(IHostEnvironment environment)
 
         foreach (var value in options.Origins)
         {
-            if (!Uri.TryCreate(value, UriKind.Absolute, out var origin)
-                || (origin.Scheme != Uri.UriSchemeHttps && origin.Scheme != Uri.UriSchemeHttp)
-                || !string.IsNullOrEmpty(origin.AbsolutePath.Trim('/'))
-                || !string.IsNullOrEmpty(origin.Query)
-                || !string.IsNullOrEmpty(origin.Fragment)
+            if (!OriginRules.IsExactOrigin(value, out var origin)
                 || (!string.Equals(origin.Host, options.ServerDomain, StringComparison.OrdinalIgnoreCase)
                     && !origin.Host.EndsWith($".{options.ServerDomain}", StringComparison.OrdinalIgnoreCase)))
             {

@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using Serilog.Core;
+using Api.Logging;
 using Serilog.Events;
 
 namespace IntegrationTests.Infrastructure;
 
-public sealed class CollectingLogSink : ILogEventSink
+public sealed class CollectingLogSink : IDiagnosticLogEventSink
 {
     private readonly ConcurrentQueue<LogEvent> _events = new();
 

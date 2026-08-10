@@ -17,15 +17,16 @@ The pipeline is assembled in exactly one place: `Extensions/ApplicationBuilderEx
  2 │  CorrelationIdMiddleware     adopt or mint X-Correlation-Id            │
  3 │  Serilog request logging     (§15)                                     │
  4 │  UseExceptionHandler         → ExceptionHandlingMiddleware (§13 map)   │
+ 5 │  RequestBodyLimitMiddleware  declared and streamed body bounds (§16)   │
    │  UseStatusCodePages          bodies for bare status codes (§13)        │
    │  MapOpenApi / Scalar         .AllowAnonymous() (§18)                   │
    │  /health/live, /health/ready plain text, anonymous (§28)               │
- 5 │  UseHsts / UseHttpsRedirection                                         │
- 6 │  SecurityHeadersMiddleware   response-starting callbacks               │
- 7 │  Rate limiter                (§17)                                     │
- 8 │  UseCors                     OriginAwareCorsPolicyProvider             │
- 9 │  UseAuthentication → UseAuthorization                                  │
-10 │  MapControllers                                                        │
+ 6 │  UseHsts / UseHttpsRedirection                                         │
+ 7 │  SecurityHeadersMiddleware   response-starting callbacks               │
+ 8 │  Rate limiter                (§17)                                     │
+ 9 │  UseCors                     OriginAwareCorsPolicyProvider             │
+10 │  UseAuthentication → UseAuthorization                                  │
+11 │  MapControllers                                                        │
    │      └── MVC filters: CsrfProtectionFilter → ValidationFilter → action │
    └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -36,14 +37,15 @@ The pipeline is assembled in exactly one place: `Extensions/ApplicationBuilderEx
 | 2 | Correlation id | Above the exception handler, so a failure anywhere below still carries an id |
 | 3 | Request logging | After the id so the log line carries it; above the handler so 500s are logged too |
 | 4 | Exception handling | Everything below is covered; the two stages above are the two that cannot meaningfully throw |
-| 5 | HSTS / HTTPS redirect | A redirect is a normal response, not an error path |
-| 6 | Security headers | Registered as `OnStarting` callbacks — see §3 |
-| 7 | Rate limiting | **Before authentication**, so an unauthenticated flood is throttled before it costs a database read or an Argon2 verification |
-| 8 | CORS | **Before authentication**: a preflight `OPTIONS` carries no credentials by design and would answer 401 behind deny-by-default — which a browser reports as an opaque CORS failure |
-| 9 | Authentication → authorization | Identity is established before it is judged. Reversed, every check runs against an anonymous principal and denies everything |
-| 10 | Endpoints | The CSRF filter runs as an MVC **authorization filter**, after authentication, because it must know which scheme the request used |
+| 5 | Request body limit | **Below the exception handler**, so its 413 becomes a Problem Details body, and **above every body reader** — `IHttpMaxRequestBodySizeFeature` turns read-only once consumption starts, so a later position could not set the streamed bound at all. See §5 |
+| 6 | HSTS / HTTPS redirect | A redirect is a normal response, not an error path |
+| 7 | Security headers | Registered as `OnStarting` callbacks — see §3 |
+| 8 | Rate limiting | **Before authentication**, so an unauthenticated flood is throttled before it costs a database read or an Argon2 verification |
+| 9 | CORS | **Before authentication**: a preflight `OPTIONS` carries no credentials by design and would answer 401 behind deny-by-default — which a browser reports as an opaque CORS failure |
+| 10 | Authentication → authorization | Identity is established before it is judged. Reversed, every check runs against an anonymous principal and denies everything |
+| 11 | Endpoints | The CSRF filter runs as an MVC **authorization filter**, after authentication, because it must know which scheme the request used |
 
-The documentation and health endpoints are mapped between stages 4 and 5 rather than with
+The documentation and health endpoints are mapped between stages 5 and 6 rather than with
 `MapControllers`. They are not controllers, so deny-by-default covers them and each needs
 an explicit `.AllowAnonymous()`; mapping them above HSTS keeps an orchestrator's plain-HTTP
 probe from being answered with a redirect.
@@ -108,7 +110,36 @@ The body is written through `IProblemDetailsService`, never serialized directly 
 
 ---
 
-## 5. CORS
+## 5. Request body limits
+
+`Middleware/RequestBodyLimitMiddleware.cs`, `Configuration/RequestSecurityOptions.cs`
+(`RequestSecurity:MaxRequestBodySizeBytes`, default 64 KiB).
+
+Two bounds, one setting. A declared `Content-Length` over the limit is rejected outright,
+before routing, authentication or JSON parsing — the cheapest possible refusal for the
+cheapest possible attack. A body with no declared length (chunked, HTTP/2) cannot be checked
+up front, so the middleware lowers `IHttpMaxRequestBodySizeFeature.MaxRequestBodySize` and
+lets the server enforce it while reading.
+
+Both paths raise `BadHttpRequestException` with 413, which §13's single mapping table turns
+into an RFC 9457 `payload_too_large` document. Nothing here writes a response.
+
+**Why a middleware rather than `KestrelServerOptions.Limits`.** The obvious alternative is to
+configure the server limit once at startup. It was rejected because the integration suite runs
+on `TestServer`, which is not Kestrel and would silently enforce nothing — the abuse tests
+would pass against a limit that does not exist. The feature interface above is implemented by
+both servers, so the middleware is the one position that holds in test and in production.
+
+**The cost, stated plainly.** Running before routing means the stage cannot read endpoint
+metadata, so one ceiling applies to the whole surface and a future `[RequestSizeLimit]` or
+`[DisableRequestSizeLimit]` on an upload endpoint would be pre-empted by the `Content-Length`
+check above it. Adding an endpoint that needs a larger body is therefore a change to this
+middleware — teaching it to defer to endpoint metadata after routing — not a bump of the
+global setting.
+
+---
+
+## 6. CORS
 
 `Configuration/ApiCorsOptions.cs` (section `Cors`), `Handlers/Cors/OriginAwareCorsPolicyProvider.cs`.
 
@@ -127,7 +158,7 @@ Methods and headers are enumerated rather than wildcarded; `X-Correlation-Id` is
 
 ---
 
-## 6. CSRF enforcement
+## 7. CSRF enforcement
 
 `Filters/CsrfProtectionFilter.cs` (global authorization filter), `Services/Security/CsrfTokenService.cs`. Design: [Authentication.md §3](Authentication.md).
 
@@ -154,7 +185,7 @@ The document writes the tag as `HMAC(key, sessionId || nonce)`. The implementati
 
 ---
 
-## 7. Filters
+## 8. Filters
 
 | Filter | Scope | Stage |
 |---|---|---|
@@ -171,7 +202,7 @@ Redis when distributed runtime state is enabled.
 
 ---
 
-## 8. What §14 left for later
+## 9. What §14 left for later
 
 | Item | Owner | Reason |
 |---|---|---|

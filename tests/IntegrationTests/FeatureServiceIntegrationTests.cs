@@ -523,32 +523,11 @@ public sealed class FeatureServiceIntegrationTests(IntegrationTestFactory factor
         });
     }
 
-    private async Task<Guid> SeedPasswordUserAsync(
+    private Task<Guid> SeedPasswordUserAsync(
         string email,
         string password,
-        Guid? roleId = null)
-    {
-        var userId = Guid.CreateVersion7();
-        await factory.InScopeAsync(async services =>
-        {
-            var database = services.GetRequiredService<AppDbContext>();
-            var hasher = services.GetRequiredService<IPasswordHasher>();
-            database.Users.Add(new User
-            {
-                Id = userId,
-                Email = email,
-                EmailVerified = true,
-                PasswordHash = hasher.Hash(password),
-            });
-            database.UserRoles.Add(new UserRole
-            {
-                UserId = userId,
-                RoleId = roleId ?? RoleSeed.UserRoleId,
-            });
-            await database.SaveChangesAsync(TestContext.Current.CancellationToken);
-        });
-        return userId;
-    }
+        Guid? roleId = null) =>
+        factory.SeedUserAsync(TestContext.Current.CancellationToken, email, password, roleId);
 
     private async Task<Guid> CreateSessionAsync(Guid userId) =>
         await factory.InScopeAsync(services =>

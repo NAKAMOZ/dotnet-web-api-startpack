@@ -35,9 +35,7 @@ public static partial class ServiceCollectionExtensions
                 tags: ["ready"],
                 timeout: TimeSpan.FromSeconds(5));
 
-        var redis = configuration
-            .GetSection(RedisOptions.SectionName)
-            .Get<RedisOptions>() ?? new RedisOptions();
+        var redis = BindSection<RedisOptions>(configuration, RedisOptions.SectionName);
         if (redis.Enabled)
         {
             checks.AddCheck<RedisHealthCheck>(

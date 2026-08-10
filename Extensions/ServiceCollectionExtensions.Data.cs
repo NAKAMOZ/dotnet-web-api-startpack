@@ -14,17 +14,9 @@ public static partial class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Postgres");
-
-        // Fail at boot, not at the first request. A missing connection string that surfaces
-        // as a 500 on the first login reads like a database outage; here it names itself.
-        // §25 extends this to full startup validation of the options classes.
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException(
-                "Connection string 'Postgres' is not configured. Set ConnectionStrings:Postgres " +
-                "in configuration, or the ConnectionStrings__Postgres environment variable.");
-        }
+        // Fail at boot, not at the first request. §25 extends this to full startup validation
+        // of the options classes.
+        var connectionString = AppDbContext.ResolveConnectionString(configuration);
 
         services.TryAddSingleton(TimeProvider.System);
 
@@ -34,26 +26,7 @@ public static partial class ServiceCollectionExtensions
 
         services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
-            options.UseNpgsql(connectionString, npgsql =>
-            {
-                // Transient faults — a failover, a dropped connection, a restarting
-                // container — are retried rather than surfaced as a 500.
-                //
-                // The cost is real and worth stating up front: with a retrying execution
-                // strategy, code that opens its own transaction must run through
-                // db.Database.CreateExecutionStrategy().ExecuteAsync(...) or EF throws at
-                // runtime. §12's refresh rotation is exactly that shape — DataAccess.md
-                // carries the pattern.
-                npgsql.EnableRetryOnFailure(
-                    maxRetryCount: 3,
-                    maxRetryDelay: TimeSpan.FromSeconds(5),
-                    errorCodesToAdd: null);
-
-                // The history table lives with the tables it describes. Left in `public` it
-                // would sit apart from the schema it versions, and a database hosting two
-                // applications would have them competing for one history table.
-                npgsql.MigrationsHistoryTable("__EFMigrationsHistory", AppDbContext.Schema);
-            });
+            options.UseNpgsql(connectionString, AppDbContext.ConfigureNpgsql);
 
             options.AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>());
         });

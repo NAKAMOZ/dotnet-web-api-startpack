@@ -1,3 +1,6 @@
+using Azure.Core;
+using Azure.Identity;
+
 namespace Api.Configuration;
 
 /// <summary>Azure-hosted production integrations that have no safe implicit fallback.</summary>
@@ -13,4 +16,16 @@ public sealed class AzurePlatformOptions
 
     /// <summary>User-assigned managed identity client id; null uses the system identity.</summary>
     public string? ManagedIdentityClientId { get; init; }
+
+    /// <summary>
+    /// How this application authenticates to Azure, decided in one place. Key Vault key
+    /// wrapping and the Redis connection both call this: two copies of the branch would let a
+    /// change to credential policy land on one integration and not the other, which surfaces
+    /// as one service authenticating and the other not.
+    /// </summary>
+    public TokenCredential CreateCredential() =>
+        string.IsNullOrWhiteSpace(ManagedIdentityClientId)
+            ? new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned)
+            : new ManagedIdentityCredential(
+                ManagedIdentityId.FromUserAssignedClientId(ManagedIdentityClientId));
 }

@@ -32,14 +32,16 @@ public sealed class EmailTargetRateLimitFilter : IAsyncActionFilter, IOrderedFil
         var configured = options.Value;
         _logger = logger;
 
+        // Built once: the limits are fixed for the life of this singleton filter, so the
+        // factory delegate does not need re-allocating on every request that reaches it.
+        var factory = (string key) => partitions.CreateFixedWindow(
+            RateLimitPolicies.EmailSendingAccount,
+            key,
+            configured.EmailSendingAccountPermitLimit,
+            configured.EmailSendingAccountWindow);
+
         _limiter = PartitionedRateLimiter.Create<string, string>(target =>
-            RateLimitPartition.Get(
-                target,
-                key => partitions.CreateFixedWindow(
-                    RateLimitPolicies.EmailSending + "-account",
-                    key,
-                    configured.EmailSendingAccountPermitLimit,
-                    configured.EmailSendingAccountWindow)));
+            RateLimitPartition.Get(target, factory));
     }
 
     /// <summary>

@@ -1,10 +1,6 @@
 using System.Net.Http.Json;
-using Api.Data;
-using Api.Data.Seeding;
 using Api.DTOs.Auth;
-using Api.Models;
 using Api.Models.Enums;
-using Api.Services.Crypto;
 using Api.Services.Mfa;
 using OtpNet;
 
@@ -20,7 +16,7 @@ public sealed class MfaLoginIntegrationTests(IntegrationTestFactory factory)
         const string email = "mfa-login-flow@example.com";
         const string password = "V4lid!River-Stone-Cobalt-47";
         var cancellationToken = TestContext.Current.CancellationToken;
-        var userId = await SeedPasswordUserAsync(email, password);
+        var userId = await factory.SeedUserAsync(cancellationToken, email, password);
         var enrollment = await factory.InScopeAsync(services =>
             services.GetRequiredService<ITotpService>().EnrollAsync(userId, cancellationToken));
         var totp = new Totp(Base32Encoding.ToBytes(enrollment.Secret));
@@ -82,22 +78,4 @@ public sealed class MfaLoginIntegrationTests(IntegrationTestFactory factory)
         return (await response.Content.ReadFromJsonAsync<MfaChallengeResponse>(cancellationToken))!;
     }
 
-    private async Task<Guid> SeedPasswordUserAsync(string email, string password)
-    {
-        var userId = Guid.CreateVersion7();
-        await factory.InScopeAsync(async services =>
-        {
-            var database = services.GetRequiredService<AppDbContext>();
-            database.Users.Add(new User
-            {
-                Id = userId,
-                Email = email,
-                EmailVerified = true,
-                PasswordHash = services.GetRequiredService<IPasswordHasher>().Hash(password),
-            });
-            database.UserRoles.Add(new UserRole { UserId = userId, RoleId = RoleSeed.UserRoleId });
-            await database.SaveChangesAsync(TestContext.Current.CancellationToken);
-        });
-        return userId;
-    }
 }

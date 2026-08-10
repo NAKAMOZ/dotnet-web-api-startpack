@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Api.DTOs.Auth;
 using Api.DTOs.EmailVerification;
 using Api.DTOs.PasswordReset;
+using Api.Services.Email;
 
 namespace IntegrationTests;
 
@@ -94,7 +95,7 @@ public sealed class EmailFlowIntegrationTests(IntegrationTestFactory factory)
         Assert.Equal(HttpStatusCode.NoContent, confirmed.StatusCode);
         Assert.Contains(
             factory.EmailSender.Messages,
-            message => message.Subject == "Security notification: Password reset completed"
+            message => message.Subject == $"Security notification: {SecurityNotificationType.PasswordReset}"
                        && message.To == email
                        && !message.HtmlBody.Contains(newPassword, StringComparison.Ordinal));
 
