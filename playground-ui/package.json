@@ -8,13 +8,14 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
+    "paraglide": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy localStorage preferredLanguage baseLocale",
     "build": "vite build && node scripts/sync-static.mjs",
     "preview": "vite preview",
     "format": "biome format --write .",
     "lint": "biome lint .",
     "check": "biome check .",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "typecheck": "pnpm run paraglide && tsc --noEmit",
+    "test": "pnpm run paraglide && vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
