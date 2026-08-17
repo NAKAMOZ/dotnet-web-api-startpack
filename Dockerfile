@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile
 COPY playground-ui ./
 RUN pnpm build
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e1fc6e423f543119c406d24e2e687d67c569f18f04a37a8b0005d80ad0dcee80 AS build
 WORKDIR /src
 
 COPY Directory.Build.props Directory.Packages.props dotnet-web-api-startpack.csproj ./
