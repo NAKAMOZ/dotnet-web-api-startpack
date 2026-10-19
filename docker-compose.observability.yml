@@ -1,6 +1,6 @@
 services:
   otel-collector:
-    image: otel/opentelemetry-collector:0.153.0@sha256:6ed874ea083d67a3085acfc75343f2ad11d9abe6006d7ea4a16e2dba9af14e49
+    image: otel/opentelemetry-collector:0.162.0-386@sha256:6ad380c4e403192e0be16f661c58af95d89b623dab48e6972da7c6061ad465db
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./deploy/otel-collector.yaml:/etc/otelcol/config.yaml:ro
